@@ -1,0 +1,65 @@
+{
+  "compilerOptions": {
+    "downlevelIteration": true,
+    "target": "es5",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext", // 指定模块代码生成
+    "moduleResolution": "bundler", // 模块解析策略
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "~/*": [
+        "./public/*"
+      ],
+    },
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "outDir": "dist"
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "src/types/**/*.d.ts",
+    "test-parser.ts",
+    "src/bot/index.js",
+  ],
+  "exclude": [
+    "node_modules"
+  ],
+  "moduleResolution": [
+    "node_modules",
+    ".next",
+    "node"
+  ],
+  "ts-node": {
+    // 当使用 --loader 时，这个配置块通常可以被忽略，但保留它也无害
+    "compilerOptions": {
+      // 告诉 ts-node 在执行脚本时使用 CommonJS
+      // 这看起来可能违反直觉，但 ts-node/esm 加载器会在内部处理 ESM 的转换
+      "module": "CommonJS"
+    },
+    "esm": true,
+    "experimentalResolver": true
+  },
+}

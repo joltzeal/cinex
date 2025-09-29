@@ -1,0 +1,8 @@
+{
+  // 继承你项目的主 tsconfig 配置
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // 强制使用 CommonJS 模块系统，这是 ts-node 运行所需要的
+    "module": "CommonJS"
+  }
+}

@@ -1,0 +1,181 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  image         String?
+  password      String?   // 用于存储哈希密码
+  sessions      Session[]
+}
+
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Document {
+  id           String                @id @default(uuid()) @db.Uuid
+  title        String
+  description  String?
+  images       String[]
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  downloadURLs DocumentDownloadURL[]
+
+  //@@map("documents")
+}
+
+model DocumentDownloadURL {
+  id               String                 @id @default(uuid()) @db.Uuid
+  url              String
+  documentId       String                 @db.Uuid
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  status           DocumentDownloadStatus @default(undownload)
+  detail           Json?
+  subscribeDataIds Json?
+  hash             String?
+  type             String?
+  document         Document               @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  //@@map("download_urls")
+}
+
+model SubscribeJAVBus {
+  id          String          @id @default(uuid())
+  filter      Json
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  starInfo    Json?
+  filterType  String
+  filterValue String
+  movies      SubscribeData[]
+}
+
+
+model SubscribeData {
+  id           String               @id @default(uuid())
+  subscribeId  String?              // 订阅ID
+  code         String              // 番号
+  title        String               // 标题
+  cover        String?              // 横屏高清封面
+  poster       String?              // 竖屏海报（一般为缩略图）
+  date         String?                // 上映日期
+  tags         Json
+  status       SubscribeMovieStatus @default(undownload)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  detail       Json?
+  magnets      Json?
+  mediaLibrary Json?
+  subscribe    SubscribeJAVBus?      @relation(fields: [subscribeId], references: [id], onDelete: Cascade)
+
+  @@unique([subscribeId, code])
+  @@index([subscribeId])
+}
+
+
+
+model Setting {
+  key       String   @id @unique
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FileTransferLog {
+  id              String         @id @default(uuid())
+  
+  // 基础信息
+  title           String
+  number      String?         // 新增的番号字段，替代 subtitle，可选
+  sourcePath      String          @db.Text // 源文件路径，使用 Text 类型以支持长路径
+  destinationPath String          @db.Text // 目标文件路径，使用 Text 类型
+
+  // 转移方法与状态
+  transferMethod  TransferMethod
+  status          TransferStatus @default(PROCESSING) // 默认新任务为“处理中”
+
+  // 附加信息
+  errorMessage    String?         @db.Text // 如果转移失败，在此记录错误信息
+  
+  // 时间戳
+  initiatedAt     DateTime       @default(now()) // 任务创建（开始处理）的时间
+  completedAt     DateTime?      // 任务完成（成功或失败）的时间
+  updatedAt       DateTime       @updatedAt      // 记录最后更新的时间
+}
+
+model TelegramMessage {
+  id         Int      @id @default(autoincrement())
+  messageId  String
+  chatId     String?
+  chatTitle  String?
+  text       String?
+  tags       String[]
+  forwardUrl String?
+  mediaType  String?
+  fileName   String?
+  filePath   String[] // 改为字符串数组，支持多个文件路径
+  mediaCount Int?     @default(0) // 添加媒体数量字段
+  processed  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([messageId, chatId])
+}
+
+enum SubscribeMovieStatus {
+  uncheck
+  checked
+  undownload
+  downloading
+  downloaded
+  added
+  subscribed
+  transfered
+}
+
+enum DocumentDownloadStatus {
+  undownload
+  downloading
+  downloaded
+  paused
+  checking
+  error
+}
+
+enum TransferStatus {
+  SUCCESS
+  FAILURE
+  PROCESSING
+}
+
+/// 文件转移所使用的方法
+enum TransferMethod {
+  COPY
+  MOVE
+  HARDLINK
+  SOFTLINK
+}

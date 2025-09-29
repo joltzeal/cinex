@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  cinex:
+    build:
+      context: .
+      dockerfile: Dockerfile  # 使用新的 Dockerfile
+    container_name: cinex
+    ports:
+      - "23000:3000"
+    environment:
+      # Node.js 环境配置
+      - ENABLE_SCHEDULER=true
+      - DATABASE_URL=postgresql://postgres:DYX920912@host.docker.internal:5432/cinex?schema=public
+      - DEFAULT_SUBSCRIBE_MAX_PAGES=100
+      - DEFAULT_SUBSCRIBE_DELAY_MS=1000
+      - RUN_MIGRATIONS=true  # 启动时运行数据库迁移
+      
+      # 应用 URL 配置 - 在容器内使用 localhost
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      
+      # 认证配置 (Clerk)
+      - NEXTAUTH_SECRET=xemRs422hgU5TnPI/6Cx9qbz1FrBb1UE4yBBtsTIVUA=
+      - NEXTAUTH_URL=http://localhost:3000
+      - HTTP_PROXY=http://192.168.0.104:7890
+      - HTTPS_PROXY=http://192.168.0.104:7890
+      - METATUBE_API_HOST=https://rich-coralyn-ameno-7c7b1b86.koyeb.app
+      - METATUBE_API_TOKEN=bravesfly
+      
+    volumes:
+      # 挂载媒体目录到宿主机
+      - ./media:/app/media
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - cinex-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 600s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+
+networks:
+  cinex-network:
+    driver: bridge
+
+# volumes:
+#   postgres_data:
