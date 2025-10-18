@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import fs from 'fs/promises';
 import path from 'path';
 import { z } from 'zod';
+import { getSetting, SettingKey, upsertSetting } from '@/services/settings';
 
 const downloadDirectoryConfigSchema = z.object({
   movie: z.string().min(1, '电影目录名称不能为空'),
@@ -17,12 +18,8 @@ export async function POST(request: NextRequest) {
     
     const config = downloadDirectoryConfigSchema.parse(body);
 
-    // 保存配置到数据库
-    await db.setting.upsert({
-      where: { key: 'downloadDirectoryConfig' },
-      update: { value: config },
-      create: { key: 'downloadDirectoryConfig', value: config },
-    });
+
+    await upsertSetting(SettingKey.DirectoryConfig, config);
 
     // 获取downloads目录路径
     const downloadPath = path.resolve('./media');
@@ -73,15 +70,13 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    const setting = await db.setting.findUnique({
-      where: { key: 'downloadDirectoryConfig' },
-    });
+    const setting = await getSetting(SettingKey.DirectoryConfig);
 
     if (!setting) {
       return NextResponse.json(null);
     }
 
-    return NextResponse.json(setting.value);
+    return NextResponse.json(setting);
   } catch (error) {
     console.error('获取下载目录设置失败:', error);
     return NextResponse.json(

@@ -3,9 +3,11 @@ import { getMovieDetail, getMovieMagnets, getMoviesByPage } from '../javbus-pars
 import { sleep } from '../utils';
 import { getPushService } from './utils';
 import { JsonValue } from 'generated/prisma/runtime/library';
-import { extractBestMagnet } from '../download-processor';
 import { db } from '../db';
 import { logger } from '../logger';
+import { getSetting, SettingKey } from '@/services/settings';
+import { MovieStatus, Prisma } from '@prisma/client';
+
 
 function isSingleMovie(movieDetail: MovieDetail) {
   return movieDetail.genres.some(genre => genre.name === '單體作品');
@@ -14,29 +16,42 @@ function isVRMovie(movieDetail: MovieDetail) {
   return movieDetail.genres.some(genre => genre.name === '8KVR' || genre.name === 'VR' || genre.name === 'VR専用');
 }
 
+function isIntroductionMovie(movieDetail: MovieDetail) {
+  return movieDetail.genres.some(genre => genre.name === '介紹影片');
+}
+
+function isCollectionMovie(movieDetail: MovieDetail) {
+  return movieDetail.genres.some(genre => genre.name === '合集');
+}
+
+function isBestMovie(movieDetail: MovieDetail) {
+  return movieDetail.genres.some(genre => genre.name === '女優ベスト・総集編');
+}
+
+
+
 export async function taskJavbusSubscribeUpdate() {
   const taskName = 'JAVBus订阅增量更新';
   logger.info(`开始执行 ${taskName}`);
 
   try {
-
-
-    // 获取所有活跃的JAVBus订阅
-    const subscriptions = await db.subscribeJAVBus.findMany({
+    // 获取所有订阅
+    const subscriptions = await db.subscribe.findMany({
       include: {
         movies: {
-          select: { code: true }
-        }
-      }
+          include: {
+            movie: true // 包含实际的 Movie 数据
+          }
+        },
+      },
     });
-
+    logger.info(subscriptions.length);
     if (subscriptions.length === 0) {
       logger.info('没有找到任何JAVBus订阅，跳过更新');
       return;
     }
-
-    logger.info(`找到 ${subscriptions.length} 个订阅，开始增量更新`);
-
+    const downloadRuleConfigSetting = await getSetting(SettingKey.DownloadRuleConfig);
+    const downloadRuleConfig = downloadRuleConfigSetting as DownloadRuleConfig;
     let totalNewMovies = 0;
     const updateResults: Array<{
       filterType: string;
@@ -44,35 +59,20 @@ export async function taskJavbusSubscribeUpdate() {
       newCount: number;
       filter: JsonValue;
     }> = [];
-    const downloadRuleConfigSetting = await db.setting.findUnique({
-      where: {
-        key: 'downloadRuleConfig'
-      }
-    });
-    const downloadRuleConfig = downloadRuleConfigSetting?.value as { onlyHD: boolean; onlyChineseSubtitles: boolean; checkForDuplicates: boolean; downloadVR: boolean; onlySingleMovie: boolean } | null
-
-    // 为每个订阅执行增量更新
     for (let i = 0; i < subscriptions.length; i++) {
-      const subscription = subscriptions[i];
-      const { filterType, filterValue } = subscription;
-
-      logger.info(`处理订阅 ${i + 1}/${subscriptions.length}: ${filterType}=${filterValue}`);
-
+      const subscribeItem = subscriptions[i];
+      const { filterType, filterValue } = subscribeItem;
+      logger.info(filterType);
+      logger.info(filterValue);
       try {
-        // 获取现有电影ID集合
         const existingSourceIdSet = new Set(
-          subscription.movies.map(m => m.code)
+          subscribeItem.movies.map(m => m.movie.number)
         );
-
         const newMovies: Movie[] = [];
         let stopScraping = false;
         let currentPage = 1;
         const MAX_PAGES_PER_SUBSCRIPTION = 5; // 每个订阅最多检查5页
         const REQUEST_DELAY = 3000; // 3秒延迟
-
-        // 检查新电影
-
-
         while (!stopScraping && currentPage <= MAX_PAGES_PER_SUBSCRIPTION) {
           logger.info(`检查第 ${currentPage} 页...`);
 
@@ -115,11 +115,43 @@ export async function taskJavbusSubscribeUpdate() {
             await sleep(REQUEST_DELAY);
           }
         }
-
-        // 如果有新电影，保存到数据库
         if (newMovies.length > 0) {
           logger.info(`发现 ${newMovies.length} 部新电影，保存到数据库`);
           for (const movie of newMovies) {
+            const existingMovie = await db.movie.findUnique({
+              where: { number: movie.id }  // movie.id 是电影的番号
+            });
+            if (existingMovie) {
+              await db.movie.update({
+                where: { id: existingMovie.id },
+                data: { poster: movie.img,tags:movie.tags }
+              });
+              logger.info(`影片 ${movie.id} 已存在，跳过。`);
+              await db.subscribeMovie.upsert({
+                where: { subscribeId_movieId: { subscribeId: subscribeItem.id, movieId: existingMovie.id } },
+                update: {
+                  // poster: movie.img,
+                },
+                create: { subscribeId: subscribeItem.id, movieId: existingMovie.id,  }
+              });
+              continue;
+            }
+            // 创建电影
+            const movieCreate: Prisma.MovieCreateInput = {
+              number: movie.id,
+              title: movie.title,
+              date: movie.date,
+              tags: movie.tags,
+              poster: movie.img,
+              status: MovieStatus.uncheck,
+            };
+            const createdMovie = await db.movie.create({
+              data: movieCreate
+            });
+            // 创建订阅关系
+            await db.subscribeMovie.create({
+              data: { subscribeId: subscribeItem.id, movieId: createdMovie.id }
+            });
             const movieDetail = await getMovieDetail(movie.id);
             const magnets = await getMovieMagnets({
               movieId: movie.id,
@@ -128,71 +160,68 @@ export async function taskJavbusSubscribeUpdate() {
               sortBy: 'date',
               sortOrder: 'desc'
             });
-            const subscribeCreated = await db.subscribeData.create({
+            // 更新电影
+            await db.movie.update({
+              where: { id: createdMovie.id },
               data: {
-                subscribeId: subscription.id,
-                detail: movieDetail as any,
+                detail: movieDetail as unknown as Prisma.InputJsonValue,
+                magnets: magnets as unknown as Prisma.InputJsonValue,
                 cover: movieDetail.img,
-                magnets: magnets as any,
-                code: movie.id,
-                title: movie.title,
-                date: movie.date,
-                tags: movie.tags,
-                poster: movie.img ?? null,
-                status: "uncheck" as const
               }
             });
-
             if (magnets.length === 0) {
               logger.info(`影片 ${movie.id} 没有找到任何磁力链接，跳过。`);
               continue;
             }
-
+            // 分析电影，是否需要订阅
             if (downloadRuleConfig?.onlySingleMovie && !isSingleMovie(movieDetail)) {
+              logger.info(`影片 ${movie.id} 不是单体影片，跳过。`);
               continue;
             }
-            if (!downloadRuleConfig?.downloadVR && isVRMovie(movieDetail) ) {
+            if (isIntroductionMovie(movieDetail) || isBestMovie(movieDetail)) {
+              logger.info(`影片 ${movie.id} 是介绍影片或女優ベスト・総集編，跳过。`);
+              continue;
+            }
+            if (!downloadRuleConfig?.downloadVR && isVRMovie(movieDetail)) {
               // 不下载VR影片
               continue;
             }
-            await db.subscribeData.update({
-              where: { id: subscribeCreated.id },
-              data: { status: 'subscribed' }
+            await db.movie.update({
+              where: { id: createdMovie.id },
+              data: {
+                status: MovieStatus.subscribed,
+                subscribeAt: new Date()
+              }
             });
 
           }
-
           totalNewMovies += newMovies.length;
           updateResults.push({
             filterType,
             filterValue,
             newCount: newMovies.length,
-            filter: subscription.filter
+            filter: subscribeItem.filter
           });
         } else {
           logger.info(`订阅 ${filterType}=${filterValue} 没有新电影`);
         }
-
-        // 在订阅间添加更长的延迟，避免过于频繁的请求
         if (i < subscriptions.length - 1) {
           const SUBSCRIPTION_DELAY = 10000; // 10秒延迟
-          logger.info(`等待 ${SUBSCRIPTION_DELAY}ms 后处理下一个订阅...`);
+          // logger.info(`等待 ${SUBSCRIPTION_DELAY}ms 后处理下一个订阅...`);
           await sleep(SUBSCRIPTION_DELAY);
         }
-
-        await db.subscribeJAVBus.update({
-          where: { id: subscription.id },
+        await db.subscribe.update({
+          where: { id: subscribeItem.id },
           data: { updatedAt: new Date() }
         });
-
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : '未知错误';
-        logger.error(`处理订阅 ${filterType}=${filterValue} 时出错: ${errorMessage}`);
-        // 继续处理下一个订阅，不中断整个任务
+        logger.error(`执行 ${taskName} 时发生错误:${error}`,);
+        throw error;
       }
-    }
 
-    // 任务完成，只在有更新时发送通知
+    }
+    logger.info(`${taskName} 执行完成。`);
+    // 发送通知
     if (totalNewMovies > 0) {
       const pushService = await getPushService();
       if (pushService) {
@@ -211,22 +240,9 @@ export async function taskJavbusSubscribeUpdate() {
     } else {
       logger.info('没有发现新电影，跳过推送通知');
     }
-
-    logger.info(`${taskName} 执行完成，共发现 ${totalNewMovies} 部新电影`);
-
+    // 为每个订阅执行增量更新
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : '未知错误';
-    logger.error(`${taskName} 执行失败: ${errorMessage}`);
-
-    // 发送失败通知
-
-    try {
-      const pushService = await getPushService();
-      if (pushService) {
-        await pushService.sendTaskNotification(taskName, 'failed', `错误详情: ${errorMessage}`);
-      }
-    } catch (error) {
-      logger.error(`发送失败通知失败: ${errorMessage}`);
-    }
+    logger.error(`执行 ${taskName} 时发生错误:${error}`,);
+    throw error;
   }
 }

@@ -1,17 +1,9 @@
-// src/app/api/proxy/route.ts
 
+import { ALLOWED_DOMAINS } from '@/constants/data';
 import { proxyFetch } from '@/lib/proxyFetch';
 import { NextRequest, NextResponse } from 'next/server';
 
-// 安全增强：只允许代理来自特定域名的图片
-const ALLOWED_DOMAINS = [
-  'www.javbus.com',
-  'javbus.com',
-  'pics.dmm.co.jp',
-  'dmm.co.jp',
-  'awsimgsrc.dmm.co.jp'
-  // 在这里添加其他你需要的图片来源域名
-];
+
 
 export async function GET(request: NextRequest) {
   const imageUrl = request.nextUrl.searchParams.get('url');

@@ -143,7 +143,7 @@ export function DownloadRuleSettings({ initialData }: DownloadRuleSettingsProps)
                   <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                     <div className="space-y-0.5">
                       <FormLabel className="text-base">仅下载单体影片</FormLabel>
-                      <FormDescription>订阅时，跳过合集或剧集包，只下载单个电影。</FormDescription>
+                      <FormDescription>订阅时，跳过系列合集/个人合集/写真。</FormDescription>
                     </div>
                     <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                   </FormItem>

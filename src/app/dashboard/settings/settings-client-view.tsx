@@ -1,4 +1,3 @@
-// 文件路径: app/settings/SettingsPageClient.tsx
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -9,17 +8,9 @@ import { DirectorySettingsComponent } from '@/components/settings/download-direc
 import { AdvancedSettings } from '@/components/settings/advanced-settings';
 import { DownloaderSettingsComponent } from '@/components/settings/downloader-settings';
 import { DownloadRuleSettings } from '@/components/settings/download-rule-settings';
+import { ProxySettingsComponent } from '@/components/settings/proxy-settings';
 import { Setting } from '@prisma/client';
-import { DownloaderConfig, DownloaderSettingsData } from '@/lib/downloader';
 import { ScraperRuleSettings } from '@/components/settings/scraper-rule-settings';
-
-// 示例类型，请根据你的实际情况调整
-type MediaServerConfig = any;
-type AiProviderConfig = any;
-type PushNotificationConfig = any;
-type DownloadDirectoryConfig = any;
-type DownloaderSettings = any
-type DownloadRuleConfig = any
 
 /**
  * useScrollSpy 自定义 Hook
@@ -117,6 +108,7 @@ export default function SettingsPageClient(props: SettingsPageClientProps) {
     { id: 'scraper-rule', title: '刮削规则' },
     { id: 'push-notification', title: '推送通知' },
     { id: 'advanced-settings', title: '高级设置' },
+    { id: 'proxy-settings', title: '代理设置' },
   ];
 
   const [config, setConfig] = useState<Record<string, any> | undefined>(undefined);
@@ -204,7 +196,9 @@ export default function SettingsPageClient(props: SettingsPageClientProps) {
               <PushNotificationSettingsComponent initialData={config?.pushNotificationConfig} />
             </div>
             <AdvancedSettings />
-
+            <div id="proxy-settings">
+              <ProxySettingsComponent initialData={config?.proxyUrl} />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 
 

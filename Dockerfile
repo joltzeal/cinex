@@ -40,8 +40,8 @@ WORKDIR /app
 RUN apk add --no-cache \
     curl \
     bash \
-    dumb-init
-
+    dumb-init \
+    coreutils
 # 复制构建产物和必要文件
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./

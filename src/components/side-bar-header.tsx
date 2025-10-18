@@ -21,7 +21,7 @@ import {
  * - 颜色继承自项目的主题 (Theme Provider)，不使用显式颜色类
  */
 export function SideBarHeader() {
-  const projectName = "Velvet Loop";
+  const projectName = "Cinex";
   const slogan = "不建议单手使用电脑";
 
   return (

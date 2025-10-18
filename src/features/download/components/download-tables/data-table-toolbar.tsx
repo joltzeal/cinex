@@ -11,6 +11,13 @@ import {
 } from "@/components/ui/select";
 import { DocumentDownloadStatus } from "@prisma/client";
 import { useDebouncedCallback } from 'use-debounce';
+import { SubscribeMovieStatusMap } from "@/constants/data";
+
+const statusMap = {
+  undownload: "未下载",
+  downloading: '下载中',
+  downloaded: '已下载',
+}
 
 export function DataTableToolbar() {
   const router = useRouter();
@@ -18,6 +25,7 @@ export function DataTableToolbar() {
   const searchParams = useSearchParams();
   const currentQuery = searchParams.get('query') || '';
   const currentStatus = searchParams.get('status') || '';
+  const currentType = searchParams.get('type') || '';
 
   const createQueryString = (name: string, value: string) => {
     const params = new URLSearchParams(searchParams);
@@ -34,12 +42,16 @@ export function DataTableToolbar() {
   };
 
   const handleSearch = useDebouncedCallback((term: string) => {
-     router.push(pathname + '?' + createQueryString('query', term));
+    router.push(pathname + '?' + createQueryString('query', term));
   }, 300);
 
   const handleStatusChange = (status: string) => {
     // 'all' value means clearing the filter
     router.push(pathname + '?' + createQueryString('status', status === 'all' ? '' : status));
+  };
+
+  const handleTypeChange = (type: string) => {
+    router.push(pathname + '?' + createQueryString('type', type === 'all' ? '' : type));
   };
 
   return (
@@ -51,14 +63,24 @@ export function DataTableToolbar() {
           onChange={(e) => handleSearch(e.target.value)}
           className="h-8 w-[150px] lg:w-[250px]"
         />
+        <Select value={currentType} onValueChange={handleTypeChange}>
+          <SelectTrigger className="h-8 w-[180px]">
+            <SelectValue placeholder="按类型筛选" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">所有类型</SelectItem>
+            <SelectItem value="movie">电影</SelectItem>
+            <SelectItem value="magnet">磁力/其他</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={currentStatus} onValueChange={handleStatusChange}>
           <SelectTrigger className="h-8 w-[180px]">
             <SelectValue placeholder="按状态筛选" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">所有状态</SelectItem>
-            {Object.values(DocumentDownloadStatus).map(status => (
-              <SelectItem key={status} value={status}>{status}</SelectItem>
+            {['undownload', 'downloading', 'downloaded'].map(status => (
+              <SelectItem key={status} value={status}>{statusMap[status as keyof typeof statusMap] || status}</SelectItem>
             ))}
           </SelectContent>
         </Select>

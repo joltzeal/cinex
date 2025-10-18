@@ -39,14 +39,6 @@ const MediaScrapingTable: React.FC<MediaScrapingTableProps> = ({ data, columns }
     data: tableData,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    // You would add sorting, filtering, pagination etc. here if needed
-    // initialState: {
-    //   pagination: {
-    //     pageSize: 10,
-    //   },
-    // },
-    // enableSorting: true,
-    // enableColumnFilters: true,
   });
 
   return (
@@ -86,44 +78,6 @@ const MediaScrapingTable: React.FC<MediaScrapingTableProps> = ({ data, columns }
           ))}
         </tbody>
       </table>
-
-      {/* Optional: Add pagination controls if you implement it */}
-      {/* <div className="flex items-center justify-between p-4">
-        <button
-          onClick={() => table.setPageIndex(0)}
-          disabled={!table.getCanPreviousPage()}
-          className="px-4 py-2 rounded-md border disabled:opacity-50"
-        >
-          {'<<'}
-        </button>
-        <button
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-          className="px-4 py-2 rounded-md border disabled:opacity-50"
-        >
-          {'<'}
-        </button>
-        <span className="text-sm">
-          Page{' '}
-          <strong>
-            {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
-          </strong>{' '}
-        </span>
-        <button
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-          className="px-4 py-2 rounded-md border disabled:opacity-50"
-        >
-          {'>'}
-        </button>
-        <button
-          onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-          disabled={!table.getCanNextPage()}
-          className="px-4 py-2 rounded-md border disabled:opacity-50"
-        >
-          {'>>'}
-        </button>
-      </div> */}
     </div>
   );
 };

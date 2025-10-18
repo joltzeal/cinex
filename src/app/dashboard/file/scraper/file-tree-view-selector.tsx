@@ -44,7 +44,7 @@ interface ManualRecognitionDialogProps {
 function ManualRecognitionDialog({ fileTreeData }: ManualRecognitionDialogProps) {
   const [selectedFile, setSelectedFile] = React.useState<TreeDataItem | null>(null);
   const [standardName, setStandardName] = React.useState('');
-  const [transferMethod, setTransferMethod] = React.useState('move');
+  const [transferMethod, setTransferMethod] = React.useState('MOVE');
   const [isDrawerOpen, setIsDrawerOpen] = React.useState(false);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -132,8 +132,8 @@ function ManualRecognitionDialog({ fileTreeData }: ManualRecognitionDialogProps)
             <Select value={transferMethod} onValueChange={setTransferMethod}>
               <SelectTrigger className="col-span-3"><SelectValue placeholder="选择一种方式" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="hardlink">硬链接</SelectItem><SelectItem value="softlink">软链接</SelectItem>
-                <SelectItem value="copy">复制</SelectItem><SelectItem value="move">移动</SelectItem>
+                <SelectItem value="HARDLINK">硬链接</SelectItem><SelectItem value="SOFTLINK">软链接</SelectItem>
+                <SelectItem value="COPY">复制</SelectItem><SelectItem value="MOVE">移动</SelectItem>
               </SelectContent>
             </Select>
           </div>

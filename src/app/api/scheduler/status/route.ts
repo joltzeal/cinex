@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getSetting, SettingKey } from '@/services/settings';
 export async function GET() {
   try {
     // 从数据库获取推送配置
-    
-    const pushSetting = await db.setting.findUnique({
-      where: { key: 'pushNotificationConfig' }
-    });
+
+    const pushSetting = await getSetting(SettingKey.PushNotificationConfig);
+
 
     let pushConfig = {
       domain: 'not configured',
@@ -15,7 +15,7 @@ export async function GET() {
     };
 
     if (pushSetting) {
-      const config = pushSetting.value as {
+      const config = pushSetting as {
         domain: string;
         username: string;
         token?: string;
@@ -45,9 +45,9 @@ export async function GET() {
   } catch (error) {
     console.error('获取定时任务状态失败:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        message: `获取状态失败: ${error instanceof Error ? error.message : '未知错误'}` 
+      {
+        success: false,
+        message: `获取状态失败: ${error instanceof Error ? error.message : '未知错误'}`
       },
       { status: 500 }
     );

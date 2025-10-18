@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { runJavbusSubscribeUpdate, runJavbusMovieUpdate, runDownloadStatusSync, runMediaLibrarySync, runMediaScraping } from "@/lib/scheduler";
+import { runJavbusSubscribeUpdate, runJavbusMovieUpdate, runDownloadStatusSync, runMediaLibrarySync, runMediaScraping, runForumUpdate } from "@/lib/scheduler";
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,6 +26,9 @@ export async function POST(request: NextRequest) {
         break;
       case 'media-scraping':
         await runMediaScraping();
+        break;
+      case 'forum-update':
+        await runForumUpdate();
         break;
       default:
         return NextResponse.json({

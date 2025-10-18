@@ -2,15 +2,6 @@ import { db } from '@/lib/db';
 import {  manualTransfer } from '@/lib/transfer';
 import { TransferMethod, TransferStatus } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
-// import { error } from 'node:console';
-// setting
-// 文件命名规则
-// 下载剧照
-// 启用翻译
-// 目录结构
-// nfo 视频标题
-// 水印类型：字幕，破解，流出，无码
-
     // {
     //   id: 'chijoheaven:CJOD-452',
     //   number: 'CJOD-452',
@@ -49,14 +40,10 @@ import { NextRequest, NextResponse } from 'next/server';
  
 export async function POST(request: NextRequest) {
   try {
-    // 这里可以添加数据库连接检查
-    // const dbStatus = await checkDatabaseConnection();
     const body = await request.json();
     const { file, name, transferMethod } = body;
     const filePath = file.id;
     const fileName = file.name;
-    // search metatube 
-    // await parseMovie(name, file);
     try {
       const fileTransfer = await db.fileTransferLog.create({
         data: {

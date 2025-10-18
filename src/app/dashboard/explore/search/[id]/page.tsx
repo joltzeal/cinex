@@ -1,9 +1,7 @@
 "use client"
 import MovieDetailDisplay from "@/components/search/movie-detail";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useMovieStore } from "@/store/useMovieStore";
-import { Magnet, MovieDetail } from "@/types/javbus";
-import { SubscribeData } from "@prisma/client";
+import { Movie } from "@prisma/client";
 import {
   AlertCircle,
   Loader2
@@ -30,69 +28,41 @@ const MessageState = ({ title, message }: { title: string, message: string }) =>
     </Alert>
   </div>
 );
-export default function SearchPage() {
-
+export default function SearchMovieResult() {
   const params = useParams();
   const id = params.id as string;
 
-
-  // 1. 从 Zustand Store 中获取数据和 action
-  const { currentMovie, setCurrentMovie } = useMovieStore();
-  const [subscribeMovie, setSubscribeMovie] = useState<SubscribeData | null>(null);
-
+  const [movie, setMovie] = useState<Movie | null>(null);
   // 2. 本地状态只保留加载和错误，因为数据源是全局 Store
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fetchMovieData = async () => {
+    console.log(`SearchPage: Fetching data for ID: ${id}...`);
+    setIsLoading(true);
+    setError(null);
 
+    try {
+      const response = await fetch(`/api/movie/${id}`);
+      if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+
+      const result = await response.json();
+      if (!result || !result.data) throw new Error("Movie data not found.");
+
+      setMovie(result.data);
+
+    } catch (err: any) {
+      setError(err.message || "An unknown error occurred while loading data.");
+      setMovie(null); // Clear data on error
+    } finally {
+      setIsLoading(false);
+    }
+  };
   useEffect(() => {
-    // 检查 Store 中的数据是否是当前页面需要的数据
-    if (currentMovie && currentMovie.id === id) {
-      console.log(`SearchPage: 从 Store 中直接命中数据，ID: ${id}`);
-      const fetchSubscribeMovie = async () => {
-        // 确保 id 存在时才执行请求
-        if (id) {
-          const response = await fetch(`/api/subscribe/movie/${id}`);
-          const result = await response.json();
-          setSubscribeMovie(result.data);
-        }
-      }
-      fetchSubscribeMovie();
-      return; // 数据已存在，无需任何操作
-    }
+    fetchMovieData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
-    // 如果 Store 中没有数据 (例如刷新页面)，则执行 fetch
-    const fetchMovieData = async () => {
-      console.log(`SearchPage: Store 未命中，正在为 ID: ${id} 获取数据...`);
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await fetch(`/api/movie/${id}`);
-        if (!response.ok) throw new Error(`请求失败，状态码: ${response.status}`);
-        const result = await response.json();
-        if (!result || !result.data) throw new Error("未找到该影片的数据。");
-
-        // 将获取到的数据存入 Store
-        setCurrentMovie(result.data);
-        
-        
-
-      } catch (err: any) {
-        setError(err.message || "加载数据时发生未知错误。");
-        setCurrentMovie(null); // 出错时清空数据
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (id) {
-      fetchMovieData();
-    }
-
-
-  }, [id, currentMovie, setCurrentMovie]); // 依赖项更新
-
-
-  const isFetchingData = isLoading && (!currentMovie || currentMovie.id !== id);
+  const isFetchingData = isLoading && (!movie || movie.number !== id);
 
 
   // --- 渲染逻辑变得极为简洁 ---
@@ -104,9 +74,9 @@ export default function SearchPage() {
     return <MessageState title="加载出错" message={error} />;
   }
 
-  if (!currentMovie) {
+  if (!movie) {
     return <MessageState title="无数据" message="无法找到对应的影片信息。" />;
   }
 
-  return <MovieDetailDisplay movie={currentMovie} subscribeMovie={subscribeMovie} />;
+  return <MovieDetailDisplay movie={movie} />;
 }

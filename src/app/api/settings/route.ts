@@ -1,7 +1,7 @@
-// /app/api/settings/route.ts
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import {db} from '@/lib/db'; 
+import { SettingKey, upsertSetting } from '@/services/settings';
 
 // 定义我们期望接收的数据结构
 const settingSchema = z.object({
@@ -13,13 +13,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { key, value } = settingSchema.parse(body);
-
-    // 使用 upsert，如果存在就更新，不存在就创建
-    const setting = await db.setting.upsert({
-      where: { key },
-      update: { value },
-      create: { key, value },
-    });
+    const setting = await upsertSetting(key as SettingKey, value);
 
     return NextResponse.json({ success: true, data: setting });
   } catch (error) {

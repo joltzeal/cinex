@@ -12,6 +12,7 @@ export type DocumentWithURLs = Document & {
 export interface GetDocumentsParams {
   query?: string;
   status?: DocumentDownloadStatus;
+  type?: string;
   page?: number;
   pageSize?: number;
 }
@@ -19,6 +20,7 @@ export interface GetDocumentsParams {
 export async function getDocuments({
   query = '',
   status,
+  type,
   page = 1,
   pageSize = 10,
 }: GetDocumentsParams): Promise<{ documents: DocumentWithURLs[], pageCount: number, totalCount: number }> { // 明确返回类型
@@ -36,6 +38,13 @@ export async function getDocuments({
         downloadURLs: {
           some: {
             status: status,
+          },
+        },
+      }),
+      ...(type && {
+        downloadURLs: {
+          some: {
+            type: type,
           },
         },
       }),

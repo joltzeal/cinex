@@ -1,22 +1,25 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Heading } from '@/components/ui/heading';
-import { Button } from '@/components/ui/button';
-import { IconSettings, IconDownload, IconRobot, IconFile, IconPhoto, IconVideo, IconMusic, IconFileText, IconArchive, IconRefresh, IconSearch, IconTrash, IconEye, IconX } from '@tabler/icons-react';
-import Image from 'next/image';
-import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { toast } from 'sonner';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Heading } from '@/components/ui/heading';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { IconArchive, IconDownload, IconEye, IconFile, IconFileText, IconMusic, IconPhoto, IconRefresh, IconRobot, IconSearch, IconSettings, IconTrash, IconVideo, IconPlayerPlay } from '@tabler/icons-react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import VideoPlayer from '@/components/video-player';
+// import VideoThumbnailGenerator from '@/components/video-thumbnail-generator';
+import Lightbox from 'yet-another-react-lightbox';
+import 'yet-another-react-lightbox/styles.css';
 
 export interface TelegramSettings {
   enabled: boolean;
@@ -81,11 +84,11 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
     if (!fileName) return 'unknown';
     const extension = fileName.split('.').pop()?.toLowerCase();
     if (!extension) return 'unknown';
-    
+
     const imageTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'];
     const videoTypes = ['mp4', 'avi', 'mkv', 'mov', 'wmv', 'flv', 'webm', 'm4v'];
     const audioTypes = ['mp3', 'wav', 'flac', 'aac', 'm4a', 'ogg', 'wma'];
-    
+
     if (imageTypes.includes(extension)) return 'image';
     if (videoTypes.includes(extension)) return 'video';
     if (audioTypes.includes(extension)) return 'audio';
@@ -94,11 +97,34 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
 
   const getMediaUrl = (filePath: string): string => {
     const normalizedPath = filePath.replace(/\\/g, '/');
-    return `/api/media/${normalizedPath}`;
+    // 简化编码逻辑，避免双重编码
+    const encodedPath = normalizedPath
+      .split('/')
+      .map(part => encodeURIComponent(part))
+      .join('/');
+    return `/api/media${encodedPath}`;
   };
 
   const getFileNameFromPath = (filePath: string): string => {
     return filePath.split('/').pop() || filePath.split('\\').pop() || 'unknown';
+  };
+  // 处理图片预览
+  const handleImagePreview = (message: TelegramMessage, currentIndex: number) => {
+    const imageFiles = message.filePath.filter((filePath) => {
+      const fileName = getFileNameFromPath(filePath);
+      return getFileType(fileName) === 'image';
+    });
+
+    if (imageFiles.length === 0) return;
+
+    const slides = imageFiles.map((filePath) => ({
+      src: getMediaUrl(filePath),
+      alt: getFileNameFromPath(filePath)
+    }));
+
+    setLightboxSlides(slides);
+    setLightboxIndex(currentIndex);
+    setLightboxOpen(true);
   };
 
   // 媒体预览组件
@@ -107,76 +133,101 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
 
     return (
       <div className="mt-3">
-        {/* 横向滚动的媒体容器 */}
-        <div className="w-full overflow-x-auto">
+        {/* 横向滚动的媒体容器 - 使用 ScrollArea 组件 */}
+        <ScrollArea className="w-full">
           <div className="flex space-x-2 pb-2 min-w-fit">
             {message.filePath.map((filePath, index) => {
+
               const fileName = getFileNameFromPath(filePath);
               const fileType = getFileType(fileName);
               const mediaUrl = getMediaUrl(filePath);
-              
+
               return (
                 <div key={index} className="flex-shrink-0">
-                  <div className="w-25 h-25 relative rounded-lg overflow-hidden bg-muted cursor-pointer hover:scale-105 transition-transform"
-                       onClick={() => window.open(mediaUrl, '_blank')}>
+                  <div className="w-25 h-25 relative rounded-lg overflow-hidden bg-muted transition-transform">
                     {fileType === 'image' ? (
-                      <Image
-                        src={mediaUrl}
-                        alt={fileName}
-                        fill
-                        className="object-cover"
-                        onError={(e) => {
-                          console.error('图片加载失败:', mediaUrl);
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                      />
+                      <div
+                        className="w-full h-full cursor-pointer"
+                        onClick={() => handleImagePreview(message, index)}
+                      >
+                        <img
+                          src={mediaUrl}
+                          alt={fileName}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            console.error('图片加载失败:', mediaUrl);
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
                     ) : fileType === 'video' ? (
-                      <div className="w-full h-full bg-black flex items-center justify-center">
-                        <IconVideo className="h-6 w-6 text-white" />
+                      <div
+                        className="w-full h-full flex items-center justify-center cursor-pointer group overflow-hidden relative"
+                        onClick={() => {
+                          setSelectedVideo({ url: mediaUrl, fileName });
+                        }}
+                      >
+                        {/* 使用新的视频预览图生成器，保持宽高比 */}
+                        <div className="w-full h-full relative">
+                          {/* <VideoThumbnailGenerator
+                            videoUrl={mediaUrl}
+                            width={320}
+                            height={240}
+                            timeOffset={1}
+                          /> */}
+                        </div>
+                        {/* 播放按钮覆盖层 */}
+                        <div className="absolute inset-0 bg-opacity-30 flex items-center justify-center group-hover:bg-opacity-20 transition-all">
+                          <div className="bg-white bg-opacity-90 rounded-full p-1 group-hover:scale-110 transition-transform">
+                            <IconPlayerPlay className="h-4 w-4 text-black fill-black" />
+                          </div>
+                        </div>
                       </div>
                     ) : fileType === 'audio' ? (
-                      <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                      <div
+                        className="w-full h-full bg-gray-100 flex items-center justify-center cursor-pointer"
+                        onClick={() => window.open(mediaUrl, '_blank')}
+                      >
                         <IconMusic className="h-6 w-6 text-gray-600" />
                       </div>
                     ) : (
-                      <div className="w-full h-full bg-gray-50 flex items-center justify-center">
+                      <div
+                        className="w-full h-full bg-gray-50 flex items-center justify-center cursor-pointer"
+                        onClick={() => window.open(mediaUrl, '_blank')}
+                      >
                         <IconFile className="h-6 w-6 text-gray-600" />
                       </div>
                     )}
-                    
+
                     {/* 文件类型标识 */}
-                    <div className="absolute bottom-0 right-0 bg-black bg-opacity-75 text-white text-xs px-1 rounded-tl">
-                      {fileType === 'image' ? '图' : fileType === 'video' ? '视' : fileType === 'audio' ? '音' : '文'}
-                    </div>
+                    
                   </div>
+                  
                 </div>
               );
             })}
           </div>
-        </div>
-        
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+
         {/* 媒体数量和类型信息 */}
         <div className="flex items-center justify-between mt-2">
           <span className="text-xs text-muted-foreground">
             {message.mediaCount > 0 ? `${message.mediaCount} 个媒体文件` : '无媒体'}
             {message.mediaType === 'album' && ' • 相册'}
           </span>
-          {message.mediaCount > 4 && (
-            <span className="text-xs text-muted-foreground">
-              向右滑动查看更多
-            </span>
-          )}
+          
         </div>
       </div>
     );
   };
-  
+
   // 对话框状态
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
 
   // 设置表单状态
   const [formSettings, setFormSettings] = useState(initialSettings);
-  
+
   // Bot状态
   const [botStatus, setBotStatus] = useState({ running: false, configured: false });
   const [eagleStatus, setEagleStatus] = useState({ connected: false, checking: true });
@@ -201,6 +252,14 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
   // Eagle相关状态
   const [addingToEagle, setAddingToEagle] = useState<string | null>(null);
 
+  // 视频播放相关状态
+  const [selectedVideo, setSelectedVideo] = useState<{ url: string; fileName: string } | null>(null);
+
+  // 图片预览相关状态
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [lightboxSlides, setLightboxSlides] = useState<Array<{ src: string; alt: string }>>([]);
+
   // 当initialSettings变化时更新formSettings
   useEffect(() => {
     setFormSettings(initialSettings);
@@ -223,11 +282,11 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
 
         console.log('正在建立 SSE 连接...');
         eventSource = new EventSource('/api/telegram');
-        
+
         eventSource.onopen = () => {
           setSseConnected(true);
           console.log('✅ SSE 连接已建立');
-          
+
           // 清除重连定时器
           if (reconnectTimer) {
             clearTimeout(reconnectTimer);
@@ -239,16 +298,16 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
           try {
             const message: RealtimeMessage = JSON.parse(event.data);
             console.log('收到 SSE 消息:', message);
-            
+
             // 添加消息到列表，保留最新50条
             setRealtimeMessages(prev => [message, ...prev.slice(0, 49)]);
-            
+
             // 如果收到新消息通知，刷新消息列表
             if (message.type === 'new_message' || message.type === 'download_complete') {
               // 延迟刷新，避免频繁更新
-              setTimeout(() => {
-                fetchMessages(currentPage, searchTerm);
-              }, 1000);
+              // setTimeout(() => {
+              //   fetchMessages(currentPage, searchTerm);
+              // }, 1000);
             }
           } catch (error) {
             console.error('解析 SSE 消息失败:', error, event.data);
@@ -258,7 +317,7 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
         eventSource.onerror = (error) => {
           console.error('SSE 连接错误:', error);
           setSseConnected(false);
-          
+
           // 只有在连接状态为 CLOSED 时才重连
           if (eventSource?.readyState === EventSource.CLOSED) {
             console.log('SSE 连接已关闭，5秒后尝试重连...');
@@ -271,7 +330,7 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
       } catch (error) {
         console.error('建立 SSE 连接失败:', error);
         setSseConnected(false);
-        
+
         // 发生异常时也尝试重连
         reconnectTimer = setTimeout(() => {
           connectSSE();
@@ -283,12 +342,12 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
 
     return () => {
       console.log('清理 SSE 连接...');
-      
+
       // 清理重连定时器
       if (reconnectTimer) {
         clearTimeout(reconnectTimer);
       }
-      
+
       // 关闭连接
       if (eventSource) {
         eventSource.close();
@@ -319,18 +378,18 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
   // 检查Eagle状态
   const checkEagleStatus = async () => {
     setEagleStatus({ connected: false, checking: true });
-    
+
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000); // 3秒超时
-      
+
       const response = await fetch('http://localhost:41595/api/application/info', {
         method: 'GET',
         signal: controller.signal
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       if (response.ok) {
         const result = await response.json();
         setEagleStatus({ connected: true, checking: false });
@@ -383,17 +442,6 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
     fetchMessages(currentPage, searchTerm);
   };
 
-  // 获取文件类型图标
-  const getFileIcon = (fileType: string | null) => {
-    switch (fileType) {
-      case 'image': return <IconPhoto className="h-4 w-4" />;
-      case 'video': return <IconVideo className="h-4 w-4" />;
-      case 'audio': return <IconMusic className="h-4 w-4" />;
-      case 'document': return <IconFileText className="h-4 w-4" />;
-      case 'archive': return <IconArchive className="h-4 w-4" />;
-      default: return <IconFile className="h-4 w-4" />;
-    }
-  };
 
   // 格式化文件大小
   const formatFileSize = (bytes: number) => {
@@ -410,13 +458,13 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
       case 'connection':
         return { text: '🔗 SSE 连接已建立', color: 'text-green-600', show: true };
       case 'new_message':
-        const mediaText = msg.hasMedia 
+        const mediaText = msg.hasMedia
           ? ` (包含 ${msg.mediaCount || 1} 个媒体${msg.mediaType === 'album' ? '，相册' : ''})`
           : '';
-        return { 
-          text: `📨 新消息来自 ${msg.channelName || '未知频道'}${mediaText}`, 
-          color: 'text-blue-600', 
-          show: true 
+        return {
+          text: `📨 新消息来自 ${msg.channelName || '未知频道'}${mediaText}`,
+          color: 'text-blue-600',
+          show: true
         };
       case 'download_complete':
         return { text: `✅ 下载完成: ${msg.fileName}`, color: 'text-green-600', show: true };
@@ -473,6 +521,8 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
   // 通用保存设置函数
   const saveSettings = async (newSettings: TelegramSettings) => {
     setIsLoading(true);
+    console.log(newSettings);
+    
     try {
       const response = await fetch('/api/settings', {
         method: 'POST',
@@ -482,25 +532,26 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
           value: newSettings,
         }),
       });
+      console.log(response);
 
-      if (!response.ok) throw new Error('保存设置失败');
+      if (!response.ok) throw new Error('保存设置失败1');
 
       const result = await response.json();
       if (result.success) {
-        setSettings(result.data.value);
-        
+        setSettings(result.data);
+
         // 如果是启用/禁用切换，需要控制Telegram服务
         if (settings.enabled !== newSettings.enabled) {
           await controlTelegramService(newSettings.enabled);
         }
-        
+
         toast.success('设置已成功保存！');
         return true;
       }
       throw new Error('保存失败');
     } catch (error) {
       console.error(error);
-      toast.error('保存设置失败');
+      toast.error('保存设置失败2');
       return false;
     } finally {
       setIsLoading(false);
@@ -515,7 +566,7 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: enabled ? 'start' : 'stop' }),
       });
-      
+
       if (response.ok) {
         const result = await response.json();
         console.log('Telegram服务控制结果:', result.message);
@@ -553,7 +604,7 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
       });
 
       const result = await response.json();
-      
+
       if (response.ok && result.success) {
         toast.success(result.message || 'Bot已重启');
         // 延迟检查状态，给Bot时间启动
@@ -623,15 +674,21 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
     try {
       // 构建Eagle API请求数据
       const items = message.filePath.map((filePath) => {
-        const mediaUrl = `${window.location.origin}/api/media/${filePath.replace(/\\/g, '/')}`;
-        
+        const normalizedPath = filePath.replace(/\\/g, '/');
+        // 对路径的每个部分进行 URL 编码，但保留斜杠
+        const encodedPath = normalizedPath
+          .split('/')
+          .map(part => encodeURIComponent(part))
+          .join('/');
+        const mediaUrl = `${window.location.origin}/api/media/${encodedPath}`;
+
         return {
           url: mediaUrl,
           name: message.text,
           website: message.forwardUrl || `telegram://${message.chatTitle}`,
           tags: [...message.tagsArray, message.chatTitle],
           modificationTime: new Date(message.createdAt).getTime(),
-          
+
         };
       });
 
@@ -643,7 +700,7 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
       console.log('发送到Eagle的数据:', requestData);
 
       // 通过我们的API路由发送请求，避免跨域问题
-      const response = await fetch('/api/eagle/add-items', {
+      const response = await fetch('http://localhost:41595/api/eagle/add-items', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestData),
@@ -672,7 +729,7 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
           title='Telegram Bot'
           description='监听转发消息并自动下载到本地'
         />
-        
+
         <div className='flex items-center space-x-4'>
           {/* 启用/禁用开关 */}
           <div className='flex items-center space-x-2'>
@@ -684,10 +741,10 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
             />
             <Label htmlFor="telegram-enabled">启用 Telegram Bot</Label>
           </div>
-          
+
           {/* 重启Bot按钮 */}
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handleRestartBot}
             disabled={!settings.enabled || isLoading}
           >
@@ -712,26 +769,26 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="apiId">API_ID</Label>
-                  <Input 
-                    id="apiId" 
-                    value={formSettings.apiId} 
-                    onChange={(e) => setFormSettings({ ...formSettings, apiId: e.target.value })} 
+                  <Input
+                    id="apiId"
+                    value={formSettings.apiId}
+                    onChange={(e) => setFormSettings({ ...formSettings, apiId: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="apiHash">API_HASH</Label>
-                  <Input 
-                    id="apiHash" 
-                    value={formSettings.apiHash} 
-                    onChange={(e) => setFormSettings({ ...formSettings, apiHash: e.target.value })} 
+                  <Input
+                    id="apiHash"
+                    value={formSettings.apiHash}
+                    onChange={(e) => setFormSettings({ ...formSettings, apiHash: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="botToken">BOT_TOKEN (必需)</Label>
-                  <Input 
-                    id="botToken" 
-                    value={formSettings.botToken || ''} 
-                    onChange={(e) => setFormSettings({ ...formSettings, botToken: e.target.value })} 
+                  <Input
+                    id="botToken"
+                    value={formSettings.botToken || ''}
+                    onChange={(e) => setFormSettings({ ...formSettings, botToken: e.target.value })}
                     placeholder="请输入Bot Token"
                     required
                   />
@@ -749,7 +806,7 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
           </Dialog>
         </div>
       </div>
-      
+
       <Separator className="flex-shrink-0" />
 
       {/* 状态卡片 */}
@@ -906,7 +963,6 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
                                 <span className="text-xs text-muted-foreground">
                                   {message.createdAtFormatted}
                                 </span>
-                                {/* 操作按钮 */}
                                 <div className="flex items-center space-x-1">
                                   <Button
                                     variant="ghost"
@@ -934,16 +990,15 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
                                 </div>
                               </div>
                             </div>
-                            
-                            {/* 媒体预览 */}
+
                             <MediaPreview message={message} />
-                            
+
                             {message.textPreview && (
                               <p className="text-sm text-muted-foreground mt-2">
                                 {message.textPreview}
                               </p>
                             )}
-                            
+
                             {message.tagsArray.length > 0 && (
                               <div className="flex flex-wrap gap-1">
                                 {message.tagsArray.map((tag, index) => (
@@ -953,11 +1008,11 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
                                 ))}
                               </div>
                             )}
-                            
+
                             {message.forwardUrl && (
-                              <a 
-                                href={message.forwardUrl} 
-                                target="_blank" 
+                              <a
+                                href={message.forwardUrl}
+                                target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-xs text-blue-600 hover:underline"
                               >
@@ -971,7 +1026,7 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
                   </div>
                 )}
               </ScrollArea>
-              
+
               {/* 分页 */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between pt-4 border-t"> {/* 建议用 pt-4 和 border-t */}
@@ -1027,8 +1082,8 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
                       <>
                         <div className="flex items-center space-x-2">
                           <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce"></div>
-                          <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                          <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                          <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                          <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                         </div>
                         <div className="text-muted-foreground text-sm">等待实时消息...</div>
                       </>
@@ -1070,15 +1125,15 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
               您确定要删除来自 "{messageToDelete?.chatTitle}" 的这条消息吗？此操作无法撤销。
             </AlertDialogDescription>
           </AlertDialogHeader>
-          
+
           <div className="flex items-center space-x-2 py-4">
             <Checkbox
               id="deleteLocalFiles"
               checked={deleteLocalFiles}
               onCheckedChange={(checked) => setDeleteLocalFiles(checked as boolean)}
             />
-            <Label 
-              htmlFor="deleteLocalFiles" 
+            <Label
+              htmlFor="deleteLocalFiles"
               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
             >
               同时删除本地文件 ({messageToDelete?.filePath?.length || 0} 个文件)
@@ -1087,7 +1142,7 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
 
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deletingMessage}>取消</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleDeleteMessage}
               disabled={deletingMessage}
               className="bg-red-600 hover:bg-red-700"
@@ -1107,6 +1162,49 @@ export function TelegramManagement({ initialSettings }: TelegramManagementProps)
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 视频播放弹窗 */}
+      <Dialog open={!!selectedVideo} onOpenChange={() => {
+        console.log('弹窗关闭');
+        setSelectedVideo(null);
+      }}>
+        <DialogContent className="max-w-4xl w-full">
+          <DialogHeader>
+            <DialogTitle className="text-left">
+              {selectedVideo?.fileName}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="relative aspect-video w-full">
+            {selectedVideo && (
+              <>
+                <VideoPlayer
+                  url={selectedVideo.url}
+                  fileName={selectedVideo.fileName}
+                  onClose={() => setSelectedVideo(null)}
+                />
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 图片预览 Lightbox */}
+      <Lightbox
+        open={lightboxOpen}
+        close={() => setLightboxOpen(false)}
+        index={lightboxIndex}
+        slides={lightboxSlides}
+        on={{
+          view: ({ index }) => setLightboxIndex(index),
+        }}
+        carousel={{
+          finite: true,
+        }}
+        render={{
+          buttonPrev: lightboxSlides.length <= 1 ? () => null : undefined,
+          buttonNext: lightboxSlides.length <= 1 ? () => null : undefined,
+        }}
+      />
     </div>
   );
 }

@@ -10,7 +10,9 @@ const taskStatus = {
   movieUpdate: false,
   subscribeUpdate: false,
   mediaLibraryUpdate: false,
-  downloaderUpdate: false
+  downloaderUpdate: false,
+  forumUpdate: false,
+
 };
 
 
@@ -26,11 +28,13 @@ const CONFIG = {
     // 每12小时 12:00 00:00 执行
     subscribeUpdate: '0 */12 * * *',
     
-    // 每10分钟执行媒体库同步（错开时间）
-    mediaLibraryUpdate: '5 * * * *',
+    // 每5分钟执行媒体库同步（错开时间）
+    mediaLibraryUpdate: '*/10 * * * *',
 
     // 每10分钟的第5分钟执行下载状态同步
-    downloaderUpdate: '5 * * * *',
+    downloaderUpdate: '*/5 * * * *',
+
+    forumUpdate: '*/10 * * * *',
   }
 };
 
@@ -168,6 +172,10 @@ function createCronJobs() {
   // 下载器同步
   cron.schedule(CONFIG.schedules.downloaderUpdate, async () => {
     await executeTask('downloaderUpdate', 'download-status-sync');
+  });
+
+  cron.schedule(CONFIG.schedules.forumUpdate, async () => {
+    await executeTask('forumUpdate', 'forum-update');
   });
   
   // console.log(`- 电影更新任务: ${CONFIG.schedules.movieUpdate}`);

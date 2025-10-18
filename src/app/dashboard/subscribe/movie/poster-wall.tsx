@@ -1,50 +1,29 @@
 "use client"
 import { GlareCard } from "@/components/ui/glare-card";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { SubscribeData } from "@prisma/client";
-import { Calendar, Clock, Users, Download, Play, CheckCircle, Trash2,Rss, PlayCircle } from "lucide-react";
+import { MovieDetailDialog } from "@/components/search/movie-detail-dialog";
+import { formatDistanceToNow, formatDistance } from 'date-fns';
+import { Calendar, Clock, Users, Download, Play, CheckCircle, Trash2, Rss, PlayCircle, Book, Film } from "lucide-react";
 import { Property } from "@/types/javbus";
-import { MovieDetailsTrigger } from "@/components/JAV/subscribe-detail-dialog-trigger";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { Movie } from "@prisma/client";
+import { zhCN } from 'date-fns/locale';
+import { useMediaServer } from "@/contexts/media-server-context";
 type pageProps = {
-  subscribeMovieList: SubscribeData[];
+  subscribeMovieList: Movie[];
   status: 'subscribed' | 'downloading' | 'downloaded' | 'added';
-  mediaServer?: any;
 };
 
 export default function SubscribePosterWallPage(props: pageProps) {
   const { subscribeMovieList, status } = props;
   const router = useRouter();
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'subscribed':
-        return <Play className="h-4 w-4 text-blue-500" />;
-      case 'downloading':
-        return <Download className="h-4 w-4 text-yellow-500 animate-pulse" />;
-      case 'downloaded':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      default:
-        return null;
-    }
-  };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'subscribed':
-        return 'bg-blue-500';
-      case 'downloading':
-        return 'bg-yellow-500';
-      case 'downloaded':
-        return 'bg-green-500';
-      default:
-        return 'bg-gray-500';
-    }
-  };
+  const mediaServer = useMediaServer();
 
-  const handlePlay = async (item: SubscribeData) => {
-    if (!props.mediaServer || !props.mediaServer.publicAddress) {
+
+  const handlePlay = async (item: Movie) => {
+    if (!mediaServer || !mediaServer.publicAddress) {
       toast.error('媒体服务器配置未设置');
       return;
     }
@@ -52,13 +31,13 @@ export default function SubscribePosterWallPage(props: pageProps) {
       toast.error('媒体信息未设置');
     }
     const mediaInfo = item.mediaLibrary as any | null;
-    
-    const ml = `${props.mediaServer.publicAddress}/web/index.html#!/item?id=${mediaInfo.Id}&serverId=${mediaInfo.ServerId}`
+
+    const ml = `${mediaServer.publicAddress}/web/index.html#!/item?id=${mediaInfo.Id}&serverId=${mediaInfo.ServerId}`
     window.open(ml, '_blank');
   };
 
-  const handleDelete = async (item: SubscribeData) => {
-    const response = await fetch(`/api/movie/${item.code}/subscribe`, {
+  const handleDelete = async (item: Movie) => {
+    const response = await fetch(`/api/movie/${item.number}/subscribe`, {
       method: 'DELETE',
     });
     if (response.ok) {
@@ -70,7 +49,7 @@ export default function SubscribePosterWallPage(props: pageProps) {
   };
 
   return (
-    <div className="grid grid-cols-5 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
       {subscribeMovieList.map((item) => {
         const proxiedSrc = item.cover
           ? `/api/subscribe/javbus/proxy?url=${encodeURIComponent(item.cover)}`
@@ -88,10 +67,12 @@ export default function SubscribePosterWallPage(props: pageProps) {
         const videoLength = detail?.videoLength;
 
         return (
-          <div key={item.code}>
-            <MovieDetailsTrigger movieId={item.code || ''} showSubscribeButton={false}>
-              {item.cover ? (
-                <GlareCard className="w-full cursor-pointer hover:scale-105 transition-transform duration-200">
+
+          <div key={item.number}>
+
+            {item.cover ? (
+              <MovieDetailDialog movieId={item.number}>
+                <div><GlareCard className="w-full cursor-pointer hover:scale-105 transition-transform duration-200">
                   <div className="relative w-full h-full">
                     {item.cover ? (
                       <img
@@ -113,11 +94,11 @@ export default function SubscribePosterWallPage(props: pageProps) {
                     {/* ID Badge */}
                     <div className="absolute top-3 left-3">
                       <Badge variant="secondary" className="text-xs font-mono bg-black/70 text-white border-none">
-                        {item.code}
+                        {item.number}
                       </Badge>
                     </div>
 
-                    {status === 'added' && item.subscribeId && (
+                    {status === 'added'  && (
                       <div className="absolute top-3 right-3">
                         <Badge variant="secondary" className="text-xs font-mono bg-black/70 text-white border-none flex items-center">
                           <Rss className="h-3 w-3 mr-1" />
@@ -135,13 +116,15 @@ export default function SubscribePosterWallPage(props: pageProps) {
                       </div>
                     )}
                   </div>
-                </GlareCard>
-              ) : (
-                <div className="w-full h-full bg-muted flex items-center justify-center">
-                  <span className="text-muted-foreground text-sm">无图片</span>
-                </div>
-              )}
-            </MovieDetailsTrigger>
+                </GlareCard></div>
+              </MovieDetailDialog>
+            ) : (
+              <div className="w-full h-full bg-muted flex items-center justify-center">
+                <span className="text-muted-foreground text-sm">无图片</span>
+              </div>
+            )}
+
+
 
 
             {/* 标题 */}
@@ -157,11 +140,11 @@ export default function SubscribePosterWallPage(props: pageProps) {
                     </h3>
                   </div>
 
-                  {/* 发行日期 */}
-                  {item.date && (
+                  {/* 番号 */}
+                  {item.number && (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>{item.date}</span>
+                      <Film className="h-3 w-3" />
+                      <span>{item.number}</span>
                     </div>
                   )}
 
@@ -177,6 +160,22 @@ export default function SubscribePosterWallPage(props: pageProps) {
                       </span>
                     </div>
                   )}
+                  {
+                    status === 'downloading' && item.downloadAt && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                        <Download className="h-3 w-3" />
+                        <span>{formatDistanceToNow(item.downloadAt, { addSuffix: true, locale: zhCN })}</span>
+                      </div>
+                    )
+                  }
+                  {
+                    status === 'subscribed' && item.subscribeAt && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                        <Rss className="h-3 w-3" />
+                        <span>{formatDistanceToNow(item.subscribeAt, { addSuffix: true, locale: zhCN })}</span>
+                      </div>
+                    )
+                  }
                 </div>
 
                 {/* 3. 右侧删除按钮 */}
@@ -184,20 +183,20 @@ export default function SubscribePosterWallPage(props: pageProps) {
                   {
                     status === 'subscribed' && (
                       <button
-                    onClick={()=>handleDelete(item)}
-                    className="p-2 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                    aria-label="删除"
-                  >
-                    {/* 假设使用 lucide-react 图标库 */}
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                        onClick={() => handleDelete(item)}
+                        className="p-2 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                        aria-label="删除"
+                      >
+                        {/* 假设使用 lucide-react 图标库 */}
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     )
-                  } 
+                  }
                   {
                     status === 'added' && (
-                      
+
                       <button
-                        onClick={()=>handlePlay(item)}
+                        onClick={() => handlePlay(item)}
                         className="p-2 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                         aria-label="播放"
                       >
@@ -205,13 +204,14 @@ export default function SubscribePosterWallPage(props: pageProps) {
                       </button>
                     )
                   }
-                  
+
                 </div>
 
               </div>
             </div>
 
           </div>
+
         );
       })}
     </div>

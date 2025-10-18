@@ -57,43 +57,105 @@ model DocumentDownloadURL {
   subscribeDataIds Json?
   hash             String?
   type             String?
+  downloadAt       DateTime?
+  number           String?                // 如果是 type，则需要一个番号
   document         Document               @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@index([documentId])
   //@@map("download_urls")
 }
 
-model SubscribeJAVBus {
-  id          String          @id @default(uuid())
+enum MovieStatus {
+  uncheck
+  checked
+  undownload
+  downloading
+  downloaded
+  added
+  subscribed
+  transfered
+}
+
+model Subscribe {
+  id          String            @id @default(uuid())
   filter      Json
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
   starInfo    Json?
   filterType  String
   filterValue String
-  movies      SubscribeData[]
+  movies      SubscribeMovie[]  // 通过中间表关联 Movie
 }
 
-
-model SubscribeData {
-  id           String               @id @default(uuid())
-  subscribeId  String?              // 订阅ID
-  code         String              // 番号
-  title        String               // 标题
-  cover        String?              // 横屏高清封面
-  poster       String?              // 竖屏海报（一般为缩略图）
-  date         String?                // 上映日期
-  tags         Json
-  status       SubscribeMovieStatus @default(undownload)
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
+model Movie {
+  id           String            @id @default(uuid())
+  number       String            @unique  // 番号，全局唯一
+  title        String            // 标题
+  cover        String?           // 横屏高清封面
+  poster       String?           // 竖屏海报（一般为缩略图）
+  date         String?           // 上映日期
+  tags         Json?
+  status       MovieStatus       @default(uncheck)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
   detail       Json?
   magnets      Json?
   mediaLibrary Json?
-  subscribe    SubscribeJAVBus?      @relation(fields: [subscribeId], references: [id], onDelete: Cascade)
+  addedAt      DateTime?             
+  downloadAt   DateTime?
+  subscribeAt  DateTime?
+  subscribes   SubscribeMovie[]  // 通过中间表关联 Subscribe
+}
 
-  @@unique([subscribeId, code])
+// 订阅和电影的多对多关系中间表
+model SubscribeMovie {
+  id          String    @id @default(uuid())
+  subscribeId String
+  movieId     String
+  createdAt   DateTime  @default(now())
+  
+  subscribe   Subscribe @relation(fields: [subscribeId], references: [id], onDelete: Cascade)
+  movie       Movie     @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@unique([subscribeId, movieId])  // 同一个订阅不能重复添加同一个电影
   @@index([subscribeId])
+  @@index([movieId])
+}
+model ForumSubscribe {
+  id          String      @id @default(uuid())
+  title       String      // 标题
+  forum       String      // 论坛名称
+  thread      String      // 主题/帖子唯一标识
+  url         String?     // 订阅链接
+  lastChecked DateTime?   // 最后检查时间
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  posts       ForumPost[]
+
+  @@unique([thread, forum])
+  @@index([forum])
+  @@index([lastChecked])
+}
+
+model ForumPost {
+  id                String         @id @default(uuid())
+  title             String         // 标题
+  postId             String         // 帖子唯一标识
+  content           String?        @db.Text // 内容
+  author            String?        // 作者
+  cover           String?        // 封面
+  url               String?        // 帖子链接
+  publishedAt       DateTime?      // 帖子发布时间
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  isStar          Boolean      @default(false)
+  
+  forumSubscribeId  String         // 外键
+  forumSubscribe    ForumSubscribe @relation(fields: [forumSubscribeId], references: [id], onDelete: Cascade)
+
+  @@index([forumSubscribeId])
+  @@index([publishedAt])
+  @@unique([forumSubscribeId, postId]) // 防止同一订阅下重复的帖子
 }
 
 
@@ -146,16 +208,6 @@ model TelegramMessage {
   @@unique([messageId, chatId])
 }
 
-enum SubscribeMovieStatus {
-  uncheck
-  checked
-  undownload
-  downloading
-  downloaded
-  added
-  subscribed
-  transfered
-}
 
 enum DocumentDownloadStatus {
   undownload

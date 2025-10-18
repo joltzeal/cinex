@@ -15,19 +15,19 @@ import {
 
 const DEFAULT_THEMES = [
   {
-    name: 'Default',
+    name: '默认',
     value: 'default'
   },
   {
-    name: 'Blue',
+    name: '蓝色',
     value: 'blue'
   },
   {
-    name: 'Green',
+    name: '绿色',
     value: 'green'
   },
   {
-    name: 'Amber',
+    name: '黄色',
     value: 'amber'
   }
 ];
@@ -64,10 +64,10 @@ export function ThemeSelector() {
           className='justify-start *:data-[slot=select-value]:w-12'
         >
           <span className='text-muted-foreground hidden sm:block'>
-            Select a theme:
+            切换主题:
           </span>
-          <span className='text-muted-foreground block sm:hidden'>Theme</span>
-          <SelectValue placeholder='Select a theme' />
+          <span className='text-muted-foreground block sm:hidden'>切换主题</span>
+          <SelectValue placeholder='切换主题' />
         </SelectTrigger>
         <SelectContent align='end'>
           <SelectGroup>

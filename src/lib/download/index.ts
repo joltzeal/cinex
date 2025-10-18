@@ -9,30 +9,11 @@ import { DownloadMainProps, DownloadUrlData, TorrentAddOptions } from "@/types/d
 import { sseManager } from "../sse-manager";
 import { getBatchClassificationInfo } from "../ai-provider";
 import { logger } from "../logger";
-import { getMovieParseConfig } from "../transfer";
+import { getMagnetDownloadDirectoryConfig, getMovieDownloadDirectoryConfig } from "@/services/settings";
+import { MovieStatus } from "@prisma/client";
+import { updateMoviesDataByNumber, updateMoviesStatusByNumber } from "@/services/subscribe";
+import { findMediaItemByIdOrTitle, refreshMediaLibraryCache } from "../tasks/media-library";
 
-export async function getMovieDownloadDirectoryConfig(): Promise<DirectoryConfigData | null> {
-  return await getDownloadDirectoryConfigByType('movie');
-}
-export async function getMagnetDownloadDirectoryConfig(): Promise<DirectoryConfigData | null> {
-  return await getDownloadDirectoryConfigByType('magnet');
-}
-async function getDownloadDirectoryConfigByType(type: string): Promise<DirectoryConfigData | null> {
-  const setting = await db.setting.findUnique({
-    where: { key: 'downloadDirectoryConfig' },
-  });
-  if (!setting) return null;
-  if (!setting.value) return null;
-
-  const obj = setting.value as any;
-
-  for (const key in obj) {
-    if (obj[key] && obj[key].mediaType === type) {
-      return obj[key];
-    }
-  }
-  return null;
-}
 
 /**
  * 处理磁力链接预览
@@ -69,9 +50,9 @@ const getDownloadURLExistInDB = async (urls: string[]) => {
   return existingUrls;
 }
 const getExistSubscribeDataMovieIds = async (movie: MovieDetail) => {
-  const movieIds = await db.subscribeData.findMany({
+  const movieIds = await db.movie.findMany({
     where: {
-      code: movie.id,  // movie.id 是番号
+      number: movie.id,  // movie.id 是番号
     },
   });
   return movieIds;
@@ -82,27 +63,7 @@ const isValidDownloadURL = async (urls: string[]) => {
   }
   return true;
 }
-const buildDownloadUrlData = (
-  urls: string[],
-  successfulPreviews: { url: string; preview: PreviewResponse }[]
-): DownloadUrlData[] => {
-  const downloadUrlData: DownloadUrlData[] = [];
 
-  // 添加有预览的磁力链接
-  for (const item of successfulPreviews) {
-    downloadUrlData.push({ url: item.url, detail: item.preview });
-  }
-
-  // 添加没有预览的URL（非磁力链接或预览失败的磁力链接）
-  const processedUrls = new Set(successfulPreviews.map(item => item.url));
-  for (const url of urls) {
-    if (!processedUrls.has(url)) {
-      downloadUrlData.push({ url, detail: null });
-    }
-  }
-
-  return downloadUrlData;
-}
 const getMagnetsPreviews = async (urls: string[]): Promise<{ url: string; detail: PreviewResponse | null }[]> => {
   let urlsPreviews: { url: string; detail: PreviewResponse | null }[] = [];
   const successfulPreviews = await processMagnetLinks(urls);  // 成功获取磁力预览的链接
@@ -162,11 +123,12 @@ export const downloadMain = async (props: DownloadMainProps) => {
   // 数组数量为1时也是如此
   const downloadURLS = urlsPreviews.map(item => ({
     url: item.url,
-    status: 'undownload',
+    status: MovieStatus.undownload,
     detail: item.detail,
     hash: extractHash(item.url),
     type: movie ? 'movie' : isMagnetLink(item.url) ? 'magnet' : null,
     subscribeDataIds: movieIds.map((item: any) => item.id),
+    number: movie ? movie.id : null,
   }));
 
   let documentCreate = {
@@ -204,6 +166,7 @@ export const downloadImmediatelyTask = async (taskId: string, document: any, mov
       directoryConfig = await getMagnetDownloadDirectoryConfig();
     }
     if (!directoryConfig) {
+      logger.error(`[Task ${taskId}] 没有获取到下载目录配置`);
       throw new Error("没有获取到下载目录配置");
     }
     sseManager.emit(taskId, { stage: 'DOWNLOAD_SUBMIT', message: '正在将任务提交到下载器...' });
@@ -215,6 +178,13 @@ export const downloadImmediatelyTask = async (taskId: string, document: any, mov
       // 构建下载器目录
       const fullDirPath = path.join('/downloads', directoryConfig.downloadDir);
       if (movieData && movieData.type === 'jav') {
+        // 查询是否重复下载
+        await refreshMediaLibraryCache();
+        const existingInMediaLibrary = findMediaItemByIdOrTitle(movieData.id);
+        if (existingInMediaLibrary) {
+          logger.warn(`[Task ${taskId}] 已存在媒体库中，跳过下载: ${movieData.id}`);
+          continue;
+        }
         torrentOptions.category = 'JAV';
         torrentOptions.savepath = fullDirPath;
       } else {
@@ -265,20 +235,14 @@ export const downloadImmediatelyTask = async (taskId: string, document: any, mov
       const fullUrl = ensureMagnetLink(downloadUrl.url);
       const addTorrentResult = await client.addTorrent(fullUrl, torrentOptions);
 
-      // 后续添加ai分类
-
-
       // 修改数据库中下载状态
       if (addTorrentResult.success) {
         await db.documentDownloadURL.update({
           where: { id: downloadUrl.id },
-          data: { status: 'downloading' }
+          data: { status: MovieStatus.downloading, downloadAt: new Date() }
         });
         if (movieData && movieData.type === 'jav') {
-          await db.subscribeData.updateMany({
-            where: { code: movieData.id },
-            data: { status: 'downloading' }
-          });
+          await updateMoviesDataByNumber({ number: movieData.id, data: { downloadAt: new Date(),status: MovieStatus.downloading } });
         }
       }
       sseManager.emit(taskId, {

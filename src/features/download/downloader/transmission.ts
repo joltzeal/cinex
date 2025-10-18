@@ -5,7 +5,7 @@
 
 // 【修改 2】导入新的、我们自己定义的配置类型
 import { DownloaderConfig } from "@/lib/downloader";
-import { DownloaderClient, Torrent, TorrentStatus } from "@/types/download";
+import { DownloaderClient, DownloaderStats, Torrent, TorrentStatus } from "@/types/download";
 
 export class TransmissionClient implements DownloaderClient {
     private readonly rpcUrl: string;
@@ -131,6 +131,40 @@ export class TransmissionClient implements DownloaderClient {
             return { success: false, message: `连接失败: ${response.result}` };
         } catch (error: any) {
             return { success: false, message: `连接出错: ${error.message}` };
+        }
+    }
+
+    async getStats(): Promise<DownloaderStats> {
+        try {
+            const body = { method: "session-stats" };
+            const response = await this.request(body);
+            
+            if (response.result === 'success') {
+                const stats = response.arguments;
+                
+                return {
+                    downloadSpeed: stats.downloadSpeed || 0,           // 当前下载速度 (bytes/s)
+                    uploadSpeed: stats.uploadSpeed || 0,               // 当前上传速度 (bytes/s)
+                    totalDownloaded: stats['cumulative-stats']?.downloadedBytes || 0, // 总下载量 (bytes)
+                    totalUploaded: stats['cumulative-stats']?.uploadedBytes || 0,     // 总上传量 (bytes)
+                };
+            }
+            
+            // 如果请求失败，返回默认值
+            return {
+                downloadSpeed: 0,
+                uploadSpeed: 0,
+                totalDownloaded: 0,
+                totalUploaded: 0,
+            };
+        } catch (error: any) {
+            // 出错时返回默认值
+            return {
+                downloadSpeed: 0,
+                uploadSpeed: 0,
+                totalDownloaded: 0,
+                totalUploaded: 0,
+            };
         }
     }
 }

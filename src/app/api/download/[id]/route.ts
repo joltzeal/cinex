@@ -4,6 +4,8 @@ import { v4 as uuidv4 } from "uuid";
 import { processManualMode, processAutoMode } from "@/lib/download-processor";
 import { ensureMagnetLink } from "@/lib/magnet-helper";
 import { downloadImmediatelyTask } from "@/lib/download";
+import { getDocumentDownloadById } from "@/services/download";
+import { MovieDetail } from "@/types/javbus";
 
 export async function PUT(
   request: NextRequest,
@@ -20,15 +22,8 @@ export async function PUT(
     const description = formData.get("description") as string;
     const imagesEntry = formData.getAll("images");
     const images = imagesEntry.filter((item): item is File => item instanceof File);
-    // const downloadURLsRaw = formData.get("downloadURLs") as string;
-    // const downloadImmediately = formData.get("downloadImmediately") === "true";
-    // const movie = formData.get("movie") as string | null;
-
     // 验证文档是否存在
-    const existingDocument = await db.document.findUnique({
-      where: { id: id },
-      include: { downloadURLs: true },
-    });
+    const existingDocument = await getDocumentDownloadById(id);
 
     if (!existingDocument) {
       return NextResponse.json(
@@ -51,15 +46,9 @@ export async function PUT(
     }
 
     // 解析 movie 数据
-    let movieData: any = null;
-    let movieIds: any[] = [];
+    let movieData: MovieDetail | null = null;
     if (movieDetail) {
-      movieData = JSON.parse(movieDetail);
-      movieIds = await db.subscribeData.findMany({
-        where: {
-          code: movieData.id,
-        },
-      });
+      movieData = movieDetail;
     }
 
     // 处理下载URLs
@@ -171,7 +160,6 @@ export async function PUT(
               documentId: id,
               url: item.url,
               status: 'undownload',
-              subscribeDataIds: movieIds.map(item => item.id),
               detail: item.detail ? JSON.parse(JSON.stringify(item.detail)) : undefined,
             })),
           });

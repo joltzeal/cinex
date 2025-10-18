@@ -1,14 +1,7 @@
 'use client';
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger
-} from '@/components/ui/collapsible';
-import {
   DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
+  DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger
@@ -17,9 +10,7 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarHeader,
+  SidebarGroup, SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -34,19 +25,14 @@ import { useMediaQuery } from '@/hooks/use-media-query';
 import { useSession, signOut } from 'next-auth/react';
 
 import {
-  IconBell,
-  IconChevronRight,
-  IconChevronsDown,
-  IconCreditCard,
-  IconLogout,
-  IconPhotoUp,
-  IconUserCircle
-} from '@tabler/icons-react';;
+  IconChevronsDown, IconLogout
+} from '@tabler/icons-react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import * as React from 'react';
 import { Icons } from '../icons';
-import {SideBarHeader} from '../side-bar-header';
+import { SideBarHeader } from '../side-bar-header';
+;
 
 
 export default function AppSidebar() {

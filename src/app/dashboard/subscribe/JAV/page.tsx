@@ -1,14 +1,18 @@
-import PageContainer from '@/components/layout/page-container';
-import { Heading } from '@/components/ui/heading';
-import { Separator } from '@/components/ui/separator';
-import JavbusSubscribeInfoItem from '@/components/JAV/subscribe-item';
-import { SearchParams } from 'nuqs/server';
-import { db } from '@/lib/db';
-import { searchParamsCache } from '@/lib/searchparams';
-import { SubscribeActions } from '@/components/JAV/subscribe-actions';
-import { SubscribeFilter } from '@/components/JAV/subscribe-filter';
 import SubscribeDialog from '@/components/JAV/subscribe-dialog';
-import {EmptyState} from '@/components/empty-state';
+import { SubscribeFilter } from '@/components/JAV/subscribe-filter';
+import JavbusSubscribeInfoItem from '@/components/JAV/subscribe-item';
+import { SubscribeKeywordSearch } from '@/components/JAV/subscribe-keyword-search';
+import PageContainer from '@/components/layout/page-container';
+import { Button } from "@/components/ui/button";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Heading } from '@/components/ui/heading';
 import {
   Pagination,
   PaginationContent,
@@ -18,8 +22,13 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { Separator } from '@/components/ui/separator';
 import { logger } from '@/lib/logger';
-
+import { searchParamsCache } from '@/lib/searchparams';
+import { getSetting, SettingKey } from '@/services/settings';
+import { getSubscribeListCount, getSubscribeListWithMovies } from '@/services/subscribe';
+import { IconFolderCode } from "@tabler/icons-react";
+import { SearchParams } from 'nuqs/server';
 const filterTypeMap = {
   genre: '类别',
   director: '导演',
@@ -41,11 +50,16 @@ export default async function Page(props: pageProps) {
   // Allow nested RSCs to access the search params (in a type-safe way)
   searchParamsCache.parse(searchParams);
   const page = searchParamsCache.get('page');
+  const search = searchParamsCache.get('search');
   const pageLimit = searchParamsCache.get('perPage');
   const filterType = searchParamsCache.get('filterType');
 
   // 构建查询条件
   const whereClause: any = {};
+
+  if (search) {
+    whereClause.search = search;
+  }
 
   if (filterType && filterType !== 'all') {
     whereClause.filterType = filterType;
@@ -53,63 +67,53 @@ export default async function Page(props: pageProps) {
 
   // 计算分页参数
   const offset = (page - 1) * pageLimit;
-  
+
   // 获取总数
-  const totalCount = await db.subscribeJAVBus.count({
-    where: whereClause,
-  });
-  
+  const totalCount = await getSubscribeListCount(whereClause);
+
   // 计算总页数
   const totalPages = Math.ceil(totalCount / pageLimit);
-  
-  const subscribeList = await db.subscribeJAVBus.findMany({
-    where: whereClause,
-    orderBy: {
-      createdAt: 'desc'
-    },
-    include: {
-      movies: {
-        orderBy: {
-          date: 'desc', // 按 releaseDate 排序
-        },
-      },
-    },
-    skip: offset,
-    take: pageLimit,
-  });
+  const subscribeList = await getSubscribeListWithMovies(whereClause, offset, pageLimit) as any[];
 
-  const mediaServerConfig = await db.setting.findUnique({where: {key: 'mediaServerConfig'}});
-  const mediaServer = mediaServerConfig?.value as unknown as MediaServerConfig;
-  logger.info(mediaServer);
-  console.log(mediaServer);
   
+  const mediaServer = await getSetting(SettingKey.MediaServerConfig);
+
+
 
   return (
     <PageContainer scrollable={true}>
       <div className='flex flex-1 flex-col space-y-4'>
-        <div className='flex items-start justify-between'>
-          <Heading
-            title='订阅源'
-            description='自定义 Javbus 订阅源'
-          />
-          <div className="flex items-center gap-2">
-            <SubscribeFilter />
-            <SubscribeActions />
-            <SubscribeDialog />
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row items-start justify-between gap-2">
+            <Heading
+              title="订阅源"
+              description="自定义 Javbus 订阅源"
+            />
+            <div className="flex items-center gap-2">
+              <SubscribeKeywordSearch />
+              <SubscribeFilter />
+              <SubscribeDialog />
+            </div>
           </div>
         </div>
         <Separator />
 
         {/* 显示筛选状态和分页信息 */}
         <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             {filterType && filterType !== 'all' && (
-              <>
+              <div className="flex items-center gap-2">
                 <span>筛选类型:</span>
                 <span className="font-medium">
                   {filterTypeMap[filterType as keyof typeof filterTypeMap] || filterType}
                 </span>
-              </>
+              </div>
+            )}
+            {search && (
+              <div className="flex items-center gap-2">
+                <span>搜索关键字:</span>
+                <span className="font-medium">{search}</span>
+              </div>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -122,17 +126,32 @@ export default async function Page(props: pageProps) {
 
         {
           subscribeList.length === 0 && (
-            <EmptyState
-              title="没有订阅的数据源"
-              message="点击右上角添加新订阅"
-            />
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <IconFolderCode />
+                </EmptyMedia>
+                <EmptyTitle>没有订阅</EmptyTitle>
+                <EmptyDescription>
+                  你还没有创建任何订阅。请点击添加订阅按钮创建你的第一个订阅。
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <div className="flex gap-2">
+                  <SubscribeDialog />
+                </div>
+              </EmptyContent>
+            </Empty>
           )
         }
 
         <div className="flex-1 space-y-4 max-w-full w-full">
           {
             subscribeList.map((item) => (
-              <JavbusSubscribeInfoItem key={item.id} info={item} mediaServer={mediaServer}></JavbusSubscribeInfoItem >
+              <JavbusSubscribeInfoItem
+                key={item.id}
+                info={item} 
+              />
             ))
           }
         </div>
@@ -145,11 +164,12 @@ export default async function Page(props: pageProps) {
                 {/* 上一页 */}
                 {page > 1 && (
                   <PaginationItem>
-                    <PaginationPrevious 
+                    <PaginationPrevious
                       href={`?${new URLSearchParams({
                         page: (page - 1).toString(),
                         perPage: pageLimit.toString(),
-                        ...(filterType && filterType !== 'all' ? { filterType } : {})
+                        ...(filterType && filterType !== 'all' ? { filterType } : {}),
+                        ...(search ? { search } : {})
                       }).toString()}`}
                     />
                   </PaginationItem>
@@ -174,7 +194,8 @@ export default async function Page(props: pageProps) {
                         href={`?${new URLSearchParams({
                           page: pageNumber.toString(),
                           perPage: pageLimit.toString(),
-                          ...(filterType && filterType !== 'all' ? { filterType } : {})
+                          ...(filterType && filterType !== 'all' ? { filterType } : {}),
+                          ...(search ? { search } : {})
                         }).toString()}`}
                         isActive={pageNumber === page}
                       >
@@ -195,7 +216,8 @@ export default async function Page(props: pageProps) {
                         href={`?${new URLSearchParams({
                           page: totalPages.toString(),
                           perPage: pageLimit.toString(),
-                          ...(filterType && filterType !== 'all' ? { filterType } : {})
+                          ...(filterType && filterType !== 'all' ? { filterType } : {}),
+                          ...(search ? { search } : {})
                         }).toString()}`}
                       >
                         {totalPages}
@@ -207,11 +229,12 @@ export default async function Page(props: pageProps) {
                 {/* 下一页 */}
                 {page < totalPages && (
                   <PaginationItem>
-                    <PaginationNext 
+                    <PaginationNext
                       href={`?${new URLSearchParams({
                         page: (page + 1).toString(),
                         perPage: pageLimit.toString(),
-                        ...(filterType && filterType !== 'all' ? { filterType } : {})
+                        ...(filterType && filterType !== 'all' ? { filterType } : {}),
+                        ...(search ? { search } : {})
                       }).toString()}`}
                     />
                   </PaginationItem>

@@ -97,7 +97,7 @@ export default function LoginPage() {
                 <div className="flex flex-col items-center text-center">
                   <h1 className="text-2xl font-bold">欢迎回来</h1>
                   <p className="text-muted-foreground text-balance">
-                    登录到您的 Acme Inc 账户
+                    登录到您的 Cinex 账户
                   </p>
                 </div>
 
@@ -170,10 +170,7 @@ export default function LoginPage() {
             </div>
           </CardContent>
         </Card>
-        <div className="text-muted-foreground *:[a]:hover:text-primary text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4">
-          点击继续，即表示您同意我们的{" "}
-          <a href="#">服务条款</a> 和 <a href="#">隐私政策</a>.
-        </div>
+
       </div>
     </div>
   );

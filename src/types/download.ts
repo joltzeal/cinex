@@ -1,10 +1,18 @@
 // lib/downloaders/types.ts
 
 import { PreviewResponse } from "@/lib/magnet/link-preview";
+import { MovieDetail } from "./javbus";
 
 // 统一的 Torrent 状态
 export type TorrentStatus = 'downloading' | 'seeding' | 'paused' | 'checking' | 'error' | 'stalled' | 'completed';
 
+// 下载器统计信息
+export interface DownloaderStats {
+  downloadSpeed: number; // 当前实时下载速度 (bytes/s)
+  uploadSpeed: number; // 当前实时上传速度 (bytes/s)
+  totalDownloaded: number; // 总下载量 (bytes)
+  totalUploaded: number; // 总上传量 (bytes)
+}
 
 export interface TorrentAddOptions {
   savepath?: string; // 下载保存路径
@@ -33,6 +41,7 @@ export interface DownloaderClient {
   addTorrent(url: string, options?: TorrentAddOptions): Promise<{ success: boolean; message: string }>;
   getTorrents(): Promise<Torrent[]>;
   testConnection(): Promise<{ success: boolean; message: string }>;
+  getStats(): Promise<DownloaderStats>; // 获取下载器实时统计信息
 }
 
 export interface DownloadUrlData {
@@ -45,5 +54,5 @@ export interface DownloadMainProps {
   description?: string | null;
   images?: File[];
   downloadImmediately?: boolean;
-  movie?: object | null; // 此处为movie detail json string
+  movie?: MovieDetail | null; // 此处为movie detail json string
 }

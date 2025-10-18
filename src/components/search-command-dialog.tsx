@@ -18,7 +18,6 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
-import { useMovieStore } from "@/store/useMovieStore"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
@@ -39,7 +38,6 @@ export function SearchComponent() {
   const [inputValue, setInputValue] = React.useState("")
   const router = useRouter();
   // 2. 从 Store 中获取设置数据的 action
-  const setCurrentMovie = useMovieStore((state) => state.setCurrentMovie);
   const { showLoader, hideLoader, updateLoadingMessage } = useLoading();
 
   React.useEffect(() => {
@@ -82,13 +80,13 @@ export function SearchComponent() {
         const result = await response.json(); // 获取返回的 JSON 数据
 
         // 2. 关键改动：将获取到的数据存入 Zustand Store
-        if (result && result.data) {
-          setCurrentMovie(result.data);
-        } else {
-          hideLoader();
-          // 如果 API 成功但没有返回有效数据，也抛出错误
-          throw new Error("API 返回的数据格式不正确");
-        }
+        // if (result && result.data) {
+        //   setMovie(result.data);
+        // } else {
+        //   hideLoader();
+        //   // 如果 API 成功但没有返回有效数据，也抛出错误
+        //   throw new Error("API 返回的数据格式不正确");
+        // }
         
         // 3. 关闭搜索框并跳转
         setOpen(false);

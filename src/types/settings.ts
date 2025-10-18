@@ -31,3 +31,55 @@ interface MediaServerConfig {
   path: string;
   publicAddress: string;
 }
+
+interface PushNotificationConfig {
+  domain: string;
+  username: string;
+  token?: string;
+}
+
+interface AiProviderConfig {
+  baseURL: string;
+  apiKey: string;
+  modelName: string;
+}
+// {"qbittorrent": {"host": "192.168.0.79", "port": 8095, "enabled": true, "password": "Dyx@920912", "username": "admin", "isDefault": true}}
+// interface DownloaderSettingsData {
+//   name: 'qbittorrent' | 'transmission';
+//   value?: DownloaderSettingValue;
+//   transmission?: DownloaderSettingValue;
+// }
+
+interface DownloaderSettingsData {
+  qbittorrent?: DownloaderSettingValue;
+  transmission?: DownloaderSettingValue;
+}
+interface DownloaderSettingValue {
+  enabled: boolean;
+  host?: string | null;
+  port?: number | null;
+  username?: string | null;
+  password?: string | null;
+  isDefault?: boolean;
+}
+interface DownloadRuleConfig {
+  //{"onlyHD": true, "downloadVR": false, "onlySingleMovie": true, "checkForDuplicates": true, "onlyChineseSubtitles": true, "downloadMagnetImmediately": false}
+  onlyHD: boolean;
+  downloadVR: boolean;
+  onlySingleMovie: boolean;
+  checkForDuplicates: boolean;
+  onlyChineseSubtitles: boolean;
+  downloadMagnetImmediately: boolean;
+}
+
+interface TelegramConfig {
+  enabled: boolean;
+  apiId: string;
+  apiHash: string;
+  botToken: string;
+  session: string;
+}
+interface ForumCookie {
+  javbus?: string;
+  southplus?: string;
+}

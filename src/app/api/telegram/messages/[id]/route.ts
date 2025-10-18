@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import fs from 'fs/promises';
 import path from 'path';
+import { getSetting, getTelegramDownloadDirectoryConfig, SettingKey } from '@/services/settings';
+import { logger } from '@/lib/logger';
 
 interface DeleteMessageRequest {
   deleteLocalFiles: boolean;
@@ -14,6 +16,8 @@ export async function DELETE(
   try {
     const { id } = await params;
     const messageId = parseInt(id);
+
+    logger.info(`删除消息: ${messageId}`);
     
     if (isNaN(messageId)) {
       return NextResponse.json(
@@ -57,23 +61,24 @@ export async function DELETE(
 
     if (deleteLocalFiles && message.filePath && message.filePath.length > 0) {
       console.log(`准备删除 ${message.filePath.length} 个本地文件`);
-      
+      const telegramPath = await getTelegramDownloadDirectoryConfig();
+      let parentpath = '';
       for (const filePath of message.filePath) {
         try {
-          // 构建绝对路径
-          const absolutePath = path.resolve(filePath);
+          const filepath = path.join('media', filePath);
+          
           
           // 检查文件是否存在
           try {
-            await fs.access(absolutePath);
+            await fs.access(filepath);
             
             // 删除文件
-            await fs.unlink(absolutePath);
+            await fs.unlink(filepath);
             deletedFiles.push(filePath);
-            console.log(`成功删除文件: ${absolutePath}`);
-            
+            console.log(`成功删除文件: ${filepath}`);
+            parentpath = path.dirname(filepath);
           } catch (accessError) {
-            console.log(`文件不存在或无法访问: ${absolutePath}`);
+            console.log(`文件不存在或无法访问: ${filepath}`);
             // 文件不存在，不算错误，继续处理
             deletedFiles.push(filePath);
           }
@@ -83,7 +88,12 @@ export async function DELETE(
           failedFiles.push(filePath);
         }
       }
+      if (parentpath) {
+        // 递归删除目录及其内容，相当于 rm -rf
+        await fs.rm(parentpath, { recursive: true, force: true });
+      }
     }
+    
 
     // 从数据库删除消息记录
     await db.telegramMessage.delete({

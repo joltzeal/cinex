@@ -1,3 +1,5 @@
+import { MovieStatus } from "@prisma/client";
+
 export interface VideoInfo {
   code: string | null;
   title: string | null;
@@ -6,6 +8,7 @@ export interface VideoInfo {
   score: number | null;
   reviews: number | null;
   link: string | null;
+  status?: MovieStatus;
 }
 
 interface ParsedItemData {

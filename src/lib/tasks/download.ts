@@ -2,18 +2,18 @@ import { getActiveClient } from '../../features/download/downloader/manager';
 import { extractHash } from '../magnet-helper';
 import { getPushService } from './utils';
 import { db } from '../db';
-import { getMovieParseConfig, manualTransfer } from '../transfer';
-// import { TransferMethod, TransferStatus } from '@prisma/client';
+import { manualTransfer } from '../transfer';
 import { getFileInfo } from '../parse/get-file-info';
-import { getMovieDownloadDirectoryConfig } from '../download';
+import { getMovieDownloadDirectoryConfig, getSetting, SettingKey } from '@/services/settings';
 import { findVideoFiles } from '../parse/file';
 import path from 'path';
 import { logger } from '../logger';
-import { TransferMethod, TransferStatus } from '@prisma/client';
+import { DocumentDownloadStatus, MovieStatus, TransferMethod, TransferStatus } from '@prisma/client';
+import { updateMoviesStatusByNumber } from '@/services/subscribe';
 
 export async function taskDownloadStatusSync() {
     const taskName = '下载状态同步';
-    logger.info(`开始执行 ${taskName}`);
+    // logger.info(`开始执行 ${taskName}`);
 
     try {
         // 获取活跃的下载器客户端
@@ -28,10 +28,6 @@ export async function taskDownloadStatusSync() {
         // 获取下载器中的所有种子
         const torrents = await client.getTorrents();
 
-        logger.info(torrents);
-
-
-
         // 创建哈希到种子状态的映射
         const torrentStatusMap = new Map<string, any>();
         for (const torrent of torrents) {
@@ -44,11 +40,12 @@ export async function taskDownloadStatusSync() {
         const allDownloadUrls = await db.documentDownloadURL.findMany({
             where: {
                 status: {
-                    in: ['downloading', 'paused', 'checking', 'error', 'downloaded']
+                    in: ['downloading', 'paused', 'checking', 'error']
                 }
             },
             include: { document: true }
         });
+
 
         logger.info(`数据库中有 ${allDownloadUrls.length} 个需要检查的下载记录`);
 
@@ -56,7 +53,7 @@ export async function taskDownloadStatusSync() {
         let completedCount = 0;
         let undownloadedCount = 0;
 
-        const parseConfig = await getMovieParseConfig();
+        const parseConfig = await getSetting(SettingKey.MovieParseConfig);
 
         // 遍历数据库中的记录，更新状态
         for (const downloadUrl of allDownloadUrls) {
@@ -69,12 +66,14 @@ export async function taskDownloadStatusSync() {
             const torrent = torrentStatusMap.get(hash.toLowerCase());
 
             if (!torrent) {
-                // 种子不在下载器中，标记为未下载
                 logger.info(`种子不在下载器中，标记为未下载: ${hash}`);
                 await db.documentDownloadURL.update({
                     where: { id: downloadUrl.id },
-                    data: { status: 'undownload' }
+                    data: { status: MovieStatus.undownload }
                 });
+                if (downloadUrl.type === 'movie' && downloadUrl.number) {
+                    await updateMoviesStatusByNumber({ number: downloadUrl.number, status: MovieStatus.subscribed });
+                }
                 undownloadedCount++;
                 updatedCount++;
             } else {
@@ -83,67 +82,52 @@ export async function taskDownloadStatusSync() {
                 // subscribe data 下载状态[uncheck, checked, undownload, downloading, downloaded, added, subscribed] 但是不应修改，只有undownload, downloading, downloaded 三个状态可以修改
                 let torrentStatus = torrent.status;
                 let torrentProgress = torrent.progress;
-                let documentDownloadStatus;  // 可能包含除movie 外的其他下载任务
-                let subscribeDataStatus; // movie 下载任务
+                let documentDownloadStatus: DocumentDownloadStatus | null = null;  // 可能包含除movie 外的其他下载任务
+                let subscribeDataStatus: MovieStatus | null = null; // movie 下载任务
 
-                // let newStatus;
-                logger.info(torrentStatus);
 
                 // 更新 documentDownloadStatus
                 if (torrentProgress >= 100) {
-                    documentDownloadStatus = 'downloaded';
-                    subscribeDataStatus = 'downloaded';
+                    documentDownloadStatus = DocumentDownloadStatus.downloaded;
+                    subscribeDataStatus = MovieStatus.downloaded;
                     completedCount++;
                 } else if (torrentStatus === 'downloading') {
-                    documentDownloadStatus = 'downloading';
-                    subscribeDataStatus = 'downloading';
+                    documentDownloadStatus = DocumentDownloadStatus.downloading;
+                    subscribeDataStatus = MovieStatus.downloading;
                 } else if (torrentStatus === 'stalled') {
-                    documentDownloadStatus = 'downloading';
-                    subscribeDataStatus = 'downloading';
+                    documentDownloadStatus = DocumentDownloadStatus.downloading;
+                    subscribeDataStatus = MovieStatus.downloading;
                 } else if (torrentStatus === 'paused' && torrentProgress < 100) {
-                    documentDownloadStatus = 'paused';
+                    documentDownloadStatus = DocumentDownloadStatus.paused;
                 } else if (torrentStatus === 'checking') {
-                    documentDownloadStatus = 'checking';
+                    documentDownloadStatus = DocumentDownloadStatus.checking;
                 } else if (torrentStatus === 'error') {
-                    documentDownloadStatus = 'error';
+                    documentDownloadStatus = DocumentDownloadStatus.error;
                 }
 
+                // 更新下载任务文档中的状态
                 if (documentDownloadStatus) {
                     await db.documentDownloadURL.update({
                         where: { id: downloadUrl.id },
-                        data: { status: documentDownloadStatus as any }
+                        data: { status: documentDownloadStatus }
                     });
                 }
+                logger.info(downloadUrl.number)
 
-                if (downloadUrl.subscribeDataIds && subscribeDataStatus) {
-                    try {
-                        const subscribeDataIds = downloadUrl.subscribeDataIds as string[];
-                        if (Array.isArray(subscribeDataIds) && subscribeDataIds.length > 0) {
-                            await db.subscribeData.updateMany({
-                                where: {
-                                    id: { in: subscribeDataIds }
-                                },
-                                data: {
-                                    status: subscribeDataStatus as any
-                                }
-                            });
-
-                            logger.info(`同步更新了 ${subscribeDataIds.length} 个 SubscribeData 记录的状态为: ${subscribeDataStatus}`);
-                        }
-                    } catch (error) {
-                        logger.error(`同步更新 SubscribeData 状态失败: ${error}`);
-                    }
+                // 更新订阅中的影片状态
+                if (subscribeDataStatus && downloadUrl.type === 'movie' && downloadUrl.number) {
+                    await updateMoviesStatusByNumber({ number: downloadUrl.number, status: subscribeDataStatus });
                 }
 
-                if (documentDownloadStatus === 'downloaded' && downloadUrl.type === 'movie') {
+
+
+                if (documentDownloadStatus === DocumentDownloadStatus.downloaded && downloadUrl.type === 'movie') {
                     const sourcePath = torrent.contentPath || torrent.rootPath;
                     const relativePath = path.normalize(sourcePath.replace(/^\/downloads/, ''));
                     const finalSavePath = path.join(process.cwd(), 'media', relativePath);
-                    logger.info(finalSavePath);
                     const videoFiles = await findVideoFiles(finalSavePath, parseConfig!.cleanupExtensions, parseConfig!.cleanupFilenameContains);
                     for (const videoFile of videoFiles) {
                         const fileInfo = await getFileInfo(videoFile);
-                        logger.info(fileInfo);
                         const fileTransfer = await db.fileTransferLog.create({
                             data: {
                                 title: fileInfo.fileName,
@@ -154,85 +138,12 @@ export async function taskDownloadStatusSync() {
                                 transferMethod: downloadDirectoryConfig!.organizeMethod.toUpperCase() as TransferMethod,
                             },
                         });
-                        await manualTransfer({ file: { id: videoFile, name: fileInfo.fileName }, number: fileInfo.number, transferMethod: downloadDirectoryConfig!.organizeMethod.toUpperCase() as TransferMethod, fileTransferLogId: fileTransfer.id ,subscribeDataIds: downloadUrl.subscribeDataIds as string[]});
+                        await manualTransfer({ file: { id: videoFile, name: fileInfo.fileName }, number: fileInfo.number, transferMethod: downloadDirectoryConfig!.organizeMethod.toUpperCase() as TransferMethod, fileTransferLogId: fileTransfer.id, subscribeDataIds: downloadUrl.subscribeDataIds as string[] });
                     }
                 }
                 updatedCount++;
-
-                // switch (torrent.status) {
-                //     case 'completed':
-                //     case 'seeding':
-                //         newStatus = 'downloaded';
-                //         completedCount++;
-                //         break;
-                //     case 'paused':
-                //     case 'error':
-                //     case 'checking':
-                //     default:
-                //         // 其他所有状态都视为 downloading
-                //         newStatus = 'downloading';
-                // }
-
-                // if (newStatus !== downloadUrl.status) {
-                //     await db.documentDownloadURL.update({
-                //         where: { id: downloadUrl.id },
-                //         data: { status: newStatus as any }
-                //     });
-                //     logger.info(`更新状态: ${downloadUrl.url} ${downloadUrl.status} -> ${newStatus}`);
-                //     updatedCount++;
-                // }
             }
-
-            //  movie 订阅表 同步更新 SubscribeData 表的状态
-            // if (downloadUrl.subscribeDataIds) {
-            //     try {
-            //         const subscribeDataIds = downloadUrl.subscribeDataIds as string[];
-            //         if (Array.isArray(subscribeDataIds) && subscribeDataIds.length > 0) {
-            //             logger.info(torrent.status);
-
-            //             // 获取当前 DocumentDownloadURL 的状态
-            //             let currentStatus = 'undownload';
-            //             if (torrent && torrent.progress >= 100) {
-            //                 currentStatus = 'downloaded';
-            //             } else if (torrent && ['donwloading', 'stalled'].includes(torrent.status)) {
-            //                 currentStatus = 'downloading';
-            //             }
-            //             // 更新对应的 SubscribeData 记录
-            //             await db.subscribeData.updateMany({
-            //                 where: {
-            //                     id: { in: subscribeDataIds }
-            //                 },
-            //                 data: {
-            //                     status: currentStatus as any
-            //                 }
-            //             });
-
-            //             logger.info(`同步更新了 ${subscribeDataIds.length} 个 SubscribeData 记录的状态为: ${currentStatus}`);
-            //         }
-            //     } catch (error) {
-            //         logger.error(`同步更新 SubscribeData 状态失败: ${error}`);
-            //     }
-            // }
         }
-
-
-
-        // 发送通知
-        // const pushService = await getPushService();
-        // if (pushService && (updatedCount > 0 || completedCount > 0 || undownloadedCount > 0)) {
-        //     const notificationMessage = [
-        //         `同步完成！`,
-        //         `• 更新了 ${updatedCount} 个记录`,
-        //         `• 完成了 ${completedCount} 个下载`,
-        //         `• 标记了 ${undownloadedCount} 个被删除的任务`
-        //     ].join('\n');
-
-        //     await pushService.sendTaskNotification(
-        //         taskName,
-        //         'success',
-        //         notificationMessage
-        //     );
-        // }
 
         logger.info(`${taskName} 执行完成，更新了 ${updatedCount} 个记录，完成了 ${completedCount} 个下载，标记了 ${undownloadedCount} 个被删除的任务`);
 

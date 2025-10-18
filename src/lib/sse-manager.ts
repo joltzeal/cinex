@@ -67,7 +67,7 @@ class SseManager {
       }
     } else {
       // Client has not connected yet, queue the message.
-      console.log(`[SSE Manager] Client not found for task: ${taskId}. Queuing message: '${data.stage}'`);
+      // console.log(`[SSE Manager] Client not found for task: ${taskId}. Queuing message: '${data.stage}'`);
       this.queueMessage(taskId, data);
     }
   }

@@ -5,8 +5,26 @@ import { parseAvfanVideoList } from "@/lib/rankings/avfan";
 import { parseOnejavVideoList } from "@/lib/rankings/onejav";
 import { parseVideoList } from "@/lib/javdb-parser";
 import { VideoInfo } from "@/types/javdb";
+import { db } from "@/lib/db";
 
 // --- Reusable Caching Infrastructure ---
+
+async function addMovieStatus(videoList: VideoInfo[]): Promise<VideoInfo[]> {
+  const movies = await db.movie.findMany({
+    where: {
+      number: {
+        in: videoList.map(video => video.code!),
+      },
+    },
+  });
+  return videoList.map(video => {
+    const movie = movies.find(movie => movie.number === video.code);
+    return {
+      ...video,
+      status: movie?.status,
+    };
+  });
+}
 
 interface CacheEntry {
   data: VideoInfo[];
@@ -43,20 +61,18 @@ async function getCachedData(
   if (cachedEntry) {
     const isCacheValid = Date.now() - cachedEntry.timestamp < RANKINGS_CACHE_DURATION_MS;
     if (isCacheValid) {
-      console.log(`[CACHE HIT] Returning cached data for key: ${cacheKey}`);
+      
       return NextResponse.json({
         success: true,
         data: cachedEntry.data,
       }, { headers: { 'X-Cache': 'HIT' } });
     } else {
       cache.delete(cacheKey);
-      console.log(`[CACHE EVICT] Stale data removed for key: ${cacheKey}`);
     }
   }
 
   // 2. Cache miss or stale: fetch fresh data
   try {
-    console.log(`[CACHE MISS] Fetching fresh data for key: ${cacheKey}`);
     const videoList = await fetcher();
 
     // 3. Store fresh data in cache
@@ -65,7 +81,6 @@ async function getCachedData(
         data: videoList,
         timestamp: Date.now(),
       });
-      console.log(`[CACHE SET] Stored fresh data for key: ${cacheKey}`);
     }
 
     return NextResponse.json({
@@ -83,7 +98,6 @@ async function getCachedData(
     }
 
     // Handle generic errors
-    console.error(`[FETCH ERROR] for key ${cacheKey}:`, error);
     return NextResponse.json({
       success: false,
       error: "Failed to fetch data from the provider.",
@@ -110,7 +124,7 @@ export async function GET(req: NextRequest) {
         headers: { 'User-Agent': USER_AGENT },
       });
       const body = await response.text();
-      return parseOnejavVideoList(body, 'https://onejav.com');
+      return await addMovieStatus(parseOnejavVideoList(body, 'https://onejav.com'));
     });
   }
   
@@ -126,7 +140,7 @@ export async function GET(req: NextRequest) {
         },
       });
       const body = await response.text();
-      return parseAvfanVideoList(body);
+      return await addMovieStatus(parseAvfanVideoList(body));
     });
   }
   
@@ -150,8 +164,7 @@ export async function GET(req: NextRequest) {
       if (body.includes(ARANKINGS_CCESS_DENIED_MESSAGE)) {
         throw new AccessDeniedError("由於版權限制，本站禁止了你的網路所在國家的訪問。");
       }
-
-      return parseVideoList(body);
+      return await addMovieStatus(parseVideoList(body));
     });
   }
 

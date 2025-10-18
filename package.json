@@ -15,7 +15,12 @@
     "lint:fix": "eslint src --fix && pnpm format",
     "lint:strict": "eslint --max-warnings=0 src",
     "format": "prettier --write .",
-    "format:check": "prettier -c -w ."
+    "format:check": "prettier -c -w .",
+    "export:data": "tsx scripts/export-data.ts",
+    "import:data": "tsx scripts/import-data.ts",
+    "migrate:many-to-many": "tsx scripts/migrate-to-many-to-many.ts",
+    "verify:migration": "tsx scripts/verify-migration.ts",
+    "check:database": "tsx scripts/check-database.ts"
   },
   "lint-staged": {
     "**/*.{js,jsx,tsx,ts,css,less,scss,sass}": [
@@ -74,6 +79,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
+    "dayjs": "^1.11.18",
     "embla-carousel-react": "^8.6.0",
     "eslint": "8.48.0",
     "eslint-config-next": "15.1.0",
@@ -147,6 +153,7 @@
     "concurrently": "^9.2.0",
     "husky": "^9.1.7",
     "lint-staged": "^15.2.11",
+    "pg": "^8.16.3",
     "prettier": "3.4.2",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "ts-node": "^10.9.2",

@@ -1,9 +1,9 @@
-// lib/downloaders/manager.ts
 import { db } from "@/lib/db";
 import { DownloaderClient } from "@/types/download";
 import { qBittorrentClient } from "./qbittorrent";
 import { TransmissionClient } from "./transmission";
-import { DownloaderSettingsData, DownloaderName } from "@/lib/downloader";
+import { DownloaderName } from "@/lib/downloader";
+import { getSetting, SettingKey } from "@/services/settings";
 
 /**
  * 获取当前启用的下载器客户端实例
@@ -11,11 +11,9 @@ import { DownloaderSettingsData, DownloaderName } from "@/lib/downloader";
  * @returns {Promise<DownloaderClient>}
  */
 export async function getActiveClient(): Promise<DownloaderClient> {
-    const setting = await db.setting.findUnique({
-        where: { key: 'downloaderSettings' },
-    });
+    const setting = await getSetting(SettingKey.DownloaderSettings);
 
-    const settingsData = setting?.value as DownloaderSettingsData | undefined;
+    const settingsData = setting;
     
     if (!settingsData) {
         throw new Error("没有配置任何下载器。请在设置页面配置。");

@@ -4,6 +4,7 @@ import { taskJavbusSubscribeUpdate } from './tasks/subscribe';
 import { taskDownloadStatusSync } from './tasks/download';
 import { taskMovieLibraryUpdate } from './tasks/media-library';
 import { taskMediaScraping } from './tasks/scraping';
+import { taskForumUpdate } from './tasks/forum';
 
 
 export async function runDownloadStatusSync() {
@@ -26,6 +27,9 @@ export async function runJavbusSubscribeUpdate() {
     await taskJavbusSubscribeUpdate();
 }
 
+export async function runForumUpdate() {
+    await taskForumUpdate();
+}
 
 
 // 启动定时任务
@@ -45,6 +49,10 @@ export function startScheduler() {
     });
 
     cron.schedule('*/5 * * * *', runMediaLibrarySync, {
+        timezone: "Asia/Shanghai" // 设置时区为北京时间
+    });
+
+    cron.schedule('*/5 * * * *', runForumUpdate, {
         timezone: "Asia/Shanghai" // 设置时区为北京时间
     });
 

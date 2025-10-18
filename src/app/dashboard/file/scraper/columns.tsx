@@ -13,7 +13,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-// import { OrganizeRecord } from '@/types';
+import { FileTransferLog, TransferMethod, TransferStatus } from '@prisma/client';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
 const statusMap = {
   [TransferStatus.SUCCESS]: { label: '成功', variant: 'default' },
   [TransferStatus.FAILURE]: { label: '失败', variant: 'destructive' },
@@ -25,8 +27,7 @@ const transferMethodMap = {
   [TransferMethod.HARDLINK]: { label: '硬链接', variant: 'outline' },
   [TransferMethod.SOFTLINK]: { label: '软链接', variant: 'outline' },
 }
-import { FileTransferLog, TransferMethod, TransferStatus } from '@prisma/client';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+
 export const columns: ColumnDef<FileTransferLog>[] = [
   {
     id: 'select',
@@ -106,17 +107,33 @@ export const columns: ColumnDef<FileTransferLog>[] = [
   },
   {
     id: 'actions',
-    cell: ({ row }) => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>操作</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => navigator.clipboard.writeText(row.original.sourcePath)}>复制源路径</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => navigator.clipboard.writeText(row.original.destinationPath)}>复制目标路径</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-red-600">删除记录</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
+    cell: ({ row }) => {
+      const handleDelete = async () => {
+        console.log(row.original);
+        const response = await fetch(`/api/file/transfer/${row.original.id}`, {
+          method: "DELETE",
+        });
+        if (!response.ok) {
+          toast.error('删除失败');
+          return;
+        }
+        toast.success('删除成功');
+        // 刷新页面以更新数据
+        window.location.reload();
+      };
+
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>操作</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(row.original.sourcePath)}>复制源路径</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(row.original.destinationPath)}>复制目标路径</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-red-600" onClick={handleDelete}>删除记录</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    },
   },
 ];

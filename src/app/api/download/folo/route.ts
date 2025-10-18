@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { corsJsonResponse, handleOptions } from "@/lib/cors";
 import { db } from "@/lib/db";
-import { processManualMode } from "@/lib/download-processor";
-import { ensureMagnetLink, extractMagnetLinks } from "@/lib/magnet-helper";
-import { v4 as uuidv4 } from "uuid";
-import { handleOptions, corsJsonResponse, corsHeaders } from "@/lib/cors";
-import { parsePost } from "@/lib/folo";
 import { downloadImmediatelyTask, downloadMain } from "@/lib/download";
+import { parsePost } from "@/lib/folo";
+import { ensureMagnetLink, extractMagnetLinks } from "@/lib/magnet-helper";
+import { getSetting, SettingKey } from "@/services/settings";
+import { NextRequest } from "next/server";
+import { v4 as uuidv4 } from "uuid";
 // 处理 OPTIONS 预检请求
 export async function OPTIONS(request: NextRequest) {
   return handleOptions(request);
@@ -65,22 +65,18 @@ export async function POST(request: NextRequest) {
         message: `以下链接已存在: ${duplicateUrls.join(', ')}`
       }, 409);
     }
-    const downloadImmediatelyConfig = await db.setting.findUnique({
-      where: {
-        key: 'downloadRuleConfig'
-      }
-    })
+    const downloadImmediatelyConfig = await getSetting(SettingKey.DownloadRuleConfig);
 
     // downloadImmediately 默认为 true，只有当配置项明确为 false 时才不立即下载
     let downloadImmediatelySetting = true;
     if (
       downloadImmediatelyConfig &&
-      typeof downloadImmediatelyConfig.value === 'object' &&
-      downloadImmediatelyConfig.value !== null &&
-      'downloadMagnetImmediately' in downloadImmediatelyConfig.value
+      typeof downloadImmediatelyConfig === 'object' &&
+      downloadImmediatelyConfig !== null &&
+      'downloadMagnetImmediately' in downloadImmediatelyConfig
     ) {
       downloadImmediatelySetting = Boolean(
-        (downloadImmediatelyConfig.value as any).downloadMagnetImmediately
+        (downloadImmediatelyConfig as any).downloadMagnetImmediately
       );
     }
 

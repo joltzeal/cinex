@@ -2,12 +2,11 @@
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Prisma, SubscribeData, SubscribeMovieStatus } from "@prisma/client";
-import { Bookmark, Building, Clapperboard, Film, PlayCircle, Tag, User, Trash2 } from "lucide-react"; // 1. 导入新图标
+import { MovieStatus, Prisma } from "@prisma/client";
+import { Bookmark, Building, Eye, EyeClosed, Clapperboard, Film, PlayCircle, Tag, User, Trash2, Plus, List, FilterX, Tags, FileQuestion, Grab, RefreshCcwIcon, Download } from "lucide-react"; // 1. 导入新图标
 import { LazyImage } from "../LazyImage";
 import { Badge } from "../ui/badge";
 import { ScrollArea, ScrollBar } from "../ui/scroll-area";
-import { MovieDetailsTrigger } from "./subscribe-detail-dialog-trigger";
 import { JellyfinMediaItem } from "@/lib/jellyfin-client";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
@@ -24,12 +23,18 @@ import {
   AlertDialogTrigger,
 } from "../ui/alert-dialog";
 import { useState, useRef, useEffect } from "react";
+import { MovieDetailDialog } from "../search/movie-detail-dialog";
+import { MovieDetail, Property } from "@/types/javbus";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../ui/empty";
+import { IconBell } from "@tabler/icons-react";
+import { useMediaServer } from "@/contexts/media-server-context";
 
-type SubscribeWithMovies = Prisma.SubscribeJAVBusGetPayload<{
-  include: { movies: true };
+
+type SubscribeWithMovies = Prisma.SubscribeGetPayload<{
+  include: { movies: { include: { movie: true } } };
 }>;
 
-const statusMap: { [key in SubscribeMovieStatus]: { label: string | null; variant: "default" | "secondary" | "destructive" | "outline" } } = {
+const statusMap: { [key in MovieStatus]: { label: string | null; variant: "default" | "secondary" | "destructive" | "outline" } } = {
   // 这些状态将不会显示 Badge
   uncheck: { label: null, variant: 'secondary' },
   checked: { label: null, variant: 'outline' },
@@ -49,11 +54,30 @@ const filterTypeMap = {
   series: { label: '系列', icon: Clapperboard },
   star: { label: '演员', icon: User } // 'star' 应该总是有 starInfo，但作为备用
 };
-export default function JavbusSubscribeInfoItem({ info, mediaServer }: { info: SubscribeWithMovies, mediaServer: MediaServerConfig }) {
+
+const genresMap = {
+  '合集': '合集',
+  '介紹影片': '写真',
+  'VR専用': "VR",
+  '女優ベスト・総集編': "个人合集",
+}
+
+function getGenres(genres: Property[]): string[] {
+  return genres.map((genre) => genresMap[genre.name as keyof typeof genresMap]).filter(Boolean);
+}
+export default function JavbusSubscribeInfoItem({ info }: { info: SubscribeWithMovies }) {
+  const mediaServer = useMediaServer();
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSubscribing, setIsSubscribing] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [showSubscribeDialog, setShowSubscribeDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showFetchDialog, setShowFetchDialog] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [isHidden, setIsHidden] = useState(false);
+  // 筛选模式：0-全部, 1-排除特定tag, 2-只显示特定tag, 3-detail为空
+  const [filterMode, setFilterMode] = useState(0);
 
   // 使用原生事件监听器来更好地控制滚轮事件
   useEffect(() => {
@@ -64,13 +88,13 @@ export default function JavbusSubscribeInfoItem({ info, mediaServer }: { info: S
       const scrollContainer = scrollAreaElement.querySelector('[data-radix-scroll-area-viewport]');
       if (scrollContainer) {
         const canScrollHorizontally = scrollContainer.scrollWidth > scrollContainer.clientWidth;
-        
+
         if (canScrollHorizontally) {
           // 完全阻止事件
           e.preventDefault();
           e.stopPropagation();
           e.stopImmediatePropagation();
-          
+
           // 将垂直滚动转换为横向滚动
           scrollContainer.scrollLeft += e.deltaY;
         }
@@ -78,14 +102,14 @@ export default function JavbusSubscribeInfoItem({ info, mediaServer }: { info: S
     };
 
     // 添加原生事件监听器，使用 capture 阶段和 passive: false
-    scrollAreaElement.addEventListener('wheel', handleNativeWheel, { 
-      passive: false, 
-      capture: true 
+    scrollAreaElement.addEventListener('wheel', handleNativeWheel, {
+      passive: false,
+      capture: true
     });
 
     return () => {
-      scrollAreaElement.removeEventListener('wheel', handleNativeWheel, { 
-        capture: true 
+      scrollAreaElement.removeEventListener('wheel', handleNativeWheel, {
+        capture: true
       } as any);
     };
   }, []);
@@ -93,7 +117,46 @@ export default function JavbusSubscribeInfoItem({ info, mediaServer }: { info: S
   const handleFilterClick = (filter: any) => {
     window.open(`https://www.javbus.com/${filter.type}/${filter.value}`, "_blank");
   };
-
+  const handleFetch = async () => {
+    setIsFetching(true);
+    setShowFetchDialog(false);
+    try {
+      const response = await fetch(`/api/subscribe/${info.id}`, {
+        method: 'PUT',
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || '抓取失败');
+      }
+      toast.success('抓取成功');
+      router.refresh();
+    } catch (error) {
+      console.error('抓取失败:', error);
+      toast.error(error instanceof Error ? error.message : '抓取失败');
+    } finally {
+      setIsFetching(false);
+    }
+  }
+  const handleSubscribe = async () => {
+    setIsSubscribing(true);
+    setShowSubscribeDialog(false);
+    try {
+      const response = await fetch(`/api/subscribe/${info.id}`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || '订阅失败');
+      }
+      toast.success('订阅成功');
+      router.refresh();
+    } catch (error) {
+      console.error('订阅失败:', error);
+      toast.error(error instanceof Error ? error.message : '订阅失败');
+    } finally {
+      setIsSubscribing(false);
+    }
+  }
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -126,61 +189,46 @@ export default function JavbusSubscribeInfoItem({ info, mediaServer }: { info: S
   };
 
   let headerContent;
-  if (info.starInfo && typeof info.starInfo === 'object' && 'name' in info.starInfo) {
-    // A. 渲染 Star Info
-
-    const star = info.starInfo as any;
-    const proxiedAvatarSrc = star.avatar
-      ? `/api/subscribe/javbus/proxy?url=${encodeURIComponent(star.avatar)}`
-      : "";
-
-    headerContent = (
-      <div className="flex justify-between">
-        <div className="flex items-start space-x-3">
-          <div className="relative w-12 h-12 rounded-full overflow-hidden bg-muted flex-shrink-0">
-            <LazyImage
-              src={proxiedAvatarSrc}
-              alt={star.name || "Star"}
-              className="w-full h-full object-cover"
-              fallbackText="No Avatar"
-            />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 style={{ cursor: 'pointer' }} className="font-semibold text-foreground truncate hover:underline decoration-2 underline-offset-2"  onClick={() => handleFilterClick(info.filter)}>{star.name || "Unknown Star"}</h3>
-            {star.birthday && (<p className="text-sm text-muted-foreground">{star.birthday}</p>)}
-          </div>
-        </div>
-      </div>
-    );
-  } else if (info.filter && typeof info.filter === 'object' && 'type' in info.filter && 'name' in info.filter) {
-
-
-    // B. 回退到渲染 Filter Info
-    const filter = info.filter as any;
-    const filterMapping = filterTypeMap[filter.type as keyof typeof filterTypeMap] || { label: filter.type, icon: Bookmark };
-    const Icon = filterMapping.icon;
-
+  const filter = info.filter as any;
+  const filterMapping = filterTypeMap[filter.type as keyof typeof filterTypeMap] || { label: filter.type, icon: Bookmark };
+  if (info.filter) {
+    let icon;
+    if (info.starInfo) {
+      const star = info.starInfo as any;
+      const proxiedAvatarSrc = star.avatar
+        ? `/api/subscribe/javbus/proxy?url=${encodeURIComponent(star.avatar)}`
+        : "";
+      icon = <LazyImage src={proxiedAvatarSrc} alt={star.name || "Star"} className="w-full h-full object-cover rounded-2xl" />;
+    } else {
+      icon = <filterMapping.icon className="w-6 h-6 text-muted-foreground rounded-2xl" />;
+    }
 
     headerContent = (
       <div className="flex justify-between">
-        <div className="flex items-start space-x-3">
-          <div className="relative w-12 h-12 rounded-lg flex items-center justify-center bg-muted flex-shrink-0">
-            <Icon className="w-6 h-6 text-muted-foreground" />
+        <div className="flex items-start space-x-3 flex-1 min-w-0">
+          {/* 图标 */}
+          { }
+          <div className="relative w-12 h-12 rounded-2xl flex items-center justify-center bg-muted flex-shrink-0">
+            {icon}
           </div>
+
+          {/* 文本 */}
           <div className="flex-1 min-w-0">
             <h3
-              className="font-semibold text-foreground truncate hover:underline decoration-2 underline-offset-2"
+              className="font-semibold text-foreground truncate w-full hover:underline decoration-2 underline-offset-2 max-w-full"
               title={filter.name}
               onClick={() => handleFilterClick(filter)}
               style={{ cursor: 'pointer' }}
             >
               {filter.name}
             </h3>
-            <p className="text-sm text-muted-foreground">{filterMapping.label}</p>
-
+            <p className="text-sm text-muted-foreground truncate w-full">
+              {filterMapping.label}
+            </p>
           </div>
         </div>
       </div>
+
     );
   } else {
     headerContent = (
@@ -189,24 +237,109 @@ export default function JavbusSubscribeInfoItem({ info, mediaServer }: { info: S
       </div>
     );
   }
+  const handleHide = () => {
+    setIsHidden(true);
+  }
+
+  // 切换筛选模式
+  const handleFilterModeToggle = () => {
+    setFilterMode((prev) => (prev + 1) % 6);
+  }
+
+  // 筛选电影的特定tags
+  const excludeTags = ['合集', '介紹影片', 'VR専用', '女優ベスト・総集編'];
+
+  // 筛选逻辑
+  const filterMovie = (movieWrapper: any) => {
+    if (isHidden) return false;
+
+    const movie = movieWrapper.movie;
+    const movieDetail = movie.detail as unknown as MovieDetail | null;
+
+    switch (filterMode) {
+      case 0: // 全部显示
+        return true;
+      case 1: // 排除包含特定tag的电影
+        if (!movieDetail || !movieDetail.genres) return true;
+        return !movieDetail.genres.some((genre: Property) =>
+          excludeTags.includes(genre.name)
+        );
+      case 2: // 只显示包含特定tag的电影
+        if (!movieDetail || !movieDetail.genres) return false;
+        return movieDetail.genres.some((genre: Property) =>
+          excludeTags.includes(genre.name)
+        );
+      case 3: // 只显示detail为空的电影
+        return movie.status === MovieStatus.downloading;
+      case 4:
+        return movie.status === MovieStatus.added;
+      case 5:
+
+        return !movieDetail;
+      default:
+        return true;
+    }
+  }
+
+  // 获取当前筛选模式的图标和提示
+  const getFilterModeIcon = () => {
+    switch (filterMode) {
+      case 0:
+        return { icon: <List className="h-4 w-4" />, title: "显示全部" };
+      case 1:
+        return { icon: <FilterX className="h-4 w-4" />, title: "排除合集/写真/VR" };
+      case 2:
+        return { icon: <Tags className="h-4 w-4" />, title: "仅显示合集/写真/VR" };
+      case 3:
+        return { icon: <Download className="h-4 w-4" />, title: "仅显示已下载" };
+      case 4:
+        return { icon: <Film className="h-4 w-4" />, title: "仅显示已添加媒体库" };
+      case 5:
+        return { icon: <FileQuestion className="h-4 w-4" />, title: "仅显示无详情" };
+
+      default:
+        return { icon: <List className="h-4 w-4" />, title: "显示全部" };
+    }
+  }
+
+  const filterModeConfig = getFilterModeIcon();
   return (
     <Card className="w-full table table-fixed">
       <CardHeader className="pb-1">
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between gap-2 sm:items-center">
           {/* 4. 渲染动态生成的 headerContent */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 overflow-hidden">
             {headerContent}
           </div>
           {/* 更新时间 Badge 和删除按钮 */}
-          <div className="flex items-center space-x-2 ml-4 flex-shrink-0">
+          <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
             <div className="flex flex-col space-y-1 items-end">
-            <Badge variant="default">
-              {info.movies.length} 部影片
-            </Badge>
-            <Badge variant="outline">
-              更新时间：{new Date(info.updatedAt).toLocaleDateString()}
-            </Badge>
+              <div className="flex items-center space-x-1">
+                <Badge variant="default">
+                  {info.movies.length} 部影片
+                </Badge>
+                {
+                  info.movies.filter((movie: any) => movie.movie.status === MovieStatus.downloading).length > 0 && (
+                    <Badge variant="outline">
+                      {info.movies.filter((movie: any) => movie.movie.status === MovieStatus.downloading).length} 部正在下载
+                    </Badge>
+                  )
+                }
+                {
+                  info.movies.filter((movie: any) => movie.movie.status === MovieStatus.added).length > 0 && (
+                    <Badge variant="destructive">
+                      媒体库中已添加{info.movies.filter((movie: any) => movie.movie.status === MovieStatus.added).length} 部
+                    </Badge>
+                  )
+                }
+
+              </div>
+
+              <Badge variant="outline">
+                更新时间：{new Date(info.updatedAt).toLocaleString()}
+              </Badge>
             </div>
+
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
               <AlertDialogTrigger asChild>
                 <Button
@@ -238,28 +371,85 @@ export default function JavbusSubscribeInfoItem({ info, mediaServer }: { info: S
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+            <AlertDialog open={showFetchDialog} onOpenChange={setShowFetchDialog}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  title="抓取全部"
+                  disabled={isFetching}
+                >
+                  <Grab className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>全部订阅</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    确定要抓取这个订阅吗？这将抓取所有没有详情的影片。
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isFetching}>取消</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleFetch}
+                    disabled={isFetching}
+
+                  >
+                    {isFetching ? '抓取中...' : '确认抓取'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-primary"
+              title={filterModeConfig.title}
+              onClick={handleFilterModeToggle}
+            >
+              {filterModeConfig.icon}
+            </Button>
+
           </div>
         </div>
       </CardHeader>
 
       <CardContent className="py-0">
-        <ScrollArea 
+        <ScrollArea
           ref={scrollAreaRef}
           className="w-full whitespace-nowrap rounded-md"
         >
-          <div className="flex w-max space-x-4 p-4">
-            {info.movies.map((movie: SubscribeData) => { // 明确 movie 类型
-              const proxiedSrc = movie.poster
-                ? `/api/subscribe/javbus/proxy?url=${encodeURIComponent(movie.poster)}`
-                : "";
+          {
+            info.movies.filter(filterMovie).length === 0 && <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <IconBell />
+                </EmptyMedia>
+                <EmptyTitle>没有影片</EmptyTitle>
+                <EmptyDescription>
+                  当前筛选模式下没有影片
+                </EmptyDescription>
+              </EmptyHeader>
 
-              if (!movie.code) return null;
+            </Empty>
+          }
+          {
+            info.movies.filter(filterMovie).length > 0 && <div className="flex w-max space-x-4 p-4">
+              {info.movies.filter(filterMovie).map((_movie: any) => {
+                const movie = _movie.movie // 明确 movie 类型
+                const proxiedSrc = movie.poster
+                  ? `/api/subscribe/javbus/proxy?url=${encodeURIComponent(movie.poster)}`
+                  : "";
 
-              // 4. 从映射中获取当前状态的配置
-              const statusConfig = statusMap[movie.status as SubscribeMovieStatus] || statusMap.uncheck;
-              const mediaInfo = movie.mediaLibrary as JellyfinMediaItem | null;
-              return (
-                <MovieDetailsTrigger key={movie.id} movieId={movie.code} showSubscribeButton={false}>
+                if (!movie.number) return null;
+
+                // 4. 从映射中获取当前状态的配置
+                const statusConfig = statusMap[movie.status as MovieStatus] || statusMap.uncheck;
+                const mediaInfo = movie.mediaLibrary as JellyfinMediaItem | null;
+                return (<MovieDetailDialog movieId={movie.number!} key={movie.id} 
+                >
                   <div className="flex flex-col items-center space-y-2 w-[100px] flex-shrink-0 cursor-pointer group">
                     <div className="relative w-full h-[150px] rounded-md overflow-hidden bg-muted">
                       <LazyImage src={proxiedSrc}
@@ -275,7 +465,7 @@ export default function JavbusSubscribeInfoItem({ info, mediaServer }: { info: S
                           {statusConfig.label}
                         </Badge>
                       )}
-                      {movie.status === 'added' && mediaInfo && (
+                      {movie.status === 'added' && mediaInfo && mediaServer && mediaServer.publicAddress && (
                         <a
                           href={`${mediaServer.publicAddress}/web/index.html#!/item?id=${mediaInfo.Id}&serverId=${mediaInfo.ServerId}`}
                           target="_blank"
@@ -290,12 +480,28 @@ export default function JavbusSubscribeInfoItem({ info, mediaServer }: { info: S
                           </Button>
                         </a>
                       )}
+                      {
+                        movie.tags && movie.detail && (movie.detail as unknown as MovieDetail).genres.some((tag: any) => tag.name in genresMap) && (
+                          // <Button variant="ghost" size="icon" className="absolute bottom-1.5 right-1.5 z-10 cursor-pointer">
+                          //   <FolderOpen className="h-5 w-5" />
+                          // </Button>
+                          <Badge
+                            variant={"destructive"}
+                            // 3. 调整 Badge 样式
+                            className="absolute bottom-1.5 left-1.5 text-[10px] h-4 px-1.5 font-semibold backdrop-blur-sm"
+                          >
+                            {
+                              getGenres((movie.detail as unknown as MovieDetail).genres).join('/')
+                            }
+                          </Badge>
+                        )
+                      }
                     </div>
                     <TooltipProvider delayDuration={100}>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <p className="w-full text-center text-xs text-foreground truncate leading-tight group-hover:text-primary">
-                            {movie.code}
+                            {movie.number}
                           </p>
                         </TooltipTrigger>
                         <TooltipContent><p className="max-w-xs">{movie.title}</p></TooltipContent>
@@ -303,10 +509,10 @@ export default function JavbusSubscribeInfoItem({ info, mediaServer }: { info: S
                     </TooltipProvider>
                     <p className="text-xs text-muted-foreground truncate leading-tight">{movie.date}</p>
                   </div>
-                </MovieDetailsTrigger>
-              )
-            })}
-          </div>
+                </MovieDetailDialog>)
+              })}
+            </div>
+          }
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </CardContent>

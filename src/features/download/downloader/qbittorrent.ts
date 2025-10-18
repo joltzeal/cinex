@@ -6,7 +6,7 @@
 // 【修改 2】导入新的、我们自己定义的配置类型
 import { DownloaderConfig } from "@/lib/downloader";
 import { logger } from "@/lib/logger";
-import { DownloaderClient, Torrent, TorrentAddOptions, TorrentStatus } from "@/types/download";
+import { DownloaderClient, DownloaderStats, Torrent, TorrentAddOptions, TorrentStatus } from "@/types/download";
 
 export class qBittorrentClient implements DownloaderClient {
   private readonly baseUrl: string;
@@ -132,6 +132,32 @@ export class qBittorrentClient implements DownloaderClient {
       return { success: false, message: `连接失败，状态码: ${response.status}, 响应: ${errorText}` };
     } catch (error: any) {
       return { success: false, message: `连接出错: ${error.message}` };
+    }
+  }
+
+  async getStats(): Promise<DownloaderStats> {
+    try {
+      const response = await this.request('/api/v2/transfer/info');
+      if (!response.ok) {
+        throw new Error("Failed to fetch transfer info from qBittorrent.");
+      }
+      const data: any = await response.json();
+      
+      return {
+        downloadSpeed: data.dl_info_speed || 0,  // 当前下载速度 (bytes/s)
+        uploadSpeed: data.up_info_speed || 0,     // 当前上传速度 (bytes/s)
+        totalDownloaded: data.dl_info_data || 0,  // 总下载量 (bytes)
+        totalUploaded: data.up_info_data || 0,    // 总上传量 (bytes)
+      };
+    } catch (error: any) {
+      logger.error(`Failed to get qBittorrent stats: ${error.message}`);
+      // 返回默认值
+      return {
+        downloadSpeed: 0,
+        uploadSpeed: 0,
+        totalDownloaded: 0,
+        totalUploaded: 0,
+      };
     }
   }
 

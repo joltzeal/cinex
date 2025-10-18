@@ -2,6 +2,7 @@ import z from "zod";
 import { db } from "./db";
 import OpenAI from "openai";
 import { logger } from "./logger";
+import { getSetting, SettingKey } from "@/services/settings";
 
 export interface AIFolderResult {
   originalName: string;
@@ -9,26 +10,13 @@ export interface AIFolderResult {
   sourceCategory: string;
   personName: string | null;
 }
-const aiProviderConfigSchema = z.object({
-  baseURL: z.string().url(),
-  apiKey: z.string(),
-  modelName: z.string(),
-});
-export async function getAiProviderConfig() {
-  const setting = await db.setting.findUnique({
-    where: { key: 'aiProviderConfig' }, // 使用新的 key
-  });
-  if (!setting) return null;
-  const parseResult = aiProviderConfigSchema.safeParse(setting.value);
-  if (parseResult.success) return parseResult.data;
-  return null;
-}
+
 export async function getBatchClassificationInfo(folderNames: string[]): Promise<AIFolderResult[]> {
   if (folderNames.length === 0) {
     return [];
   }
   try {
-    const aiConfig = await getAiProviderConfig();
+    const aiConfig = await getSetting(SettingKey.AiProviderConfig);
     if (!aiConfig) {
       return [];
     }
@@ -103,7 +91,7 @@ export async function getBatchClassificationInfo(folderNames: string[]): Promise
 export async function translatePlotByAI(input: string | string[]): Promise<string | string[] | null> {
   try {
     // 1. 获取 AI 配置
-    const aiConfig = await getAiProviderConfig();
+    const aiConfig = await getSetting(SettingKey.AiProviderConfig);
     if (!aiConfig) {
       logger.error('无法获取 AI 提供商配置');
       return null;

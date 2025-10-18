@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
-import { AIFolderResult, getAiProviderConfig, getBatchClassificationInfo } from '@/lib/ai-provider';
+import { AIFolderResult, getBatchClassificationInfo } from '@/lib/ai-provider';
+import { getSetting, SettingKey } from '@/services/settings';
 
 
 
@@ -9,7 +10,7 @@ import { AIFolderResult, getAiProviderConfig, getBatchClassificationInfo } from 
 export async function POST(req: NextRequest) {
 
   try {
-    const aiConfig = await getAiProviderConfig();
+    const aiConfig = await getSetting(SettingKey.AiProviderConfig);
     if (!aiConfig) {
       return NextResponse.json({ error: 'AI Provider尚未配置，请前往设置页面进行配置。' }, { status: 500 });
     }

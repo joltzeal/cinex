@@ -48,3 +48,8 @@ next-env.d.ts
 .env.sentry-build-plugin
 
 /generated/prisma
+
+# Migration exports (keep directory structure)
+/prisma/export/*.csv
+/prisma/export/*.json
+!/prisma/export/.gitkeep

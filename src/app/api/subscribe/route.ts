@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from '@/lib/db';
 import { getMoviesByPage, getStarInfo } from "@/lib/javbus-parser";
-import { FilterType, GetMoviesQuery, MagnetType, Movie, MoviesPage, MovieType, Pagination, StarInfo } from "@/types/javbus";
+import { FilterType, Movie, StarInfo } from "@/types/javbus";
 import { sleep } from "@/lib/utils";
+import { getExistingSubscribe } from "@/services/subscribe";
+import { MovieStatus } from "@prisma/client";
+
 interface Result {
   filterType: FilterType;
   filterValue: string;
@@ -34,15 +37,52 @@ function extractFilter(urlStr: string): Result | null {
 }
 
 
-// 添加新订阅
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    const subscribeId = body.subscribeId;
+
+    if (!subscribeId) {
+      return NextResponse.json({ error: "subscribeId is required" }, { status: 400 });
+    }
+
+    // 检查订阅是否存在
+    const existingSubscribe = await db.subscribe.findUnique({
+      where: { id: subscribeId },
+      include: {
+        movies: true
+      }
+    });
+
+    if (!existingSubscribe) {
+      return NextResponse.json({ error: "Subscription not found" }, { status: 404 });
+    }
+
+    console.log(`[JAVBUS DELETE] Deleting subscription: ${subscribeId}, movies count: ${existingSubscribe.movies.length}`);
+
+    // 删除订阅记录（会自动删除 SubscribeMovie 中间表记录，因为有 CASCADE）
+    await db.subscribe.delete({
+      where: { id: subscribeId }
+    });
+    
+    // 注意：Movie 记录不会被删除，因为可能被其他订阅共享
+    // 如果需要清理孤立的 Movie 记录，可以定期运行清理任务
+
+    return NextResponse.json({
+      success: "true",
+    }, { status: 200 });
+
+  } catch (err: any) {
+    console.error("[JAVBUS DELETE ERROR]", err);
+    return NextResponse.json({ error: err?.message ?? String(err) }, { status: 500 });
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     // 1. 解析请求参数
     const body = await request.json().catch(() => ({}));
     const url = body.url.trim();
-    // const delayMs = typeof body?.delayMs === "number" && body.delayMs >= 0 ? body.delayMs : 1000;
-    // const userMaxPages = typeof body?.maxPages === "number" && body.maxPages > 0 ? body.maxPages : 200;
-
     if (!url) {
       return NextResponse.json({ error: "url is required" }, { status: 400 });
     }
@@ -53,9 +93,7 @@ export async function POST(request: NextRequest) {
     const { filterType, filterValue } = filter;
 
     // 2. 检查订阅是否存在
-    const existingSubscribe = await db.subscribeJAVBus.findFirst({
-      where: { filterType, filterValue },
-    });
+    const existingSubscribe = await getExistingSubscribe(filterType, filterValue);
 
     if (existingSubscribe) {
       return NextResponse.json({ error: "该订阅源已经存在" }, { status: 400 });
@@ -71,8 +109,7 @@ export async function POST(request: NextRequest) {
       fetchedPages++;
       // 应用硬性限制和用户自定义限制中较小的一个
       if (fetchedPages > Math.min(FULL_UPDATE_PAGE_LIMIT, parseInt(process.env.DEFAULT_SUBSCRIBE_MAX_PAGES || '30'))) {
-          // console.log(`[JAVBUS FULL] Reached page limit (${Math.min(FULL_UPDATE_PAGE_LIMIT, userMaxPages)}). Stopping.`);
-          break;
+        break;
       }
 
       const pageResult = await getMoviesByPage({
@@ -90,256 +127,72 @@ export async function POST(request: NextRequest) {
 
     // 去重
     const uniqueMovies = Array.from(new Map(allMovies.map(m => [m.id, m])).values());
-    console.log(`[JAVBUS FULL] Scraped ${uniqueMovies.length} unique movies.`);
-
-    // 获取 StarInfo (如果适用)
-    let starInfoToSave: StarInfo | null = null;
+    
+    // 如果是演员，则获取 StarInfo
+    let starInfo: StarInfo | null = null;
     if (filterType === 'star') {
       try {
-        starInfoToSave = await getStarInfo(filterValue);
+        starInfo = await getStarInfo(filterValue);
       } catch (err) {
         console.warn("[JAVBUS FULL] getStarInfo failed:", err);
       }
     }
-    
+
     // 创建订阅记录
-    const createdSubscribe = await db.subscribeJAVBus.create({
+    const createdSubscribe = await db.subscribe.create({
       data: {
         filterType,
         filterValue,
         filter: savedFilter || filter,
-        starInfo: starInfoToSave,
+        starInfo: starInfo,
       } as any,
     });
 
-    // 批量插入电影数据
-    const rows = uniqueMovies.map((m) => ({
-      subscribeId: createdSubscribe.id,
-      code: m.id ?? "", 
-      title: m.title ?? "", 
-      date: m.date ?? null, 
-      tags: m.tags ?? [],
-      status: "uncheck" as const,
-      poster: m.img ?? null,
-    }));
+    // 处理电影数据（使用多对多关系）
+    let addedCount = 0;
+    for (const m of uniqueMovies) {
+      try {
+        // 1. 使用 upsert 确保电影的 number 唯一
+        const movie = await db.movie.upsert({
+          where: { number: m.id ?? "" },
+          update: {
+            // 如果已存在，可以选择更新或不更新
+            // 这里选择不更新，保留原有数据
+          },
+          create: {
+            number: m.id ?? "",
+            title: m.title ?? "",
+            date: m.date ?? null,
+            tags: m.tags ?? [],
+            poster: m.img ?? null,
+            status: MovieStatus.uncheck, // 设置默认状态
+          },
+        });
 
-    await db.subscribeData.createMany({ data: rows, skipDuplicates: true });
-      
-      return NextResponse.json({
-        data: {
-          status: "created",
-          subscribeId: createdSubscribe.id,
-          totalAdded: rows.length,
-          filter: savedFilter || filter,
-        },
-      }, { status: 201 });
-    
-    // =================================================================
-    // 分支 A: 增量更新 (订阅已存在)
-    // =================================================================
-    // if (existingSubscribe) {
-    //   console.log(`[JAVBUS INCREMENTAL] Starting update for: ${filterType}=${filterValue}, ID=${existingSubscribe.id}`);
-      
-    //   const newMovies: Movie[] = [];
-    //   let stopScraping = false;
-    //   let currentPage = 1;
-    //   let savedFilter = null; // 用于存储从页面上抓取到的 filter 信息
-
-    //   // 获取当前订阅的所有电影ID，用于比对
-    //   const existingSourceRows = await db.subscribeData.findMany({
-    //     where: { subscribeId: existingSubscribe.id },
-    //     select: { sourceId: true },
-    //   });
-    //   const existingSourceIdSet = new Set(existingSourceRows.map((r) => r.sourceId));
-    //   console.log(`[JAVBUS INCREMENTAL] Found ${existingSourceIdSet.size} existing movies in DB.`);
-
-    //   while (!stopScraping) {
-    //     if (currentPage > userMaxPages) { // 增量更新也受最大页数限制，防止意外
-    //         console.log(`[JAVBUS INCREMENTAL] Reached max page limit (${userMaxPages}). Stopping.`);
-    //         break;
-    //     }
-
-    //     const pageResult: MoviesPage = await getMoviesByPage({
-    //         page: String(currentPage),
-    //         type: "normal",
-    //         magnet: "exist",
-    //         filterType,
-    //         filterValue,
-    //     });
+        // 2. 创建订阅关系（使用原始 SQL 避免类型问题）
+        await db.$executeRaw`
+          INSERT INTO "SubscribeMovie" ("id", "subscribeId", "movieId", "createdAt")
+          VALUES (gen_random_uuid(), ${createdSubscribe.id}, ${movie.id}, CURRENT_TIMESTAMP)
+          ON CONFLICT ("subscribeId", "movieId") DO NOTHING
+        `;
         
-    //     if (!savedFilter && (pageResult as any).filter) savedFilter = (pageResult as any).filter;
-
-    //     if (!pageResult.movies || pageResult.movies.length === 0) {
-    //         stopScraping = true;
-    //         break;
-    //     }
-
-    //     // 逐条比对，一旦发现已存在的数据，就停止
-    //     for (const movie of pageResult.movies) {
-    //         if (existingSourceIdSet.has(movie.id)) {
-    //             console.log(`[JAVBUS INCREMENTAL] Found existing movie ID: ${movie.id}. Stopping scrape.`);
-    //             stopScraping = true;
-    //             break; // 停止处理当前页的剩余电影
-    //         }
-    //         newMovies.push(movie);
-    //     }
-
-    //     if (stopScraping) break; // 跳出外层循环
-
-    //     // 分页逻辑
-    //     if (!pageResult.pagination?.hasNextPage) break;
-    //     currentPage = pageResult.pagination.nextPage ?? currentPage + 1;
-    //     await sleep(delayMs);
-    //   }
-      
-      // 如果没有新电影
-    //   if (newMovies.length === 0) {
-    //     return NextResponse.json({
-    //       data: {
-    //         action: "incremental_update",
-    //         status: "no_new",
-    //         subscribeId: existingSubscribe.id,
-    //         newlyAdded: 0,
-    //         filter: savedFilter || filter,
-    //       },
-    //     }, { status: 200 });
-    //   }
-
-    //   // 插入新电影
-    //   const newRows = newMovies.map((m) => ({
-    //     subscribeId: existingSubscribe.id,
-    //     sourceId: m.id ?? "", title: m.title ?? "", img: m.img ?? null,
-    //     date: m.date ?? null, tags: m.tags ?? [],
-    //     isDownloaded: false, status: "uncheck" as const,
-    //   }));
-
-    //   await db.subscribeData.createMany({ data: newRows, skipDuplicates: true });
-
-    //   return NextResponse.json({
-    //     data: {
-    //       action: "incremental_update",
-    //       status: "success",
-    //       subscribeId: existingSubscribe.id,
-    //       newlyAdded: newMovies.length,
-    //       filter: savedFilter || filter,
-    //     },
-    //   }, { status: 200 });
-    // }
-
-    // =================================================================
-    // 分支 B: 全量更新 (首次创建订阅)
-    // =================================================================
-    // else {
-    //   console.log(`[JAVBUS FULL] Starting new subscription for: ${filterType}=${filterValue}`);
-      
-    //   const allMovies: Movie[] = [];
-    //   let currentPage = 1;
-    //   let fetchedPages = 0;
-    //   let savedFilter = null;
-    //   const FULL_UPDATE_PAGE_LIMIT = 30; // 全量更新的硬性页数限制
-
-    //   while (true) {
-    //     fetchedPages++;
-    //     // 应用硬性限制和用户自定义限制中较小的一个
-    //     if (fetchedPages > Math.min(FULL_UPDATE_PAGE_LIMIT, userMaxPages)) {
-    //         console.log(`[JAVBUS FULL] Reached page limit (${Math.min(FULL_UPDATE_PAGE_LIMIT, userMaxPages)}). Stopping.`);
-    //         break;
-    //     }
-
-    //     const pageResult = await getMoviesByPage({
-    //       page: String(currentPage),
-    //       type: "normal", magnet: "exist", filterType, filterValue,
-    //     });
-
-    //     if (Array.isArray(pageResult.movies)) allMovies.push(...pageResult.movies);
-    //     if (!savedFilter && (pageResult as any).filter) savedFilter = (pageResult as any).filter;
-
-    //     if (!pageResult.pagination?.hasNextPage) break;
-    //     currentPage = pageResult.pagination.nextPage ?? currentPage + 1;
-    //     await sleep(delayMs);
-    //   }
-
-    //   // 去重
-    //   const uniqueMovies = Array.from(new Map(allMovies.map(m => [m.id, m])).values());
-    //   console.log(`[JAVBUS FULL] Scraped ${uniqueMovies.length} unique movies.`);
-
-    //   // 获取 StarInfo (如果适用)
-    //   let starInfoToSave: StarInfo | null = null;
-    //   if (filterType === 'star') {
-    //     try {
-    //       starInfoToSave = await getStarInfo(filterValue);
-    //     } catch (err) {
-    //       console.warn("[JAVBUS FULL] getStarInfo failed:", err);
-    //     }
-    //   }
-      
-      // 创建订阅记录
-      // const createdSubscribe = await db.subscribeJAVBus.create({
-      //   data: {
-      //     filterType,
-      //     filterValue,
-      //     filter: savedFilter || filter,
-      //     starInfo: starInfoToSave,
-      //   } as any,
-      // });
-
-      // // 批量插入电影数据
-      // const rows = uniqueMovies.map((m) => ({
-      //   subscribeId: createdSubscribe.id,
-      //   sourceId: m.id ?? "", title: m.title ?? "", img: m.img ?? null,
-      //   date: m.date ?? null, tags: m.tags ?? [],
-      //   isDownloaded: false, status: "uncheck" as const,
-      // }));
-
-      
-    // }
-  } catch (err: any) {
-    console.error("[JAVBUS SUBSCRIBE ERROR]", err);
-    return NextResponse.json({ error: err?.message ?? String(err) }, { status: 500 });
-  }
-}
-
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const body = await request.json().catch(() => ({}));
-    const subscribeId = body.subscribeId;
-
-    if (!subscribeId) {
-      return NextResponse.json({ error: "subscribeId is required" }, { status: 400 });
-    }
-
-    // 检查订阅是否存在
-    const existingSubscribe = await db.subscribeJAVBus.findUnique({
-      where: { id: subscribeId },
-      include: {
-        movies: true
+        addedCount++;
+      } catch (error) {
+        console.error(`[JAVBUS] Failed to process movie ${m.id}:`, error);
       }
-    });
-
-    if (!existingSubscribe) {
-      return NextResponse.json({ error: "Subscription not found" }, { status: 404 });
     }
-
-    console.log(`[JAVBUS DELETE] Deleting subscription: ${subscribeId}, movies count: ${existingSubscribe.movies.length}`);
-
-    // 删除相关的电影数据
-    await db.subscribeData.deleteMany({
-      where: { subscribeId }
-    });
-
-    // 删除订阅记录
-    await db.subscribeJAVBus.delete({
-      where: { id: subscribeId }
-    });
 
     return NextResponse.json({
-      message: "Subscription deleted successfully",
-      deletedMoviesCount: existingSubscribe.movies.length
-    }, { status: 200 });
-
+      data: {
+        success: "true",
+        subscribeId: createdSubscribe.id,
+        totalAdded: addedCount,
+        filter: savedFilter || filter,
+      },
+    }, { status: 201 });
+    
   } catch (err: any) {
-    console.error("[JAVBUS DELETE ERROR]", err);
+    console.error("[JAVBUS SUBSCRIBE ERROR]", err);
     return NextResponse.json({ error: err?.message ?? String(err) }, { status: 500 });
   }
 }

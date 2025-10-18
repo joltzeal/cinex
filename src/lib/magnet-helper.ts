@@ -110,9 +110,47 @@ export function mergeMagnetArrays(a: Magnet[], b: Magnet[]): Magnet[] {
  * @returns 返回一个包含磁力链接的数组。
  */
 export function extractMagnetLinks(text: string): string[] {
-  // 匹配 magnet:? 开头 + xt=urn:btih: + 32 或 40 位哈希
-  const magnetRegex = /magnet:\?xt=urn:btih:[a-zA-Z0-9]{32,40}\b[^\s]*/g;
-
-  const matches = text.match(magnetRegex);
-  return matches ? matches : [];
+  // 1. 匹配完整的磁力链接（带协议头）
+  const magnetRegex = /magnet:\?xt=urn:btih:[a-zA-Z0-9]{32,40}(?:[&a-zA-Z0-9=._\-]*)?/gi;
+  const fullMagnetMatches = text.match(magnetRegex) || [];
+  
+  // 2. 提取所有完整磁力链接中的 hash，用于后续去重
+  const existingHashes = new Set<string>();
+  fullMagnetMatches.forEach(magnetLink => {
+    const hash = extractHashFromMagnet(magnetLink);
+    if (hash) {
+      existingHashes.add(hash.toLowerCase());
+    }
+  });
+  
+  // 3. 匹配单独的 32 或 40 位 hash（不在完整磁力链接内部）
+  // 使用负向后顾和负向前瞻确保不匹配已经在 magnet:?xt=urn:btih: 后面的 hash
+  const standaloneHashRegex = /(?<!magnet:\?xt=urn:btih:)\b([a-fA-F0-9]{32}|[a-fA-F0-9]{40})\b/gi;
+  const standaloneHashMatches = text.match(standaloneHashRegex) || [];
+  
+  // 4. 为单独的 hash 添加协议头（排除已存在的 hash）
+  const standaloneHashes = standaloneHashMatches
+    .map(hash => hash.toLowerCase())
+    .filter(hash => !existingHashes.has(hash)) // 避免重复
+    .map(hash => `magnet:?xt=urn:btih:${hash}`);
+  
+  // 5. 合并完整磁力链接和转换后的单独 hash，基于 hash 去重
+  const allMagnets = [...fullMagnetMatches, ...standaloneHashes];
+  
+  // 6. 基于磁力 hash 进行去重，保留第一次出现的完整链接
+  const seen = new Set<string>();
+  const uniqueMagnets = allMagnets.filter(magnetLink => {
+    const hash = extractHashFromMagnet(magnetLink);
+    if (!hash) return false;
+    
+    const normalizedHash = hash.toLowerCase();
+    if (seen.has(normalizedHash)) {
+      return false; // 已经存在，过滤掉
+    }
+    
+    seen.add(normalizedHash);
+    return true; // 第一次出现，保留
+  });
+  
+  return uniqueMagnets;
 }

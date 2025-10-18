@@ -1,4 +1,3 @@
-// lib/downloader.ts
 'use server';
 
 import { z } from 'zod';
@@ -7,28 +6,14 @@ import { revalidatePath } from 'next/cache';
 import { Prisma } from '@prisma/client';
 import { qBittorrentClient } from '@/features/download/downloader/qbittorrent';
 import { TransmissionClient } from '@/features/download/downloader/transmission';
+import { getSetting, SettingKey, upsertSetting } from '@/services/settings';
 
-// --- 类型定义 ---
 
 export type DownloaderName = 'qbittorrent' | 'transmission';
-
-export interface DownloaderSettingValue {
-  enabled: boolean;
-  host?: string | null;
-  port?: number | null;
-  username?: string | null;
-  password?: string | null;
-  isDefault?: boolean;
-}
-
 export type DownloaderConfig = {
   name: DownloaderName;
 } & DownloaderSettingValue;
 
-export interface DownloaderSettingsData {
-  qbittorrent?: DownloaderSettingValue;
-  transmission?: DownloaderSettingValue;
-}
 
 
 // --- Zod Schema ---
@@ -42,19 +27,11 @@ const settingsSchema = z.object({
   isDefault: z.preprocess((val) => val === 'on', z.boolean()),
 });
 
-// --- 常量 ---
-const DOWNLOADER_SETTINGS_KEY = 'downloaderSettings';
-
-// --- 重构后的函数 ---
 
 export async function getDownloaderSettings(): Promise<DownloaderConfig[]> {
   const names: DownloaderName[] = ['qbittorrent', 'transmission'];
   
-  const setting = await db.setting.findUnique({
-    where: { key: DOWNLOADER_SETTINGS_KEY },
-  });
-
-  const settingsData = setting?.value as DownloaderSettingsData | undefined;
+  const settingsData = await getSetting(SettingKey.DownloaderSettings);
 
   return names.map(name => {
     const value = settingsData?.[name];
@@ -77,11 +54,7 @@ export async function getDefaultDownloader(): Promise<DownloaderConfig | null> {
 }
 
 export async function testDownloaderConnection(name: DownloaderName) {
-  const setting = await db.setting.findUnique({
-    where: { key: DOWNLOADER_SETTINGS_KEY },
-  });
-
-  const settingsData = setting?.value as DownloaderSettingsData | undefined;
+  const settingsData = await getSetting(SettingKey.DownloaderSettings);
   const value = settingsData?.[name];
 
   if (!value || !value.host) {
@@ -121,11 +94,9 @@ export async function updateDownloaderSetting(
 
   try {
     // 获取现有的下载器设置
-    const existingSetting = await db.setting.findUnique({
-      where: { key: DOWNLOADER_SETTINGS_KEY },
-    });
+    const existingSetting = await getSetting(SettingKey.DownloaderSettings);
 
-    const existingSettingsData = existingSetting?.value as DownloaderSettingsData | undefined || {};
+    const existingSettingsData = existingSetting as DownloaderSettingsData | undefined || {};
     const existingValue = existingSettingsData[name];
 
     const passwordToSave = (data.password === '' && existingValue?.password)
@@ -156,12 +127,7 @@ export async function updateDownloaderSetting(
 
     // 更新当前下载器的设置
     updatedSettingsData[name] = valueToSave;
-
-    await db.setting.upsert({
-      where: { key: DOWNLOADER_SETTINGS_KEY },
-      update: { value: updatedSettingsData as unknown as Prisma.JsonObject },
-      create: { key: DOWNLOADER_SETTINGS_KEY, value: updatedSettingsData as unknown as Prisma.JsonObject },
-    });
+    await upsertSetting(SettingKey.DownloaderSettings, updatedSettingsData);
 
     revalidatePath('/dashboard/settings');
 
@@ -176,11 +142,11 @@ export async function updateDownloaderSetting(
 export async function toggleDownloaderEnabled(name: DownloaderName, enabled: boolean) {
   try {
     // 获取现有的下载器设置
-    const existingSetting = await db.setting.findUnique({
-      where: { key: DOWNLOADER_SETTINGS_KEY },
-    });
+    const existingSetting = await getSetting(SettingKey.DownloaderSettings);
 
-    const existingSettingsData = existingSetting?.value as DownloaderSettingsData | undefined || {};
+    console.log('existingSetting', existingSetting);
+
+    const existingSettingsData = existingSetting as DownloaderSettingsData | undefined || {};
     
     if (!existingSettingsData[name]) {
       return { success: false, message: '配置不存在，无法直接切换。请先配置下载器。' };
@@ -192,11 +158,7 @@ export async function toggleDownloaderEnabled(name: DownloaderName, enabled: boo
       ...updatedSettingsData[name]!,
       enabled
     };
-
-    await db.setting.update({
-      where: { key: DOWNLOADER_SETTINGS_KEY },
-      data: { value: updatedSettingsData as unknown as Prisma.JsonObject },
-    });
+    await upsertSetting(SettingKey.DownloaderSettings, updatedSettingsData);
 
     revalidatePath('/dashboard/settings');
     return { success: true };

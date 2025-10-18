@@ -1,16 +1,16 @@
 import { db } from "@/lib/db";
-import metatubeClient from "../metatube";
-import { translatePlotByAI } from "../ai-provider";
-import { generatePathFromRule } from "../parse/file-number-parser";
-import path from "path";
+import { getMovieDownloadDirectoryConfig, getSetting, SettingKey } from "@/services/settings";
+import { MovieStatus, TransferStatus } from "@prisma/client";
 import { promises as fs } from 'fs';
-import NfoGenerator, { mapMovieDetailToNFO } from "../nfo-generator";
-import { getFileInfo } from "../parse/get-file-info";
 import { Jimp } from 'jimp';
-import { TransferMethod, TransferStatus } from "@prisma/client";
-import { getMovieDownloadDirectoryConfig } from "../download";
-import { proxyFetch } from "../proxyFetch";
+import path from "path";
+import { translatePlotByAI } from "../ai-provider";
 import { logger } from "../logger";
+import metatubeClient from "../metatube";
+import NfoGenerator, { mapMovieDetailToNFO } from "../nfo-generator";
+import { generatePathFromRule } from "../parse/file-number-parser";
+import { getFileInfo } from "../parse/get-file-info";
+import { proxyFetch } from "../proxyFetch";
 async function downloadImage(url: string, outputDir: string) {
   const urlObj = new URL(url); // 解析 URL
   const refererOrigin = urlObj.origin; // 获取 origin，例如 "https://www.example.com"
@@ -84,21 +84,11 @@ async function downloadFanarts(urls: string[], outputDir: string) {
     try {
       await downloadImage(url, outputDir);
     } catch (err) {
-      logger.error(`下载失败: ${url}:${err}`, );
+      logger.error(`下载失败: ${url}:${err}`,);
     }
   }
 }
-async function getMovieDirectoryConfig() {
-  const setting = await db.setting.findUnique({ where: { key: 'downloadDirectoryConfig' } });
-  if (!setting) return null;
-  let allMovieDirectory: any[] = [];
-  Object.values(setting.value as any).forEach((directory: any) => {
-    if ((directory as any).mediaType === 'movie') {
-      allMovieDirectory.push(directory as any);
-    }
-  })
-  return allMovieDirectory;
-}
+
 interface DownloadMoviePictureParams {
   filePath: string;
   fileName: string;
@@ -211,7 +201,7 @@ export async function addWatermarks(imagePath: string, watermarkKeys: string[]) 
         mainImage.composite(watermark, x, y);
 
       } catch (watermarkError) {
-        logger.error(`Error processing watermark "${key}" from ${watermarkPath}:${watermarkError}`, );
+        logger.error(`Error processing watermark "${key}" from ${watermarkPath}:${watermarkError}`,);
       }
     }
 
@@ -220,18 +210,10 @@ export async function addWatermarks(imagePath: string, watermarkKeys: string[]) 
     logger.info(`Watermarks successfully applied to ${imagePath}`);
 
   } catch (mainImageError) {
-    logger.error(`Failed to read main image at ${imagePath}:${mainImageError}`, );
+    logger.error(`Failed to read main image at ${imagePath}:${mainImageError}`,);
   }
 }
-export async function getMovieParseConfig(): Promise<MovieParseConfig | null> {
-  const parseConfig = await db.setting.findUnique({
-    where: {
-      key: 'scraperRuleConfig'
-    }
-  });
-  if (!parseConfig) return null;
-  return parseConfig.value as any;
-}
+
 
 interface ManualTransferParams {
   file: { id: string; name: string };
@@ -274,7 +256,7 @@ export async function manualTransfer(
       throw new Error('源文件不存在');
     }
 
-    const parseConfig = await getMovieParseConfig();
+    const parseConfig = await getSetting(SettingKey.MovieParseConfig);
     if (!parseConfig) {
       throw new Error('无法获取解析配置');
     }
@@ -373,6 +355,10 @@ export async function manualTransfer(
     await fs.mkdir(savePath, { recursive: true });
     createdDirectories.push(savePath);
 
+    logger.info('===========================================');
+    logger.info(params.transferMethod);
+    logger.info('===========================================');
+
     // 2. 根据转移方法处理文件
     if (params.transferMethod === 'MOVE') {
       logger.info('===========================================');
@@ -438,18 +424,20 @@ export async function manualTransfer(
         completedAt: new Date(),
       },
     });
-
-    await db.subscribeData.updateMany({
-      where: { id: { in: params.subscribeDataIds } },
-      data: {
-        status: 'transfered',
+    await db.movie.update({
+      where: {
+        number: movieDetail.number,
       },
+      data: {
+        status: MovieStatus.transfered,
+        addedAt: new Date(),
+      }
     });
 
     logger.info('文件转移完成');
 
   } catch (error) {
-    logger.error(`文件转移过程中出现错误:${error}`, );
+    logger.error(`文件转移过程中出现错误:${error}`,);
 
     // 执行回滚操作
     await rollbackFileOperations({
@@ -457,7 +445,7 @@ export async function manualTransfer(
       createdDirectories,
       originalFilePath,
       tempFilePath,
-      transferMethod:params.transferMethod
+      transferMethod: params.transferMethod
     });
 
     // 更新数据库为失败状态
@@ -495,10 +483,10 @@ async function rollbackFileOperations(options: {
       try {
         if (await fileExists(filePath)) {
           await fs.unlink(filePath);
-          logger.info(`已删除文件:${filePath}`, );
+          logger.info(`已删除文件:${filePath}`,);
         }
       } catch (error) {
-        logger.error(`删除文件失败:${filePath}:${error}`, );
+        logger.error(`删除文件失败:${filePath}:${error}`,);
       }
     }
 
@@ -507,10 +495,10 @@ async function rollbackFileOperations(options: {
       try {
         if (await fileExists(tempFilePath) && !await fileExists(originalFilePath)) {
           await fs.rename(tempFilePath, originalFilePath);
-          logger.info(`已恢复原文件:${originalFilePath}`, );
+          logger.info(`已恢复原文件:${originalFilePath}`,);
         }
       } catch (error) {
-        logger.error(`恢复原文件失败:${error}`, );
+        logger.error(`恢复原文件失败:${error}`,);
       }
     }
 
@@ -521,15 +509,15 @@ async function rollbackFileOperations(options: {
         const files = await fs.readdir(dirPath);
         if (files.length === 0) {
           await fs.rmdir(dirPath);
-          logger.info(`已删除空目录:${dirPath}`, );
+          logger.info(`已删除空目录:${dirPath}`,);
         }
       } catch (error) {
-        logger.error(`删除目录失败:${dirPath}:${error}`, );
+        logger.error(`删除目录失败:${dirPath}:${error}`,);
       }
     }
 
     logger.info('回滚操作完成');
   } catch (error) {
-    logger.error(`回滚操作失败:${error}`, );
+    logger.error(`回滚操作失败:${error}`,);
   }
 }

@@ -1,23 +1,14 @@
-import { Suspense } from 'react';
 import PageContainer from '@/components/layout/page-container';
-import { PrismaClient } from '@prisma/client';
 import { TelegramManagement, TelegramSettings } from './management';
+import { getSetting, SettingKey } from '@/services/settings';
 
-
-// It's good practice to have a single instance of Prisma Client
-// You can place this in a lib file, e.g., 'src/lib/prisma.ts'
-const prisma = new PrismaClient();
-const TELEGRAM_CONFIG_KEY = 'telegramConfig';
-
-// This function fetches the data on the server
 async function getTelegramSettings(): Promise<TelegramSettings> {
-  const setting = await prisma.setting.findUnique({
-    where: { key: TELEGRAM_CONFIG_KEY },
-  });
 
-  if (setting && typeof setting.value === 'object' && setting.value !== null) {
+  const setting = await getSetting(SettingKey.TelegramConfig);
+
+  if (setting ) {
     // Ensure the returned object matches the TelegramSettings interface
-    const value = setting.value as any;
+    const value = setting as any;
     return {
       enabled: value.enabled || false,
       apiId: value.apiId || '',

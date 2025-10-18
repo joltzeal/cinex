@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import Image from "next/image";
+import { formatDate } from "@/lib/format";
 
 interface DownloadProgressCellProps {
   urls: DocumentDownloadURL[];
@@ -79,6 +80,9 @@ export function DownloadProgressCell({ urls }: DownloadProgressCellProps) {
   const total = urls.length;
   const completed = urls.filter(url => url.status === 'downloaded').length;
   const progress = total > 0 ? (completed / total) * 100 : 0;
+  
+  // 检查是否有任意url正在下载
+  const isDownloading = urls.some(url => url.status === 'downloading');
 
   // 按状态分组
   const groupedUrls = urls.reduce((acc, url) => {
@@ -103,10 +107,6 @@ export function DownloadProgressCell({ urls }: DownloadProgressCellProps) {
     }
 
     try {
-      // 遵循 TypeScript 的最佳实践：
-      // 1. 先将宽泛的 JsonObject 类型转换为 `unknown`
-      // 2. 然后再将 `unknown` 断言为我们期望的 `DownloadDetail` 类型
-      // 这样做可以绕过 TypeScript 关于类型不充分重叠的检查，因为它是有意为之的
       return detail as unknown as DownloadDetail;
     } catch (error) {
       console.error("Failed to parse detail JSON:", error);
@@ -151,7 +151,7 @@ export function DownloadProgressCell({ urls }: DownloadProgressCellProps) {
                     <span className="font-medium">任务进度</span>
                     <span className="text-muted-foreground font-mono">{`${completed}/${total}`}</span>
                   </div>
-                  <Progress value={progress} className="h-2" />
+                  <Progress value={progress} className={`h-2 ${isDownloading ? 'progress-downloading' : ''}`} />
                 </div>
               </DialogTrigger>
             </TooltipTrigger>
@@ -206,11 +206,19 @@ export function DownloadProgressCell({ urls }: DownloadProgressCellProps) {
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <Badge variant={config.badgeVariant} className="text-xs px-1.5 py-0">{config.label}</Badge>
                                 {formattedSize && <Badge variant="outline" className="text-xs px-1.5 py-0">{formattedSize}</Badge>}
+                                {
+                                  url.createdAt && (
+                                    <Badge variant="outline" className="text-xs px-1.5 py-0">
+                                      {formatDate(url.createdAt, )}
+                                    </Badge>
+                                  )
+                                }
                                 {countDisplay !== null && (
                                   <Badge variant="outline" className="text-xs px-1.5 py-0">
                                     {countDisplay > 1 ? `${countDisplay} 个文件` : `1 个文件`}
                                   </Badge>
                                 )}
+                                
                               </div>
                             </div>
                           </div>

@@ -1,94 +1,224 @@
 import { JellyfinClient, JellyfinConfig, JellyfinMediaItem } from '../jellyfin-client';
 import { db } from '../db';
-import { Prisma } from '@prisma/client';
+import { MovieStatus, Prisma } from '@prisma/client';
 import { logger } from '../logger';
 
+/**
+ * 媒体库缓存
+ */
+interface MediaLibraryCache {
+  items: JellyfinMediaItem[];
+  lastUpdated: Date | null;
+}
 
-export async function taskMovieLibraryUpdate() {
-  const taskName = 'Jellyfin媒体库同步';
+// 全局缓存
+let mediaLibraryCache: MediaLibraryCache = {
+  items: [],
+  lastUpdated: null,
+};
+
+/**
+ * 刷新媒体库缓存
+ * 从 Jellyfin 服务器获取所有媒体库项目并存储到全局缓存中
+ */
+export async function refreshMediaLibraryCache(): Promise<void> {
   try {
     // 获取 Jellyfin 配置
-    const JELLYFIN_CONFIG = await db.setting.findUnique({ where: { key: 'mediaServerConfig' } }) as any;
-    if (!JELLYFIN_CONFIG) return;
-    // 获取所有Movie 
-    const subscribeList = await db.subscribeData.findMany({
-      // where: { status: { not: 'added' } },
-      select: { id: true, title: true, code: true }
-    });
-    const client = new JellyfinClient(JELLYFIN_CONFIG?.value as JellyfinConfig);
+    const JELLYFIN_CONFIG = await db.setting.findUnique({ 
+      where: { key: 'mediaServerConfig' } 
+    }) as any;
+    
+    if (!JELLYFIN_CONFIG?.value) {
+      logger.warn('[Media Library Cache] Jellyfin 配置未找到');
+      return;
+    }
+
+    const client = new JellyfinClient(JELLYFIN_CONFIG.value as JellyfinConfig);
+    
     // 获取所有媒体库
     const libraries = await client.getMediaLibraries();
-    // 获取所有Movie 媒体项
+    
+    // 获取所有媒体项
     let allMediaItems: JellyfinMediaItem[] = [];
     for (const library of libraries) {
-      // 我们只关心 "collectionType": "movies" 或 "tvshows" 的库
-      // Jellyfin API 返回的 Type 是 'CollectionFolder'
-      logger.info(`[Media Library Sync] 扫描媒体库 "${library.Name}"...`);
+      logger.info(`[Media Library Cache] 扫描媒体库 "${library.Name}"...`);
       const itemsInLibrary = await client.getAllItemsRecursive(library.Id);
       allMediaItems.push(...itemsInLibrary);
     }
 
-    const matchesToUpdate = new Map<string, JellyfinMediaItem>();
+    // 更新缓存
+    mediaLibraryCache.items = allMediaItems;
+    mediaLibraryCache.lastUpdated = new Date();
+    
+    logger.info(`[Media Library Cache] 缓存已更新，共 ${allMediaItems.length} 个媒体项`);
+  } catch (error) {
+    logger.error(`[Media Library Cache] 刷新缓存失败: ${error}`);
+    throw error;
+  }
+}
 
-    logger.info('[Media Library Sync] 开始匹配源ID...');
-    const sourceIdRegex = new RegExp(`(${subscribeList.map(s => s.code).join('|')})`, 'i');
-    const sourceIdToPkMap = new Map<string, string>();
-    subscribeList.forEach(s => sourceIdToPkMap.set(s.code.toLowerCase(), s.id));
+/**
+ * 获取缓存的媒体库项目
+ */
+export function getMediaLibraryCache(): MediaLibraryCache {
+  return mediaLibraryCache;
+}
 
-    for (const mediaItem of allMediaItems) {
-      const textToSearch = `${mediaItem.Name} ${mediaItem.OriginalTitle || ''} ${mediaItem.SortName || ''}`;
-      const match = textToSearch.match(sourceIdRegex);
-      if (match) {
-        const foundSourceId = match[1].toLowerCase();
-        const pkId = sourceIdToPkMap.get(foundSourceId);
-        if (pkId && !matchesToUpdate.has(pkId)) {
-          // 🔥 存储主键ID和完整的 mediaItem 对象
-          matchesToUpdate.set(pkId, mediaItem);
-          sourceIdToPkMap.delete(foundSourceId);
-        }
+/**
+ * 通过ID或标题查找媒体项
+ * @param sourceId 源ID（如番号）
+ * @param title 标题
+ * @returns 匹配的媒体项或null
+ */
+export function findMediaItemByIdOrTitle(
+  sourceId?: string, 
+  title?: string
+): JellyfinMediaItem | null {
+  if (!sourceId && !title) {
+    logger.warn('[Media Library Cache] 必须提供 番号 或 标题 中的至少一个');
+    return null;
+  }
+
+  const { items } = mediaLibraryCache;
+  
+  if (items.length === 0) {
+    logger.warn('[Media Library Cache] 无缓存');
+    return null;
+  }
+
+  // 优先通过 sourceId 匹配
+  if (sourceId) {
+    const sourceIdLower = sourceId.toLowerCase();
+    for (const item of items) {
+      const textToSearch = `${item.Name} ${item.OriginalTitle || ''} ${item.SortName || ''}`;
+      if (textToSearch.toLowerCase().includes(sourceIdLower)) {
+        logger.info(`[Media Library Cache] 通过ID "${sourceId}" 找到媒体项: ${item.Name}`);
+        return item;
       }
     }
-    const matchedByIdCount = matchesToUpdate.size;
-    logger.info(`[Media Library Sync] 第一轮匹配完成. 匹配到 ${matchedByIdCount} 条记录`);
+  }
 
-    logger.info('[Media Library Sync] 开始匹配标题...');
-    let matchedByTitleCount = 0;
-    const remainingSubscriptions = subscribeList.filter(s => !matchesToUpdate.has(s.id));
-
-    if (remainingSubscriptions.length > 0 && allMediaItems.length > 0) {
-      const jellyfinTitleToItemMap = new Map<string, JellyfinMediaItem>();
-      allMediaItems.forEach(item => jellyfinTitleToItemMap.set(item.Name.toLowerCase(), item));
-
-      remainingSubscriptions.forEach(sub => {
-        const subTitleLower = sub.title.toLowerCase();
-        let isFound = false;
-        jellyfinTitleToItemMap.forEach((mediaItem, jellyfinTitle) => {
-          if (isFound) return;
-          if (jellyfinTitle.includes(subTitleLower)) {
-            if (!matchesToUpdate.has(sub.id)) {
-              matchesToUpdate.set(sub.id, mediaItem);
-              matchedByTitleCount++;
-              isFound = true;
-            }
-          }
-        });
-      });
+  // 通过标题匹配
+  if (title) {
+    const titleLower = title.toLowerCase();
+    for (const item of items) {
+      const itemNameLower = item.Name.toLowerCase();
+      // 双向包含匹配：Jellyfin标题包含查询标题，或查询标题包含Jellyfin标题
+      if (itemNameLower.includes(titleLower) || titleLower.includes(itemNameLower)) {
+        logger.info(`[Media Library Cache] 通过标题 "${title}" 找到媒体项: ${item.Name}`);
+        return item;
+      }
     }
+  }
 
+  logger.info(`[Media Library Cache] 未找到匹配的媒体项 (sourceId: ${sourceId}, title: ${title})`);
+  return null;
+}
 
-    // --- 3. 数据库更新逻辑 (重构为事务) ---
+/**
+ * 批量查找媒体项
+ * @param items 包含 id/number 和 title 的对象数组
+ * @returns Map<主键ID, 媒体项>
+ */
+export function findMediaItemsBatch(
+  items: Array<{ id: string; number: string; title: string }>
+): Map<string, JellyfinMediaItem> {
+  const matchesToUpdate = new Map<string, JellyfinMediaItem>();
+  const { items: cachedItems } = mediaLibraryCache;
+
+  if (cachedItems.length === 0) {
+    logger.warn('[Media Library Cache] 缓存为空，无法进行批量查找');
+    return matchesToUpdate;
+  }
+
+  // 第一轮：通过 ID (number) 匹配
+  const sourceIdRegex = new RegExp(`(${items.map(s => s.number).join('|')})`, 'i');
+  const sourceIdToPkMap = new Map<string, string>();
+  items.forEach(s => sourceIdToPkMap.set(s.number.toLowerCase(), s.id));
+
+  for (const mediaItem of cachedItems) {
+    const textToSearch = `${mediaItem.Name} ${mediaItem.OriginalTitle || ''} ${mediaItem.SortName || ''}`;
+    const match = textToSearch.match(sourceIdRegex);
+    if (match) {
+      const foundSourceId = match[1].toLowerCase();
+      const pkId = sourceIdToPkMap.get(foundSourceId);
+      if (pkId && !matchesToUpdate.has(pkId)) {
+        matchesToUpdate.set(pkId, mediaItem);
+        sourceIdToPkMap.delete(foundSourceId);
+      }
+    }
+  }
+
+  const matchedByIdCount = matchesToUpdate.size;
+  logger.info(`[Media Library Cache] 通过ID匹配到 ${matchedByIdCount} 条记录`);
+
+  // 第二轮：通过标题匹配未匹配的项
+  const remainingItems = items.filter(s => !matchesToUpdate.has(s.id));
+  
+  if (remainingItems.length > 0) {
+    const jellyfinTitleToItemMap = new Map<string, JellyfinMediaItem>();
+    cachedItems.forEach(item => jellyfinTitleToItemMap.set(item.Name.toLowerCase(), item));
+
+    let matchedByTitleCount = 0;
+    remainingItems.forEach(item => {
+      const itemTitleLower = item.title.toLowerCase();
+      let isFound = false;
+      jellyfinTitleToItemMap.forEach((mediaItem, jellyfinTitle) => {
+        if (isFound) return;
+        if (jellyfinTitle.includes(itemTitleLower)) {
+          if (!matchesToUpdate.has(item.id)) {
+            matchesToUpdate.set(item.id, mediaItem);
+            matchedByTitleCount++;
+            isFound = true;
+          }
+        }
+      });
+    });
+
+    logger.info(`[Media Library Cache] 通过标题匹配到 ${matchedByTitleCount} 条记录`);
+  }
+
+  return matchesToUpdate;
+}
+
+/**
+ * Jellyfin 媒体库同步任务
+ */
+export async function taskMovieLibraryUpdate() {
+  try {
+    // 刷新媒体库缓存
+    await refreshMediaLibraryCache();
+    
+    // 清空数据库中状态为added的记录
+    await db.movie.updateMany({
+      where: {
+        status: MovieStatus.added,
+      },
+      data: {
+        status: MovieStatus.uncheck,
+        mediaLibrary: undefined,
+      }
+    })
+
+    // 获取所有Movie 
+    const movieList = await db.movie.findMany({
+      select: { id: true, title: true, number: true }
+    });
+
+    // 批量查找匹配的媒体项
+    const matchesToUpdate = findMediaItemsBatch(movieList);
+
+    // 数据库更新逻辑
     if (matchesToUpdate.size > 0) {
+      const updatePromises: any[] = [];
 
-      const updatePromises: any[] = []; // 使用 any[] 来避免复杂的 Promise 类型体操
-
-      // 🔥 使用 forEach 替代 for...of 遍历 Map
       matchesToUpdate.forEach((mediaItem, pkId) => {
         const { ...mediaLibraryData } = mediaItem;
         updatePromises.push(
-          db.subscribeData.update({
+          db.movie.update({
             where: { id: pkId },
             data: {
-              status: 'added',
+              status: MovieStatus.added,
               mediaLibrary: mediaLibraryData as Prisma.InputJsonValue,
             },
           })
@@ -97,11 +227,11 @@ export async function taskMovieLibraryUpdate() {
 
       await db.$transaction(updatePromises);
       logger.info(`[Media Library Sync] ${matchesToUpdate.size} 条记录更新完成`);
-
     } else {
+      logger.info('[Media Library Sync] 没有找到需要更新的记录');
     }
   } catch (error) {
-    logger.error(`[Media Library Sync] 媒体库同步失败:${error}`);
+    logger.error(`[Media Library Sync] 媒体库同步失败: ${error}`);
   }
 }
 

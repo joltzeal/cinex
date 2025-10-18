@@ -27,45 +27,47 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { SCHEDULED_TASKS } from '@/constants/data';
+import { getNextExecutionDescription } from '@/lib/cron-utils';
 
 // 定义我们的任务列表，信息直接从 scheduler.ts 中提取
-const scheduledTasks = [
-  {
-    id: 'javbus-subscribe-update',
-    name: 'JAVBus 订阅增量更新',
-    description: '扫描所有 JAVBus 订阅源，查找并保存新的影片。',
-    schedule: '0 * * * *',
-    humanSchedule: '每小时整点',
-  },
-  {
-    id: 'download-status-sync',
-    name: '下载状态同步',
-    description: '与下载器客户端同步，更新数据库中所有任务的下载状态。',
-    schedule: '*/5 * * * *',
-    humanSchedule: '每 5 分钟',
-  },
-  {
-    id: 'media-scraping',
-    name: '媒体刮削',
-    description: '刮削媒体库中的影片。',
-    schedule: '*/5 * * * *',
-    humanSchedule: '每 5 分钟',
-  },
-  {
-    id: 'javbus-movie-update',
-    name: 'JAVBus 订阅影片更新',
-    description: '为已订阅的影片获取磁力链接并发送下载请求。',
-    schedule: '未设置周期执行',
-    humanSchedule: '仅手动或启动时执行',
-  },
-  {
-    id: 'media-library-sync',
-    name: '媒体库同步',
-    description: '同步媒体库中的影片到数据库。',
-    schedule: '*/5 * * * *',
-    humanSchedule: '每 5 分钟',
-  }
-];
+// const scheduledTasks = [
+//   {
+//     id: 'javbus-subscribe-update',
+//     name: 'JAVBus 订阅更新',
+//     description: '扫描所有 JAVBus 订阅源，查找并保存新的影片。',
+//     schedule: '0 */12 * * *',
+//     humanSchedule: '每小时整点',
+//   },
+//   {
+//     id: 'javbus-movie-update',
+//     name: 'JAVBus 影片更新',
+//     description: '为已订阅的影片获取磁力链接并发送下载请求。',
+//     schedule: '30 */6 * * *',
+//     humanSchedule: '仅手动或启动时执行',
+//   },
+//   {
+//     id: 'download-status-sync',
+//     name: '下载状态同步',
+//     description: '与下载器客户端同步，更新数据库中所有任务的下载状态。',
+//     schedule: '5 * * * *',
+//     humanSchedule: '每 5 分钟',
+//   },
+//   {
+//     id: 'forum-update',
+//     name: '论坛更新',
+//     description: '更新论坛中的帖子。',
+//     schedule: '0 */12 * * *',
+//     humanSchedule: '每 12 小时',
+//   },
+//   {
+//     id: 'media-library-sync',
+//     name: '媒体库同步',
+//     description: '同步媒体库中的影片到数据库。',
+//     schedule: '35 * * * *',
+//     humanSchedule: '每 5 分钟',
+//   }
+// ];
 
 export function AdvancedSettings() {
   // 使用一个对象来独立管理每个任务的加载状态
@@ -122,7 +124,7 @@ export function AdvancedSettings() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {scheduledTasks.map((task) => (
+              {SCHEDULED_TASKS.map((task) => (
                 <TableRow key={task.id}>
                   <TableCell>
                     <div className="font-medium">{task.name}</div>
@@ -133,7 +135,7 @@ export function AdvancedSettings() {
                   <TableCell className="hidden sm:table-cell">
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span>{task.humanSchedule}</span>
+                        <span>{getNextExecutionDescription(task.schedule)}</span>
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>Cron 表达式: {task.schedule}</p>

@@ -16,10 +16,11 @@ export async function DocumentsTable({ searchParams }: DocumentsTableProps) {
   // 在一个动态路由中，这里的解析现在是完全安全的
   const query = typeof params.query === 'string' ? params.query : undefined;
   const status = typeof params.status === 'string' && Object.values(DocumentDownloadStatus).includes(params.status as any) ? params.status as DocumentDownloadStatus : undefined;
+  const type = typeof params.type === 'string' ? params.type as string : undefined;
   const page = typeof params.page === 'string' ? Number(params.page) : 1;
   const pageSize = typeof params.pageSize === 'string' ? Number(params.pageSize) : 10;
 
-  const { documents, pageCount } = await getDocuments({ query, status, page, pageSize });
+  const { documents, pageCount } = await getDocuments({ query, status, type,page, pageSize, });
 
   return (
     <DocumentsDataTable

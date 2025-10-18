@@ -40,7 +40,8 @@ import {
   IconAdjustmentsDown,
   IconChartBarPopular,
   IconFileRss,
-  IconAdjustmentsSearch
+  IconAdjustmentsSearch,
+  IconMessage
 } from '@tabler/icons-react';
 
 export type Icon = React.ComponentType<IconProps>;
@@ -75,6 +76,7 @@ export const Icons = {
   add: IconPlus,
   warning: IconAlertTriangle,
   user: IconUser,
+  forum: IconMessage,
   arrowRight: IconArrowRight,
   help: IconHelpCircle,
   pizza: IconPizza,

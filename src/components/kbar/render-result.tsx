@@ -1,9 +1,16 @@
-import { KBarResults, useMatches } from 'kbar';
+import { KBarResults, useMatches, useKBar, ActionImpl } from 'kbar';
 import ResultItem from './result-item';
+import { Film, Search, Users } from 'lucide-react';
+
+
 
 export default function RenderResults() {
   const { results, rootActionId } = useMatches();
+  const { query } = useKBar();
 
+  let finalResults = results;
+
+  
   return (
     <KBarResults
       items={results}
@@ -23,3 +30,5 @@ export default function RenderResults() {
     />
   );
 }
+
+
