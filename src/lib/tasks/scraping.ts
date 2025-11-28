@@ -4,8 +4,7 @@ import { JellyfinMediaItem } from '../jellyfin-client';
 import { logger } from '../logger';
 import { getMediaLibraryCache, processMediaItemsForNumbers, refreshMediaLibraryCache } from './media-library';
 import { getMovieDetail, getMovieMagnets, getPoster } from '../javbus-parser';
-import { Prisma } from 'generated/prisma';
-import { MovieStatus } from '@prisma/client';
+import { Prisma, MovieStatus } from '@prisma/client';
 import { HTTPError } from 'got';
 export async function taskMediaScraping() {
   const taskName = '媒体刮削';

@@ -10,8 +10,7 @@ import { logger } from '@/lib/logger';
 import { db } from '@/lib/db';
 import { getMovieDetail, getMovieMagnets, getPoster } from '@/lib/javbus-parser';
 import { Magnet, MovieDetail } from '@/types/javbus';
-import { Prisma } from 'generated/prisma';
-import { MovieStatus } from '@prisma/client';
+import { Prisma, MovieStatus } from '@prisma/client';
 import { HTTPError } from 'got';
 
 /**

@@ -2,7 +2,7 @@ import { FilterType, Movie, MovieDetail } from '../../types/javbus';
 import { getMovieDetail, getMovieMagnets, getMoviesByPage } from '../javbus-parser';
 import { sleep } from '../utils';
 import { getPushService } from './utils';
-import { JsonValue } from 'generated/prisma/runtime/library';
+import { JsonValue } from '@prisma/client/runtime/library';
 import { db } from '../db';
 import { logger } from '../logger';
 import { getSetting, SettingKey } from '@/services/settings';
