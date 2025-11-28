@@ -24,52 +24,51 @@ export default async function Page(props: pageProps) {
   const page = searchParamsCache.get('page');
   const pageLimit = searchParamsCache.get('perPage');
   const filterType = searchParamsCache.get('filterType');
-  const subscribedMovieList = await getSubscribeMovieList({
-    where: {
-      status: MovieStatus.subscribed
-    }
-  });
-  // const subscribedMovieList = await uniqueMovieList(_subscribedMovieList);
-  const donwloadingMovieList = await getSubscribeMovieList({
-    where: {
-      status: MovieStatus.downloading
-    }
-  });
-  // const donwloadingMovieList = await uniqueMovieList(_donwloadingMovieList);
-  logger.info(`下载中影片:${donwloadingMovieList.length}`);
-  // logger.info(donwloadingMovieList);
-  const downloadMovieList = await getSubscribeMovieList({
-    where: {
-      status: MovieStatus.downloaded
-    }
-  });
-  // const downloadMovieList = await uniqueMovieList(_downloadMovieList);
-  const addedMovieList = await getSubscribeMovieList({
-    where: {
-      addedAt: {
-        not: null
-      }
-    },
-    orderBy: {
-      addedAt: 'desc'
-    }
-  });
+  // const subscribedMovieList = await getSubscribeMovieList({
+  //   where: {
+  //     status: MovieStatus.subscribed
+  //   }
+  // });
+  // const donwloadingMovieList = await getSubscribeMovieList({
+  //   where: {
+  //     status: MovieStatus.downloading
+  //   }
+  // });
 
-  const libraryMovieList = await getSubscribeMovieList({
-    where: {
-      status: MovieStatus.added
-    },
-    orderBy: {
-      date: 'desc'
-    }
-  });
+  // const downloadMovieList = await getSubscribeMovieList({
+  //   where: {
+  //     status: MovieStatus.downloaded
+  //   }
+  // });
+
+  // const addedMovieList = await getSubscribeMovieList({
+  //   where: {
+  //     addedAt: {
+  //       not: null
+  //     }
+  //   },
+  //   orderBy: {
+  //     addedAt: 'desc'
+  //   }
+  // });
+
+  // const libraryMovieList = await getSubscribeMovieList({
+  //   where: {
+  //     status: MovieStatus.added
+  //   },
+  //   orderBy: {
+  //     date: 'desc'
+  //   }
+  // });
   
-  // const addedMovieList = await uniqueMovieList(_addedMovieList);
-  
-  const mediaServer = await getSetting(SettingKey.MediaServerConfig);
+  const libraryMovieList:Movie[] = []
+  const subscribedMovieList:Movie[] = []
+  const donwloadingMovieList:Movie[] = []
+  const addedMovieList:Movie[] = []
+  const downloadMovieList:Movie[] = []
   return (
     <PageContainer scrollable={true}>
-      <div className="space-y-8">
+      <div className="space-y-8 w-full">
 
         <LibraryPage subscribeMovieList={libraryMovieList} key={"added"} />
         
@@ -93,11 +92,7 @@ export default async function Page(props: pageProps) {
           </div>
         )}
 
-        {subscribedMovieList?.length === 0 && donwloadingMovieList?.length === 0 && downloadMovieList?.length === 0 && (
-          <div className="text-center text-muted-foreground py-12">
-            <p>暂无订阅的影片</p>
-          </div>
-        )}
+        
       </div>
     </PageContainer>
   )

@@ -7,7 +7,6 @@ import { parseVideoList } from "@/lib/javdb-parser";
 import { VideoInfo } from "@/types/javdb";
 import { db } from "@/lib/db";
 
-// --- Reusable Caching Infrastructure ---
 
 async function addMovieStatus(videoList: VideoInfo[]): Promise<VideoInfo[]> {
   const movies = await db.movie.findMany({
@@ -100,7 +99,7 @@ async function getCachedData(
     // Handle generic errors
     return NextResponse.json({
       success: false,
-      error: "Failed to fetch data from the provider.",
+      error: `无法获取数据，请稍后再试.`,
     }, { status: 500 });
   }
 }

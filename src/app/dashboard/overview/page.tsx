@@ -56,7 +56,7 @@ export default async function OverviewPage() {
             <RecentlyAddedCard recentlyAddedData={recentlyAddedData} />
             <RealtimeSpeedCard />
             <BackgroundTasksCard />
-            {addedMovies && <RandomMovie movies={addedMovies} />}
+            {addedMovies.length>0 && <RandomMovie movies={addedMovies} />}
             
           </div>
           <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">

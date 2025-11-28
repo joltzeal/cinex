@@ -2,8 +2,8 @@
 import { GlareCard } from "@/components/ui/glare-card";
 import { Badge } from "@/components/ui/badge";
 import { MovieDetailDialog } from "@/components/search/movie-detail-dialog";
-import { formatDistanceToNow, formatDistance } from 'date-fns';
-import { Calendar, Clock, Users, Download, Play, CheckCircle, Trash2, Rss, PlayCircle, Book, Film } from "lucide-react";
+import { formatDistanceToNow } from 'date-fns';
+import { Clock, Users, Download, Trash2, Rss, PlayCircle, Film } from "lucide-react";
 import { Property } from "@/types/javbus";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";

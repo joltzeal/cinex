@@ -147,18 +147,14 @@ export default function LibraryPage(props: pageProps) {
               </Select>
             )}
             {filterType === 'tag' && (
-              <Select value={tagFilter} onValueChange={setTagFilter}>
+              <Select value={tagFilter} onValueChange={setTagFilter} disabled={allTags.length === 0}>
                 <SelectTrigger>
-                  <SelectValue placeholder="选择标签" />
+                  <SelectValue placeholder={allTags.length > 0 ? "选择标签" : "暂无标签"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {allTags.length > 0 ? (
-                    allTags.map(tag => (
-                      <SelectItem key={tag} value={tag}>{tag}</SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="" disabled>暂无标签</SelectItem>
-                  )}
+                  {allTags.map(tag => (
+                    <SelectItem key={tag} value={tag}>{tag}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             )}
