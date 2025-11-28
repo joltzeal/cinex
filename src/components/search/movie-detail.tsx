@@ -1,5 +1,5 @@
 "use client";
-import { UserCircle, Building, Film, BookText, Copy, Download, Eye, PlayCircle } from "lucide-react";
+import { UserCircle, Building ,MessageCircleCode, Film, BookText, Copy, Download, Eye, PlayCircle, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +17,7 @@ import { Movie, MovieStatus } from "@prisma/client";
 import { SubscribeMovieStatusMap } from "@/constants/data";
 import { useGlobalLightbox } from "@/components/global-lightbox-provider";
 import { useMediaServer } from "@/contexts/media-server-context";
-
+import { MovieReviewDialog } from "../JAV/movie-review";
 
 // --- 定义组件的 Props 接口 ---
 interface MovieDetailDisplayProps {
@@ -39,6 +39,8 @@ export default function MovieDetailDisplay({ movie }: MovieDetailDisplayProps) {
     magnets: movie.magnets as unknown as Magnet[]
   };
   const [taskId, setTaskId] = useState<string | null>(null);
+  const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
+
   const [progress, setProgress] = useState<SseProgress[]>([]);
   const [isCopied, setIsCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,7 +48,35 @@ export default function MovieDetailDisplay({ movie }: MovieDetailDisplayProps) {
   const router = useRouter();
   const { showLoader, hideLoader, updateLoadingMessage } = useLoading();
   const { openLightbox } = useGlobalLightbox();
+  const handleOpenReviewDialog = () => {
+    setIsReviewDialogOpen(true);
+  };
+  const handleSubmitReview = async (data: { rating: string; comment: string; tags: string[] }) => {
+    console.log(data);
+    try {
+      const response = await fetch(`/api/movie/${movieDetail.id}/reviews`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        throw new Error("提交评价失败");
+      }
+      const result = await response.json();
+      if (result.success) {
+        toast.success("提交评价成功");
+      } else {
+        toast.error("提交评价失败");
+      }
+    } catch (error) {
+      console.error("提交评价失败:", error);
+      toast.error("提交评价失败");
+    }
+  };
+  
 
+  const handleCloseReviewDialog = () => {
+    setIsReviewDialogOpen(false);
+  };
   const handleClickMetaInfo = (type: string, value: any,) => {
     const javbusUrl = `https://www.javbus.com/${type}/${value.id}`;
     window.open(javbusUrl, '_blank');
@@ -373,7 +403,7 @@ export default function MovieDetailDisplay({ movie }: MovieDetailDisplayProps) {
             {/* --- 右侧边栏 --- */}
             <aside className="lg:col-span-3">
               <div className="sticky top-8 space-y-6">
-                <div className="relative">
+                <div className="relative flex items-center gap-2">
                   {
                     movie.status === 'uncheck' && (
                       <Button variant="default" onClick={() => handleSubscribeMovie()} disabled={isSubmitting}>
@@ -395,6 +425,9 @@ export default function MovieDetailDisplay({ movie }: MovieDetailDisplayProps) {
                       <Button variant={SubscribeMovieStatusMap[movie.status as keyof typeof SubscribeMovieStatusMap].variant as any}>{SubscribeMovieStatusMap[movie.status as keyof typeof SubscribeMovieStatusMap].label}</Button>
                     )
                   }
+                  <Button variant="default" className="ml-4" onClick={handleOpenReviewDialog}>
+                    <MessageCircleCode className="w-4 h-4 " />
+                    评价</Button>
                 </div>
                 <Card className="bg-card border-border">
                   <CardContent className="p-4 space-y-3">
@@ -499,6 +532,12 @@ export default function MovieDetailDisplay({ movie }: MovieDetailDisplayProps) {
           }}
         />
       </ScrollArea>
+      <MovieReviewDialog
+      review={{rating: movie.rating ? movie.rating : '0', comment: movie.comment ?? '', tags: movie.tags ? (movie.tags as unknown as string[]) : []}}
+        isOpen={isReviewDialogOpen}
+        onClose={handleCloseReviewDialog}
+        onSubmit={(data) => handleSubmitReview(data)}
+      />
     </div>
   );
 }

@@ -2,12 +2,21 @@
 
 import {
   Film,
-  LucideIcon,
-  Search,
+  LucideIcon, Search,
   Users,
+  Video
 } from "lucide-react"
 import * as React from "react"
-
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog" // 移除 AlertDialogTrigger
 import { useLoading } from "@/app/context/loading-context"
 import { Button } from "@/components/ui/button"
 import {
@@ -31,13 +40,35 @@ const searchCategories: { name: string; icon: LucideIcon }[] = [
     name: "磁力",
     icon: Users,
   },
+  {
+    name: "在线播放",
+    icon: Video
+  }
 ];
 
+// 注意：我假设这些 URL 是你希望在新标签页中打开的
+const onlineVideoSources = [
+  {
+    name: "黄色仓库",
+    url: (keyword: string) => {
+      // 这里的URL请确保是合法的，并且可以在浏览器中正常访问
+      return `http://hsck9.cctv23.cc/?search2=ndafeoafa&search=${encodeURIComponent(keyword)}`;
+    },
+  },
+  {
+    name: "9色",
+    url: (keyword: string) => {
+      // 这里的URL请确保是合法的，并且可以在浏览器中正常访问
+      return `https://91porny.com/search?keywords=${encodeURIComponent(keyword)}`;
+    },
+  }
+]
+
 export function SearchComponent() {
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = React.useState(false) // 控制 CommandDialog
+  const [onlineVideoOpen, setOnlineVideoOpen] = React.useState(false) // 控制 AlertDialog
   const [inputValue, setInputValue] = React.useState("")
   const router = useRouter();
-  // 2. 从 Store 中获取设置数据的 action
   const { showLoader, hideLoader, updateLoadingMessage } = useLoading();
 
   React.useEffect(() => {
@@ -52,17 +83,27 @@ export function SearchComponent() {
     return () => document.removeEventListener("keydown", down)
   }, [])
 
-  // 搜索逻辑的实现函数
+  const handleSearchOnlineVideo = (keyword: string) => {
+    // 关闭 Alert Dialog
+    setOnlineVideoOpen(false);
+    // 关闭 Command Dialog
+    setOpen(false);
+    // 清空输入框
+    setInputValue("");
+
+    // 循环打开多个标签页
+    for (const source of onlineVideoSources) {
+      window.open(source.url(keyword), '_blank', 'noopener,noreferrer');
+    }
+  }
+
   const handleSearch = async (category: string) => {
-    // 增加一个安全检查，尽管 disabled 属性会阻止调用
-    console.log("handleSearch", category, inputValue);
-    
     const _inputValue = inputValue.trim();
     if (!_inputValue) {
       console.log("输入值为空，搜索操作被取消。");
       return;
     }
-    
+
     try {
       if (category === "番号") {
         showLoader(`正在搜索${category} "${_inputValue}"的相关信息...`);
@@ -76,48 +117,41 @@ export function SearchComponent() {
             throw new Error(`请求失败，状态码: ${response.status}`);
           }
         }
-
-        const result = await response.json(); // 获取返回的 JSON 数据
-
-        // 2. 关键改动：将获取到的数据存入 Zustand Store
-        // if (result && result.data) {
-        //   setMovie(result.data);
-        // } else {
-        //   hideLoader();
-        //   // 如果 API 成功但没有返回有效数据，也抛出错误
-        //   throw new Error("API 返回的数据格式不正确");
-        // }
-        
-        // 3. 关闭搜索框并跳转
-        setOpen(false);
+        setOpen(false); // 关闭搜索框
+        setInputValue(""); // 清空输入框
         hideLoader();
         router.push(`/dashboard/explore/search/${_inputValue}`);
       } else if (category === "磁力") {
         toast.error("磁力搜索功能暂未实现");
+        setOpen(false); // 关闭搜索框
+        setInputValue(""); // 清空输入框
+        return;
+      } else if (category === "在线播放") {
+        // 当用户点击 "在线播放" 时，打开 AlertDialog
+        setOnlineVideoOpen(true);
+        // 注意：这里 CommandDialog 不会立即关闭，而是等待用户在 AlertDialog 中做选择
         return;
       }
-
 
     } catch (err: any) {
       const errorMessage = err.message || '搜索失败';
       toast.error(errorMessage);
     } finally {
-      
+      // 可以在这里统一处理一些清理工作，例如如果需要，可以关闭 loading 状态
+      // 但对于番号搜索，我们希望在路由跳转前就隐藏 loader
     }
-
-    console.log(`正在触发搜索: "${inputValue}", 类别: ${category}`);
-    // 在这里实现您的 API 调用或其他搜索逻辑
-    // 例如: searchAPI.fetch({ query: inputValue, category: category })
-
-    // 搜索后关闭对话框
-    setOpen(false);
+    // 对于非 "在线播放" 的情况，如果还没有关闭，在这里关闭 CommandDialog
+    if (category !== "在线播放") {
+      setOpen(false);
+      setInputValue(""); // 清空输入框
+    }
   };
 
   return (
     <>
       <Button
         variant="outline"
-        className="w-[400px] justify-start text-muted-foreground"
+        className="w-[250px] justify-start text-muted-foreground"
         onClick={() => setOpen(true)}
       >
         <Search className="mr-2 h-4 w-4" />
@@ -139,13 +173,11 @@ export function SearchComponent() {
             {searchCategories.map((category) => (
               <CommandItem
                 key={category.name}
-                // 关键改动：当没有输入值时，禁用该项目
+                // 当没有输入值时，禁用该项目
                 disabled={!inputValue}
                 onSelect={() => handleSearch(category.name)}
               >
                 <category.icon className="mr-2 h-4 w-4" />
-
-                {/* 关键改动：根据是否有输入值来显示不同的文本 */}
                 <span>
                   {inputValue
                     ? <>搜索 “<span className="font-semibold">{inputValue}</span>” 相关的{category.name}</>
@@ -157,6 +189,24 @@ export function SearchComponent() {
           </CommandGroup>
         </CommandList>
       </CommandDialog>
+
+      {/* AlertDialog 不再需要 Trigger，直接由 onlineVideoOpen 状态控制 */}
+      <AlertDialog open={onlineVideoOpen} onOpenChange={setOnlineVideoOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确定要进行在线播放搜索吗？</AlertDialogTitle>
+            <AlertDialogDescription>
+              点击“搜索”将会在新标签页中打开多个视频网站，请注意浏览器可能会阻止弹窗。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            {/* 取消时，仅关闭 AlertDialog，不影响 CommandDialog */}
+            <AlertDialogCancel onClick={() => setOnlineVideoOpen(false)}>取消</AlertDialogCancel>
+            {/* 确认时，调用 handleSearchOnlineVideo 并传入 inputValue */}
+            <AlertDialogAction onClick={() => handleSearchOnlineVideo(inputValue)}>搜索</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

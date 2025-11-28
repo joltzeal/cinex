@@ -12,9 +12,6 @@ import StorageProgress from "@/components/storage-progress";
 
 export async function StorageSpace() {
   const storageInfo: StorageInfo = await getStorageInfo(DOCKER_MOUNT_PATH);
-  console.log(storageInfo);
-  
-  console.log(storageInfo);
   return (
     <Card className="flex flex-col">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

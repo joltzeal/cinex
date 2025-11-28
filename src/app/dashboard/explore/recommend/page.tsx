@@ -6,8 +6,6 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Minus, AppWindow, Star, Users, AlertCircle, Tag } from 'lucide-react';
 import PageContainer from '@/components/layout/page-container';
-import { useRouter } from 'next/navigation';
-import { useLoading } from '@/app/context/loading-context';
 import { VideoInfo } from '@/types/javdb';
 import { MovieDetailDialog } from "@/components/search/movie-detail-dialog";
 import { SubscribeMovieStatusMap } from '@/constants/data';
@@ -29,8 +27,6 @@ interface RankingSectionProps {
  * 单个海报卡片组件
  */
 function PosterCard({ video, aspectRatioValue }: { video: VideoInfo; aspectRatioValue: number }) {
-  const router = useRouter();
-  const { showLoader, hideLoader, updateLoadingMessage } = useLoading();
 
   return (
     // 控制卡片之间的间距

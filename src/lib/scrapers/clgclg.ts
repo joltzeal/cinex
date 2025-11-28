@@ -1,7 +1,7 @@
 // src/lib/scrapers/clgclg.ts
 import * as cheerio from 'cheerio';
 import { TorrentSearchResult } from './interface';
-import { proxyFetch } from '../proxyFetch';
+import { proxyRequest } from '../proxyFetch';
 
 
 export class ClgClgScraper {
@@ -68,11 +68,11 @@ export class ClgClgScraper {
    */
   private async _fetchHtml(url: string): Promise<string | null> {
     try {
-      const response = await proxyFetch(url, { method: 'GET', headers: this.headers });
+      const response = await proxyRequest(url, { method: 'GET', headers: this.headers });
       if (!response.ok) {
-        throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
+        throw new Error(`Failed to fetch: ${response.statusCode} ${response.statusMessage}`);
       }
-      return await response.text();
+      return response.body;
     } catch (error) {
       console.error(`Error fetching URL ${url}:`, error);
       return null;

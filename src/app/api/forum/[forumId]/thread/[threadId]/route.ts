@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
-import { proxyFetch } from '@/lib/proxyFetch';
+import { proxyRequest } from '@/lib/proxyFetch';
 import { db } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { getSehuatangSafeid, syncAndPaginateForum } from '@/lib/tasks/forum';
@@ -10,13 +10,13 @@ import { BASE_HEADER, FORUM_MAP, FORUMS } from '@/constants/data';
 async function fetchSouthPlusTitle(threadId: string) {
   // https://www.south-plus.net/thread.php?fid-9.html
   const url = `${FORUM_MAP.southPlus}/thread.php?fid-${threadId}.html`;
-  const response = await proxyFetch(url, {
+  const response = await proxyRequest(url, {
     headers: BASE_HEADER,
   });
   if (!response.ok) {
     return { title: null, url: null };
   }
-  const html = await response.text();
+  const html = response.body;
   const $ = cheerio.load(html);
   const title = $('head title').text().trim().split(' - ')[0].trim();
   return { title, url: url };
@@ -30,7 +30,7 @@ async function fetchT66yTitle(threadId: string) {
   }
   url.search = new URLSearchParams(params).toString();
   // const url = `${FORUM_MAP.t66y}/thread0806.php?fid=${threadId}`;
-  const response = await proxyFetch(url, {
+  const response = await proxyRequest(url.toString(), {
     headers: {
       'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
       'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
@@ -39,7 +39,7 @@ async function fetchT66yTitle(threadId: string) {
   if (!response.ok) {
     return { title: null, url: null };
   }
-  const html = await response.text();
+  const html = response.body;
   const $ = cheerio.load(html);
   
   // 辅助函数：从指定的 div.t 中提取标题
@@ -71,7 +71,7 @@ async function fetchT66yTitle(threadId: string) {
 async function fetchJavbusTitle(threadId: string) {
   // https://www.javbus.com/forum/forum.php?mod=forumdisplay&fid=2
   const url = `${FORUM_MAP.javbus}/forum/forum.php?mod=forumdisplay&fid=${threadId}`;
-  const response = await proxyFetch(url, {
+  const response = await proxyRequest(url, {
     headers: {
       'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
       'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
@@ -81,7 +81,7 @@ async function fetchJavbusTitle(threadId: string) {
   if (!response.ok) {
     return { title: null, url: null };
   }
-  const html = await response.text();
+  const html = response.body;
   const $ = cheerio.load(html);
   const title = $('.forum_top_name h1 a').text().trim();
   return { title, url: url };
@@ -98,7 +98,7 @@ async function fetchSehuatangTitle(threadId: string) {
 
 
 
-  const sehuatangResponse = await proxyFetch(url, {
+  const sehuatangResponse = await proxyRequest(url, {
     headers: {
       'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
       'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
@@ -108,7 +108,7 @@ async function fetchSehuatangTitle(threadId: string) {
   if (!sehuatangResponse.ok) {
     return { title: null, url: null };
   }
-  const sehuatangHtml = await sehuatangResponse.text();
+  const sehuatangHtml = sehuatangResponse.body;
   const sehuatang$ = cheerio.load(sehuatangHtml);
   const title = sehuatang$('h1.xs2 a').text().trim();
   return { title, url };
@@ -116,7 +116,7 @@ async function fetchSehuatangTitle(threadId: string) {
 // https://hjd2048.com/2048/thread.php?fid=15
 async function fetch2048Title(threadId: string) {
   const url = `https://hjd2048.com/2048/thread.php?fid=${threadId}&search=img`;
-  const response = await proxyFetch(url, {
+  const response = await proxyRequest(url, {
     headers: {
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -126,7 +126,7 @@ async function fetch2048Title(threadId: string) {
   if (!response.ok) {
     return { title: null, url: null };
   }
-  const html = await response.text();
+  const html = response.body;
   const $ = cheerio.load(html);
   const title = $('#sonEle').text().trim()
   return { title, url };

@@ -3,7 +3,7 @@
 
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
-import { proxyFetch } from "@/lib/proxyFetch";
+import {  proxyRequest } from "@/lib/proxyFetch";
 import { revalidatePath } from "next/cache";
 import * as cheerio from 'cheerio';
 
@@ -30,7 +30,7 @@ export async function syncForumThread(forumId: string, threadId: string) {
     }
 
     const url = `https://hjd2048.com/2048/thread.php?fid=${threadId}&search=img&page=1`;
-    const response = await proxyFetch(url, {
+    const response = await proxyRequest(url, {
       headers: {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -42,7 +42,7 @@ export async function syncForumThread(forumId: string, threadId: string) {
       throw new Error("Failed to fetch data from source");
     }
 
-    const html = await response.text();
+    const html = response.body;
     const $ = cheerio.load(html);
 
     const postsToCreate: Array<{

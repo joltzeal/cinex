@@ -1,7 +1,7 @@
 // src/lib/scrapers/btdigg.ts
 import * as cheerio from 'cheerio';
 import { IScraper, TorrentSearchResult } from './interface';
-import { proxyFetch } from '../proxyFetch';
+import { proxyRequest } from '../proxyFetch';
 // 移除了 https-proxy-agent 的导入
 
 export class BtDiggScraper implements IScraper {
@@ -36,18 +36,18 @@ export class BtDiggScraper implements IScraper {
         // 移除了 _sleep 调用
         try {
             const headers = { ...this.baseHeaders, 'Referer': referer };
-            const response = await proxyFetch(url, { 
+            const response = await proxyRequest(url, { 
                 method: 'GET', 
                 headers: headers,
                 cache: 'no-cache'
             });
 
             if (!response.ok) {
-                const errorBody = await response.text();
-                console.error(`[${BtDiggScraper.sourceName}] HTTP Error ${response.status} Body:`, errorBody.substring(0, 500));
-                throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
+                const errorBody = response.body;
+                console.error(`[${BtDiggScraper.sourceName}] HTTP Error ${response.statusCode} Body:`, errorBody?.substring(0, 500));
+                throw new Error(`Failed to fetch: ${response.statusCode} ${response.statusMessage}`);
             }
-            return await response.text();
+            return response.body;
         } catch (error) {
             console.error(`[${BtDiggScraper.sourceName}] Error in _fetchHtml for URL ${url}:`, error);
             return null;

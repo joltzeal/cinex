@@ -1,32 +1,32 @@
-// tsconfig.bot.json
-{
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "outDir": "dist", // <--- 确保这一行存在且正确
-    "rootDir": "src", // <--- 推荐添加：指定源文件的根目录
-    // 关键：告诉 ts-node 将 import/export 编译成 require/module.exports
-    "module": "CommonJS",
-    // 下面这几项在 ts-node 运行时也有帮助
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "isolatedModules": false, // 对于非 nextjs 部分，可以关掉
-    "allowJs": true,
-    "noEmit": false // 确保 ts-node 可以正常工作
-  },
-  // 明确指定只包含 bot 相关的代码
-  // 只包含需要编译的文件
-  "include": [
-    "src/bot/**/*.ts",
-    "src/lib/**/*.ts"
-  ],
-  // 排除不需要的文件
-  "exclude": [
-    "node_modules",
-    ".next",
-    "src/app",
-    "src/components",
-    "src/hooks",
-    "src/middleware.ts"
-  ]
-}
+// // tsconfig.bot.json
+// {
+//   "extends": "./tsconfig.json",
+//   "compilerOptions": {
+//     "outDir": "dist", // <--- 确保这一行存在且正确
+//     "rootDir": "src", // <--- 推荐添加：指定源文件的根目录
+//     // 关键：告诉 ts-node 将 import/export 编译成 require/module.exports
+//     "module": "CommonJS",
+//     // 下面这几项在 ts-node 运行时也有帮助
+//     "moduleResolution": "node",
+//     "esModuleInterop": true,
+//     "resolveJsonModule": true,
+//     "isolatedModules": false, // 对于非 nextjs 部分，可以关掉
+//     "allowJs": true,
+//     "noEmit": false // 确保 ts-node 可以正常工作
+//   },
+//   // 明确指定只包含 bot 相关的代码
+//   // 只包含需要编译的文件
+//   "include": [
+//     "src/bot/**/*.ts",
+//     "src/lib/**/*.ts"
+//   ],
+//   // 排除不需要的文件
+//   "exclude": [
+//     "node_modules",
+//     ".next",
+//     "src/app",
+//     "src/components",
+//     "src/hooks",
+//     "src/middleware.ts"
+//   ]
+// }

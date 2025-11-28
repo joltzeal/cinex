@@ -8,6 +8,7 @@ import { getSubscribeMovieList } from "@/services/subscribe";
 import { getSetting, SettingKey } from "@/services/settings";
 import { logger } from "@/lib/logger";
 import { Movie, MovieStatus } from "@prisma/client";
+import LibraryPage from "./library";
 
 type pageProps = {
   searchParams: Promise<SearchParams>;
@@ -53,6 +54,15 @@ export default async function Page(props: pageProps) {
       addedAt: 'desc'
     }
   });
+
+  const libraryMovieList = await getSubscribeMovieList({
+    where: {
+      status: MovieStatus.added
+    },
+    orderBy: {
+      date: 'desc'
+    }
+  });
   
   // const addedMovieList = await uniqueMovieList(_addedMovieList);
   
@@ -60,6 +70,9 @@ export default async function Page(props: pageProps) {
   return (
     <PageContainer scrollable={true}>
       <div className="space-y-8">
+
+        <LibraryPage subscribeMovieList={libraryMovieList} key={"added"} />
+        
         {subscribedMovieList?.length > 0 && (
           <div className="space-y-4">
             <Heading title={"订阅中影片"} description={`共订阅 ${subscribedMovieList.length} 部影片`} />

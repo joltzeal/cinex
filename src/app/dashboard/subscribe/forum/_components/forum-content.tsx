@@ -41,6 +41,7 @@ export async function ForumContent({ postId, forumId, threadId }: ForumContentPr
       </div>
     );
   }
+  
 
   const post = await db.forumPost.findUnique({
     where: {
@@ -50,6 +51,15 @@ export async function ForumContent({ postId, forumId, threadId }: ForumContentPr
       forumSubscribe: true,
     },
   });
+
+  if (!post?.readed) {
+    await db.forumPost.update({
+      where: {
+        id: postId,
+      },
+      data: { readed: true },
+    });
+  }
 
   if (!post) {
     return (

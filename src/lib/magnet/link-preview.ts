@@ -1,4 +1,5 @@
 import { logger } from "../logger";
+import { proxyRequest } from "../proxyFetch";
 
 // 定义成功的 API 响应接口
 export interface PreviewResponse {
@@ -32,26 +33,26 @@ export class WhatslinkPreview extends LinkPreview {
     // 1. 定义要轮流尝试的 Origin 列表
     const origins = [
       'https://whatslink.info',
+      'https://magnet.pages.dev',
       'https://tmp.nulla.top',
       // 您可以在这里添加更多备用的 origin
     ];
 
     // 2. 定义基础的请求头，Origin 和 Referer 将在循环中动态设置
     const baseHeaders = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'application/json, text/plain, */*',
-      'Accept-Language': 'zh-CN,zh;q=0.9',
-      'Accept-Encoding': 'gzip, deflate, br, zstd',
-      'Connection': 'keep-alive',
-      'Cache-Control': 'no-cache',
-
-      'Pragma': 'no-cache',
-      'sec-ch-ua': '"Chromium";v="139", "Not;A=Brand";v="99"',
+      'accept': 'application/json',
+      'accept-language': 'zh-CN,zh;q=0.9',
+      'cache-control': 'no-cache',
+      'dnt': '1',
+      'pragma': 'no-cache',
+      'priority': 'u=1, i',
+      'sec-ch-ua': '"Chromium";v="141", "Not?A_Brand";v="8"',
       'sec-ch-ua-mobile': '?0',
-      'sec-ch-ua-platform': "macOS",
+      'sec-ch-ua-platform': '"macOS"',
       'sec-fetch-dest': 'empty',
       'sec-fetch-mode': 'cors',
       'sec-fetch-site': 'cross-site',
+      'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
     };
 
     // 3. 用于存储最后一次失败的错误信息
@@ -68,7 +69,7 @@ export class WhatslinkPreview extends LinkPreview {
           'Referer': `${origin}/`,
         };
 
-        const response = await fetch(apiUrl, {
+        const response = await proxyRequest(apiUrl, {
           method: 'GET',
           headers: headers,
         });
@@ -76,11 +77,12 @@ export class WhatslinkPreview extends LinkPreview {
         // 检查 HTTP 级别的错误
         if (!response.ok) {
           // 如果 HTTP 状态码不为 2xx，则构造一个错误并抛出，以便进入 catch 块
-          const errorBody = await response.text();
-          throw new Error(`HTTP 错误 ${response.status}。来自 Origin: ${origin}。响应体: ${errorBody}`);
+          const errorBody = response.body;
+          throw new Error(`HTTP 错误 ${response.statusCode}。来自 Origin: ${origin}。响应体: ${errorBody}`);
         }
 
-        const data: WhatslinkApiResponse = await response.json();
+
+        const data: WhatslinkApiResponse = JSON.parse(response.body as string);
 
         // 检查应用级别的错误 (即 API 返回的 JSON 中包含 error 字段)
         if (data.error) {

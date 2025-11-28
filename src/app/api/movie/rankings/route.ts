@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { proxyFetch } from "@/lib/proxyFetch";
+import { proxyRequest } from "@/lib/proxyFetch";
 import { ARANKINGS_CCESS_DENIED_MESSAGE, RANKINGS_CACHE_DURATION_MS, RANKINGS_JAVDB_BASE_URL, USER_AGENT } from "@/constants/data";
 import { parseAvfanVideoList } from "@/lib/rankings/avfan";
 import { parseOnejavVideoList } from "@/lib/rankings/onejav";
@@ -119,12 +119,15 @@ export async function GET(req: NextRequest) {
   if (website === 'onejav') {
     const cacheKey = `onejav:${period}`;
     return getCachedData(cacheKey, async () => {
-      const response = await proxyFetch(`https://onejav.com/popular/${period}?page=1&jav=1`, {
+      const response = await proxyRequest(`https://onejav.com/popular/${period}?page=1&jav=1`, {
         method: 'GET',
         headers: { 'User-Agent': USER_AGENT },
       });
-      const body = await response.text();
-      return await addMovieStatus(parseOnejavVideoList(body, 'https://onejav.com'));
+      const body =  response.body;
+      if (!body) {
+        throw new Error('Failed to fetch');
+      }
+      return await addMovieStatus(parseOnejavVideoList(body.toString(), 'https://onejav.com'));
     });
   }
   
@@ -132,15 +135,18 @@ export async function GET(req: NextRequest) {
   else if (website === 'avfan') {
     const cacheKey = `avfan:${period}`;
     return getCachedData(cacheKey, async () => {
-      const response = await proxyFetch(`https://avfan.com/zh-CN/rankings/fanza_ranking?t=${period}`, {
+      const response = await proxyRequest(`https://avfan.com/zh-CN/rankings/fanza_ranking?t=${period}`, {
         method: 'GET',
         headers: {
           'User-Agent': USER_AGENT,
           'accept-language': "zh-CN,zh;q=0.9",
         },
       });
-      const body = await response.text();
-      return await addMovieStatus(parseAvfanVideoList(body));
+      const body =  response.body;
+      if (!body) {
+        throw new Error('Failed to fetch');
+      }
+      return await addMovieStatus(parseAvfanVideoList(body.toString()));
     });
   }
   
@@ -149,22 +155,25 @@ export async function GET(req: NextRequest) {
     const cacheKey = `javdb:${period}`;
     return getCachedData(cacheKey, async () => {
       const url = `${RANKINGS_JAVDB_BASE_URL}?p=${period}&t=censored`;
-      const response = await proxyFetch(url, {
+      const response = await proxyRequest(url, {
         method: 'GET',
         headers: { 'User-Agent': USER_AGENT },
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
+        throw new Error(`Failed to fetch`);
       }
 
-      const body = await response.text();
+      const body = response.body;
+      if (!body) {
+        throw new Error('Failed to fetch');
+      }
 
       // For JavDB, we have a specific access denied message to check for
-      if (body.includes(ARANKINGS_CCESS_DENIED_MESSAGE)) {
+      if (body.toString().includes(ARANKINGS_CCESS_DENIED_MESSAGE)) {
         throw new AccessDeniedError("由於版權限制，本站禁止了你的網路所在國家的訪問。");
       }
-      return await addMovieStatus(parseVideoList(body));
+      return await addMovieStatus(parseVideoList(body.toString()));
     });
   }
 

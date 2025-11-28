@@ -1,8 +1,7 @@
 import bytes from 'bytes';
 import { parse, type HTMLElement } from 'node-html-parser';
 import probe from 'probe-image-size';
-import client, { agent } from '@/lib/javbus-client';
-// import { JAVBUS } from './constants.js';
+import { getAgent, getJavbusClient } from '@/lib/javbus-client';
 import type {
   FilterType,
   GetMoviesQuery,
@@ -128,7 +127,7 @@ export async function getMoviesByPage({
       : filterType
         ? `${prefix}/${filterValue}/${page}`
         : `${prefix}/page/${page}`;
-
+  const client = await getJavbusClient();
   const res = await client(url, {
     headers: { Cookie: `existmag=${magnet === 'exist' ? 'mag' : 'all'}` },
   }).text();
@@ -148,7 +147,7 @@ export async function getMoviesByKeywordAndPage(
 ): Promise<SearchMoviesPage> {
   const prefix = !type || type === 'normal' ? `${JAVBUS}/search` : `${JAVBUS}/${type}/search`;
   const url = `${prefix}/${encodeURIComponent(keyword)}/${page}&type=1`;
-
+  const client = await getJavbusClient();
   const res = await client(url, {
     headers: { Cookie: `existmag=${magnet === 'exist' ? 'mag' : 'all'}` },
   }).text();
@@ -200,7 +199,7 @@ export async function getMovieMagnets(params: {
   sortOrder?: SortOrder;
 }): Promise<Magnet[]> {
   const { movieId, gid, uc } = params;
-
+  const client = await getJavbusClient();
   const magnetsRes = await client(`${JAVBUS}/ajax/uncledatoolsbyajax.php`, {
     searchParams: {
       lang: 'zh',
@@ -307,6 +306,7 @@ function multipleInfoFinder<T>(
 }
 
 export async function getMovieDetail(id: string): Promise<MovieDetail> {
+  const client = await getJavbusClient();
   const res = await client(`${JAVBUS}/${id}`).text();
   const doc = parse(res);
 
@@ -320,6 +320,7 @@ export async function getMovieDetail(id: string): Promise<MovieDetail> {
 
   if (img) {
     try {
+      const agent = await getAgent();
       const { width, height } = await probe(img, {
         agent,
         headers: {
@@ -420,10 +421,34 @@ export async function getMovieDetail(id: string): Promise<MovieDetail> {
 export async function getStarInfo(starId: string, type?: MovieType): Promise<StarInfo> {
   const prefix = !type || type === 'normal' ? JAVBUS : `${JAVBUS}/${type}`;
   const url = `${prefix}/star/${starId}`;
-
+  const client = await getJavbusClient();
   const res = await client(url).text();
 
   const starInfo = parseStarInfo(res, starId);
 
   return starInfo;
+}
+
+
+export function getPoster(img: string): string | null {
+  // https://www.javbus.com/pics/cover/bmrv_b.jpg 到 https://www.javbus.com/pics/thumb/bmrv.jpg
+
+    // 使用 URL 对象方便解析
+    const u = new URL(img);
+    
+    // 提取域名（例如 https://www.javbus.com）
+    const base = `${u.origin}`;
+  
+    // 提取文件名部分（例如 bmrv_b.jpg）
+    const filename = u.pathname.split('/').pop();
+  
+    // 提取 _b 之前的部分
+    const match = filename?.match(/^(.+?)_b\.jpg$/i);
+    if (!match) return null; // 不符合格式直接返回 null
+  
+    const code = match[1];
+  
+    // 拼接新地址
+    return `${base}/pics/thumb/${code}.jpg`;
+  
 }

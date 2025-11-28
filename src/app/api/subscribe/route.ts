@@ -154,8 +154,9 @@ export async function POST(request: NextRequest) {
       try {
         // 1. 使用 upsert 确保电影的 number 唯一
         const movie = await db.movie.upsert({
-          where: { number: m.id ?? "" },
+          where: { number: m.id },
           update: {
+            poster: m.img ?? null,
             // 如果已存在，可以选择更新或不更新
             // 这里选择不更新，保留原有数据
           },
@@ -163,7 +164,6 @@ export async function POST(request: NextRequest) {
             number: m.id ?? "",
             title: m.title ?? "",
             date: m.date ?? null,
-            tags: m.tags ?? [],
             poster: m.img ?? null,
             status: MovieStatus.uncheck, // 设置默认状态
           },

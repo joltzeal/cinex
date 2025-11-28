@@ -1,6 +1,6 @@
 
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { ForumList } from "./_components/forum-list";
+import { ForumListWrapper } from "./_components/forum-list-wrapper";
 import { ForumContent } from "./_components/forum-content";
 import { SubscribeTabs } from "./_components/subscribe-tabs";
 import { Suspense } from "react";
@@ -17,6 +17,8 @@ export default async function ForumPage({
   const postId = params.postId as string | undefined;
   const searchQuery = params.q as string | undefined;
 
+  
+
   return (
     <div className="h-[calc(100dvh-62px)] w-full flex flex-col">
       <Suspense fallback={<div className="border-b p-4"><Skeleton className="h-9 w-full" /></div>}>
@@ -26,7 +28,7 @@ export default async function ForumPage({
         <ResizablePanelGroup direction="horizontal" className="h-full w-full">
           <ResizablePanel defaultSize={25} minSize={20} maxSize={40}>
             <Suspense fallback={<div className="p-4"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full mt-2" /></div>}>
-              <ForumList forumId={forumId} threadId={threadId} postId={postId} searchQuery={searchQuery} />
+              <ForumListWrapper forumId={forumId} threadId={threadId} postId={postId} searchQuery={searchQuery} />
             </Suspense>
           </ResizablePanel>
           <ResizableHandle withHandle />

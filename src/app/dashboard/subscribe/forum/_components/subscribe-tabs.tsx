@@ -137,7 +137,7 @@ export async function SubscribeTabs({ currentForumId, currentThreadId, searchQue
                                       {sub.title || sub.thread}
                                     </div>
                                     <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
-                                      最后检查: {lastCheckedText}
+                                      最后更新: {lastCheckedText}
                                     </p>
                                   </div>
                                   <div className="flex-shrink-0">

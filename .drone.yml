@@ -1,0 +1,117 @@
+---
+kind: pipeline
+type: docker
+name: cinex-build-deploy
+
+# 定义全局环境变量
+environment:
+  REGISTRY: 192.168.0.79:5000
+  IMAGE_NAME: cinex
+  TAG: latest
+
+steps:
+  # 步骤 1: 构建 Docker 镜像
+  - name: build-image
+    image: docker:dind
+    volumes:
+      - name: dockersock
+        path: /var/run/docker.sock
+    commands:
+      # 确保使用多平台构建器
+      - docker buildx create --name deploy-builder --use --bootstrap 2>/dev/null || docker buildx use deploy-builder
+      # 构建镜像并加载到本地 Docker
+      - docker buildx build --platform linux/amd64 --load -t "$IMAGE_NAME:$TAG" .
+      - echo "✅ 镜像构建完成"
+
+  # 步骤 2: 标记并推送镜像到私有仓库
+  - name: push-image
+    image: docker:dind
+    volumes:
+      - name: dockersock
+        path: /var/run/docker.sock
+    environment:
+      FULL_IMAGE_NAME: ${REGISTRY}/${IMAGE_NAME}:${TAG}
+    commands:
+      # 标记镜像
+      - docker tag "$IMAGE_NAME:$TAG" "$FULL_IMAGE_NAME"
+      # 推送到私有仓库
+      - docker push "$FULL_IMAGE_NAME"
+      - echo "✅ 镜像推送完成: $FULL_IMAGE_NAME"
+
+  # 步骤 3: 清理本地镜像 (可选)
+  - name: cleanup
+    image: docker:dind
+    volumes:
+      - name: dockersock
+        path: /var/run/docker.sock
+    commands:
+      - docker image prune -f
+      - echo "✅ 清理完成"
+    when:
+      status:
+        - success
+
+# 挂载 Docker socket 以便在容器内使用 Docker
+volumes:
+  - name: dockersock
+    host:
+      path: /var/run/docker.sock
+
+# 触发条件：推送到 main 分支时自动构建
+trigger:
+  branch:
+    - main
+  event:
+    - push
+
+---
+kind: pipeline
+type: docker
+name: cinex-notify
+
+# 通知管道 (可选)
+steps:
+  - name: notify-success
+    image: plugins/webhook
+    settings:
+      urls:
+        from_secret: webhook_url
+      content_type: application/json
+      template: |
+        {
+          "status": "success",
+          "message": "CINEX 镜像构建并推送成功",
+          "image": "${REGISTRY}/${IMAGE_NAME}:${TAG}",
+          "commit": "{{ build.commit }}",
+          "branch": "{{ build.branch }}"
+        }
+    when:
+      status:
+        - success
+
+  - name: notify-failure
+    image: plugins/webhook
+    settings:
+      urls:
+        from_secret: webhook_url
+      content_type: application/json
+      template: |
+        {
+          "status": "failure",
+          "message": "CINEX 镜像构建失败",
+          "commit": "{{ build.commit }}",
+          "branch": "{{ build.branch }}"
+        }
+    when:
+      status:
+        - failure
+
+# 依赖主构建管道
+depends_on:
+  - cinex-build-deploy
+
+trigger:
+  branch:
+    - main
+  event:
+    - push

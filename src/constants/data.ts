@@ -223,14 +223,23 @@ export const SCHEDULED_TASKS = [
     icon: Rss,
   },
   
+  // {
+  //   id: 'download-status-sync',
+  //   name: '下载状态同步',
+  //   initial: '下',
+  //   schedule: '*/5 * * * *',
+  //   status: '运行中',
+  //   description: '与下载器客户端同步，更新数据库中所有任务的下载状态。',
+  //   icon: Download,
+  // },
   {
-    id: 'download-status-sync',
-    name: '下载状态同步',
-    initial: '下',
-    schedule: '*/5 * * * *',
+    id: 'media-scraping',
+    name: '媒体刮削',
+    initial: '刮',
+    schedule: '*/10 * * * *',
+    description: '刮削媒体库中的影片。',
     status: '运行中',
-    description: '与下载器客户端同步，更新数据库中所有任务的下载状态。',
-    icon: Download,
+    icon: Rss,
   },
   
   {

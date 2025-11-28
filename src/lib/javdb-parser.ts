@@ -1,55 +1,26 @@
 import { Magnet } from '@/types/javbus';
 import { VideoInfo } from '@/types/javdb';
 import * as cheerio from 'cheerio';
+import { proxyRequest } from './proxyFetch';
+import { convertSizeToBytes } from './utils/file-size';
 
 /**
- * 辅助函数：将文件大小字符串 (如 "5.75GB") 转换为字节数。
- * @param sizeString - 要转换的文件大小字符串。
- * @returns 返回字节数（number），如果输入无效则返回 null。
+ * 根据番号查找电影
+ * @param movies - 电影列表
+ * @param numberToFind - 要查找的番号
+ * @returns 找到的电影对象，未找到返回 null
  */
-function convertSizeToBytes(sizeString: string | null): number | null {
-  if (!sizeString) {
-    return null;
-  }
-
-  // 使用正则表达式分离数字和单位，不区分大小写
-  // 支持的单位: KB, MB, GB, TB
-  const match = sizeString.trim().match(/^(\d+(\.\d+)?)\s*(TB|GB|MB|KB)/i);
-
-  if (!match) {
-    return null;
-  }
-
-  const value = parseFloat(match[1]); // 提取数字部分, e.g., 5.75
-  const unit = match[3].toUpperCase(); // 提取单位并转为大写, e.g., GB
-
-  const KILO = 1024;
-
-  switch (unit) {
-    case 'TB':
-      return value * Math.pow(KILO, 4);
-    case 'GB':
-      return value * Math.pow(KILO, 3);
-    case 'MB':
-      return value * Math.pow(KILO, 2);
-    case 'KB':
-      return value * KILO;
-    default:
-      return null;
-  }
-}
 export function findMovieByNumber(
   movies: VideoInfo[],
   numberToFind: string
 ): VideoInfo | null {
-  // ... (代码同上)
   const foundMovie = movies.find(movie => movie.code === numberToFind);
   return foundMovie ?? null;
 }
 /**
- * 主函数：从给定的 HTML 结构中解析磁力链接列表。
- * @param html - 包含磁力链接列表的 HTML 字符串。
- * @returns Magnet 对象的数组。
+ * 从给定的 HTML 结构中解析磁力链接列表
+ * @param html - 包含磁力链接列表的 HTML 字符串
+ * @returns Magnet 对象的数组
  */
 export function parseMagnetLinks(html: string): Magnet[] {
   const $ = cheerio.load(html);
@@ -115,16 +86,21 @@ export function parseMagnetLinks(html: string): Magnet[] {
   return magnets;
 }
 
+/**
+ * 从 JAVDB 获取指定番号的磁力链接
+ * @param number - 电影番号
+ * @returns 磁力链接数组，未找到返回 null
+ */
 export async function getJavdbMagnetLinks(number: string): Promise<Magnet[] | null> {
-  const response = await fetch(`https://javdb.com/search?q=${number.toUpperCase()}&f=all`, {
+  const response = await proxyRequest(`https://javdb.com/search?q=${number.toUpperCase()}&f=all`, {
     method: 'GET',
     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
   });
   if (!response.ok) {
-    throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
+    throw new Error(`Failed to fetch: ${response.statusCode} ${response.statusMessage}`);
   }
 
-  const body = await response.text();
+  const body = response.body;
   
   const movies = parseVideoList(body);
   
@@ -132,18 +108,23 @@ export async function getJavdbMagnetLinks(number: string): Promise<Magnet[] | nu
   if(!foundMovie) {
     return null;
   }
-  const movieDetail = await fetch(foundMovie.link!, {
+  const movieDetail = await proxyRequest(foundMovie.link!, {
     method: 'GET',
     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
   });
   if (!movieDetail.ok) {
-    throw new Error(`Failed to fetch: ${movieDetail.status} ${movieDetail.statusText}`);
+    throw new Error(`Failed to fetch: ${movieDetail.statusCode} ${movieDetail.statusMessage}`);
   }
-  const movieDetailBody = await movieDetail.text();
+  const movieDetailBody = movieDetail.body;
   const magnets = parseMagnetLinks(movieDetailBody);
   return magnets;
 }
 
+/**
+ * 解析 JAVDB 视频列表页面
+ * @param htmlContent - HTML 页面内容
+ * @returns 视频信息数组
+ */
 export function parseVideoList(htmlContent: string): VideoInfo[] {
   if (!htmlContent) {
     return [];

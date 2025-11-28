@@ -1,13 +1,7 @@
 "use client";
 import {
-  ContextMenu,
-  ContextMenuCheckboxItem,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuLabel,
-  ContextMenuRadioGroup,
-  ContextMenuRadioItem,
-  ContextMenuSeparator, ContextMenuTrigger
+  ContextMenu, ContextMenuContent,
+  ContextMenuItem, ContextMenuRadioGroup, ContextMenuTrigger
 } from "@/components/ui/context-menu";
 import { processForumContent } from "@/lib/forum-content-processor";
 import { useMemo, useState } from "react";
@@ -133,7 +127,7 @@ export function PostContext({ post,forum }: { post: ForumPost,forum: string }) {
   };
 
   const processedContent = useMemo(() => {
-    return processForumContent(post.content, post.forumSubscribeId); // 假设 forumId 在这里
+    return processForumContent(post.content, forum); // 假设 forumId 在这里
   }, [post.content, post.forumSubscribeId]);
 
   return (

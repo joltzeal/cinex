@@ -43,13 +43,21 @@ interface AiProviderConfig {
   apiKey: string;
   modelName: string;
 }
-// {"qbittorrent": {"host": "192.168.0.79", "port": 8095, "enabled": true, "password": "Dyx@920912", "username": "admin", "isDefault": true}}
-// interface DownloaderSettingsData {
-//   name: 'qbittorrent' | 'transmission';
-//   value?: DownloaderSettingValue;
-//   transmission?: DownloaderSettingValue;
-// }
 
+/**
+ * 下载器设置数据结构
+ * @example
+ * {
+ *   qbittorrent: {
+ *     host: "192.168.0.79",
+ *     port: 8095,
+ *     enabled: true,
+ *     password: "your_password",
+ *     username: "admin",
+ *     isDefault: true
+ *   }
+ * }
+ */
 interface DownloaderSettingsData {
   qbittorrent?: DownloaderSettingValue;
   transmission?: DownloaderSettingValue;
@@ -82,4 +90,8 @@ interface TelegramConfig {
 interface ForumCookie {
   javbus?: string;
   southplus?: string;
+}
+
+interface ProxyConfig {
+  proxyUrl: string;
 }

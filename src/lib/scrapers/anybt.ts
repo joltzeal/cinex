@@ -1,5 +1,4 @@
-// src/lib/scrapers/anybt.ts
-import { proxyFetch } from '../proxyFetch';
+import { proxyRequest } from '../proxyFetch';
 import { IScraper, TorrentSearchResult } from './interface';
 
 // 定义从 API 返回的单行数据的结构
@@ -74,17 +73,17 @@ export class AnyBtScraper implements IScraper {
     try {
       console.log(`[${AnyBtScraper.sourceName}] Fetching data for keyword: "${keyword}"`);
 
-      const response = await proxyFetch(this.apiUrl, {
+      const response = await proxyRequest(this.apiUrl, {
         method: 'POST',
         headers: this.headers,
         body: JSON.stringify(body),
       });
 
       if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
+        throw new Error(`API request failed with status ${response.statusCode}`);
       }
 
-      const responseData: AnyBtApiRow = await response.json();
+      const responseData: AnyBtApiRow = JSON.parse(response.body as string);
 
 
 

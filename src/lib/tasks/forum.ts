@@ -1,7 +1,8 @@
 import { ForumSubscribe } from '@prisma/client';
 import { db } from '../db';
 import { logger } from '../logger';
-import { proxyFetch } from '../proxyFetch';
+import {  proxyRequest } from "../proxyFetch";
+
 import * as cheerio from "cheerio";
 import { BASE_HEADER, FORUM_MAP } from '@/constants/data';
 import { getCookieByWebsite } from '@/services/settings';
@@ -37,7 +38,7 @@ const CACHE_DURATION_MS = 10 * 60 * 1000;
 export async function fetch2048PostDetail(postId: string) {
     const fetchPostId = postId;
     const url = `${FORUM_MAP.f2048}/2048/read.php?tid=${fetchPostId}`;
-    const response = await proxyFetch(url, {
+    const response = await proxyRequest(url, {
         headers: {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -45,9 +46,9 @@ export async function fetch2048PostDetail(postId: string) {
         }
     });
     if (!response.ok) {
-        throw new Error(`Failed to fetch data, status: ${response.status}`);
+        throw new Error(`Failed to fetch data, status: ${response.statusCode}`);
     }
-    const html = await response.text();
+    const html = response.body;
     const $ = cheerio.load(html);
 
     // 1. 提取发布时间
@@ -92,7 +93,7 @@ export async function fetchJavbusPostDetail(postId: string) {
     if (!cookie) {
         throw new Error('未设置 Javbus Cookie');
     }
-    const response = await proxyFetch(url, {
+    const response = await proxyRequest(url.toString(), {
         headers: {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -101,9 +102,9 @@ export async function fetchJavbusPostDetail(postId: string) {
         }
     });
     if (!response.ok) {
-        throw new Error(`Failed to fetch data, status: ${response.status}`);
+        throw new Error(`Failed to fetch data, status: ${response.statusCode}`);
     }
-    const html = await response.text();
+    const html = response.body;
     const $ = cheerio.load(html);
     const dateTimeStr = $('.nthread_other .authi span.mr10').first().text().trim();
     const publishedAt = dateTimeStr ? new Date(dateTimeStr.trim().toString()) : null;
@@ -114,36 +115,18 @@ export async function fetchJavbusPostDetail(postId: string) {
     }
 }
 export async function fetchT66yPostDetail(postId: string, url: string) {
-    const response = await proxyFetch(url, {
+    const response = await proxyRequest(url, {
         headers: BASE_HEADER
     });
     if (!response.ok) {
-        throw new Error(`Failed to fetch data, status: ${response.status}`);
+        throw new Error(`Failed to fetch data, status: ${response.statusCode}`);
     }
-    const html = await response.text();
+    const html = response.body;
     const $ = cheerio.load(html);
     const content = $('.tpc_content').first().html()?.trim() || null;
-    // const content = $('.t_f').text().trim() || null;
     return {
         content,
     }
-    // const url = 
-    // const url = `${FORUM_MAP.t66y}/thread0806.php?fid=${postId}`;
-    // const response = await proxyFetch(url, {
-    //     headers: {
-    //         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-    //         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
-    //     }
-    // });
-    // if (!response.ok) {
-    //     throw new Error(`Failed to fetch data, status: ${response.status}`);
-    // }
-    // const html = await response.text();
-    // const $ = cheerio.load(html);
-    // const content = $('.t_f').text().trim() || null;
-    // return {
-    //     content,
-    // }
 }
 export async function fetchSehuatangPostDetail(postId: string) {
     // https://www.sehuatang.net/forum.php?mod=viewthread&tid=3071046&extra=page=1&filter=author&orderby=dateline
@@ -157,7 +140,7 @@ export async function fetchSehuatangPostDetail(postId: string) {
     const url = new URL(FORUM_MAP.sehuatang);
     url.search = new URLSearchParams(params).toString();
     const safeid = await getSehuatangSafeid();
-    const response = await proxyFetch(url, {
+    const response = await proxyRequest(url.toString(), {
         headers: {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -166,9 +149,9 @@ export async function fetchSehuatangPostDetail(postId: string) {
         }
     });
     if (!response.ok) {
-        throw new Error(`Failed to fetch data, status: ${response.status}`);
+        throw new Error(`Failed to fetch data, status: ${response.statusCode}`);
     }
-    const html = await response.text();
+    const html = response.body;
     const $ = cheerio.load(html);
     const dateTimeStr = $(".pti").find('.authi em span[title]').attr('title');
     const publishedAt = dateTimeStr ? new Date(dateTimeStr.trim().toString()) : null;
@@ -204,13 +187,13 @@ export async function fetchSouthPlusPostDetail(postId: string) {
         ...BASE_HEADER,
         // 'cookie': SOUTH_PLUS_COOKIE
     }
-    const response = await proxyFetch(url, {
+    const response = await proxyRequest(url, {
         headers: reqHeader,
     });
     if (!response.ok) {
-        throw new Error(`Failed to fetch data, status: ${response.status}`);
+        throw new Error(`Failed to fetch data, status: ${response.statusCode}`);
     }
-    const html = await response.text();
+    const html = response.body;
     const $ = cheerio.load(html);
     const content = $('.tpc_content').first().html()?.trim() || null;
     const publish = $('span.fl.gray').first().text().trim();
@@ -229,7 +212,7 @@ export async function fetchSouthPlusPostDetail(postId: string) {
  */
 async function fetchNewSafeid(): Promise<string | null> {
     try {
-        const homeFetch = await fetch('https://www.sehuatang.net/', { // 假设 proxyFetch 是一个全局或导入的 fetch 封装
+        const homeFetch = await proxyRequest('https://www.sehuatang.net/', { // 假设 proxyRequest 是一个全局或导入的 fetch 封装
             headers: {
                 'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
                 'accept-language': 'zh-CN,zh;q=0.9',
@@ -242,10 +225,10 @@ async function fetchNewSafeid(): Promise<string | null> {
 
         if (!homeFetch.ok) {
             // 抛出错误以便在 catch 块中处理
-            throw new Error(`Failed to fetch from sehuatang, status: ${homeFetch.status}`);
+            throw new Error(`Failed to fetch from sehuatang, status: ${homeFetch.statusCode}`);
         }
 
-        const homeHtml = await homeFetch.text();
+        const homeHtml = homeFetch.body;
         const pattern = /var\s+safeid='(.+?)';/;
         const match = homeHtml.match(pattern);
 
@@ -311,7 +294,7 @@ export async function fetchJavbusPost(threadId: string, page: number, forumSubsc
     if (!cookie) {
         throw new Error('未设置 Javbus Cookie');
     }
-    const response = await proxyFetch(url, {
+    const response = await proxyRequest(url.toString(), {
         headers: {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
@@ -319,10 +302,10 @@ export async function fetchJavbusPost(threadId: string, page: number, forumSubsc
         }
     });
     if (!response.ok) {
-        logger.error(`无法获取 Javbus 分区 ${threadId} 的帖子列表，状态: ${response.status}`);
+        logger.error(`无法获取 Javbus 分区 ${threadId} 的帖子列表，状态: ${response.statusCode}`);
         return [];
     }
-    const html = await response.text();
+    const html = response.body;
     const $ = cheerio.load(html);
     const list = $('#threadlisttableid tbody[id^=normalthread]').toArray()
         .map((item) => {
@@ -391,7 +374,7 @@ export async function fetch2048Post(threadId: string, page: number, forumSubscri
     const url = `https://hjd2048.com/2048/thread.php?fid=${threadId}&search=img&page=${page}`;
 
     try {
-        const response = await proxyFetch(url, {
+        const response = await proxyRequest(url, {
             headers: {
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -400,11 +383,11 @@ export async function fetch2048Post(threadId: string, page: number, forumSubscri
         });
 
         if (!response.ok) {
-            logger.error(`无法获取 2048 分区 ${threadId} 的帖子列表，状态: ${response.status}`);
+            logger.error(`无法获取 2048 分区 ${threadId} 的帖子列表，状态: ${response.statusCode}`);
             return [];
         }
 
-        const html = await response.text();
+        const html = response.body;
         const $ = cheerio.load(html);
 
         const posts: ForumPost[] = [];
@@ -461,21 +444,20 @@ async function fetchSouthPlusPost(threadId: string, page: number, forumSubscribe
         ...BASE_HEADER,
         // 'cookie': SOUTH_PLUS_COOKIE
     };
-    const response = await proxyFetch(url, {
+    const response = await proxyRequest(url.toString(), {
         method: 'POST',
         headers: reqHeaders,
         body: new URLSearchParams({
             'search': '1',
             'orderway': 'postdate',
             'asc': 'DESC'
-        })
+        }).toString(),
     });
     if (!response.ok) {
-        logger.error(`无法获取 南+论坛 分区 ${threadId} 的帖子列表，状态: ${response.status}`);
+        logger.error(`无法获取 南+论坛 分区 ${threadId} 的帖子列表，状态: ${response.statusCode}`);
         return [];
     }
-    const html = await response.text();
-    logger.info(html);
+    const html = response.body;
     const $ = cheerio.load(html);
     const table = $('tbody[style*="table-layout:fixed"]').first();
 
@@ -537,8 +519,6 @@ async function fetchSouthPlusPost(threadId: string, page: number, forumSubscribe
             };
         });
     const res = list.filter(item => item.postId !== null && item.url !== null);
-    // logger.info(res);
-    logger.info(res.length);
     return res;
 }
 async function fetchT66yPost(threadId: string, page: number, forumSubscribeId: string): Promise<ForumPost[]> {
@@ -552,17 +532,17 @@ async function fetchT66yPost(threadId: string, page: number, forumSubscribeId: s
 
 
     // const url = `${FORUM_MAP.t66y}/thread0806.php?fid=${threadId}&page=${page}`;
-    const response = await proxyFetch(url, {
+    const response = await proxyRequest(url.toString(), {
         headers: {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
         }
     });
     if (!response.ok) {
-        logger.error(`无法获取 草榴社区 分区 ${threadId} 的帖子列表，状态: ${response.status}`);
+        logger.error(`无法获取 草榴社区 分区 ${threadId} 的帖子列表，状态: ${response.statusCode}`);
         return [];
     }
-    const html = await response.text();
+    const html = response.body;
     const $ = cheerio.load(html);
 
     // 比较两个 div.t 的长度，选择更长的那个
@@ -648,7 +628,7 @@ export async function fetchSehuatangPost(threadId: string, page: number, forumSu
         return [];
     }
     try {
-        const response = await proxyFetch(url, {
+        const response = await proxyRequest(url.toString(), {
             headers: {
                 'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
                 'accept-language': 'zh-CN,zh;q=0.9',
@@ -658,11 +638,11 @@ export async function fetchSehuatangPost(threadId: string, page: number, forumSu
         });
 
         if (!response.ok) {
-            logger.error(`无法获取 98 堂 分区 ${threadId} 的帖子列表，状态: ${response.status}`);
+            logger.error(`无法获取 98 堂 分区 ${threadId} 的帖子列表，状态: ${response.statusCode}`);
             return [];
         }
 
-        const html = await response.text();
+        const html = response.body;
 
         const $ = cheerio.load(html);
 
@@ -801,12 +781,16 @@ export async function syncAndPaginateForum(subscription: ForumSubscribe, maxPage
                     logger.error(`无法插入帖子 ${post.postId}: ${error}`);
                 }
             }
+            await db.forumSubscribe.update({
+                where: { id: subscription.id },
+                data: { lastChecked: new Date() },
+            });
 
         } else {
             logger.warn(`没有新帖子，停止同步 ${subscription.forum} 分区 ${subscription.thread} 的帖子列表。`);
         }
         logger.warn(`${subscription.title}分区需要更新: ${allNewPosts.length}`);
-        if (allNewPosts.length < 30 && allNewPosts.length > 0) {
+        if (allNewPosts.length < 60 && allNewPosts.length > 0) {
 
             // 如果新帖子数量小于30，则更新所有新帖子详情
             for (const post of allNewPosts) {
@@ -822,6 +806,8 @@ export async function syncAndPaginateForum(subscription: ForumSubscribe, maxPage
                 }
                 else if (subscription.forum === 't66y') {
                     updatedPost = await fetchT66yPostDetail(post.postId, post.url);
+                } else if (subscription.forum === 'southPlus') {
+                    updatedPost = await fetchSouthPlusPostDetail(post.postId);
                 }
                 const result = await db.forumPost.update({
                     where: {
@@ -839,10 +825,7 @@ export async function syncAndPaginateForum(subscription: ForumSubscribe, maxPage
         }
 
         // 更新订阅的最后检查时间
-        await db.forumSubscribe.update({
-            where: { id: subscription.id },
-            data: { lastChecked: new Date() },
-        });
+        
 
         logger.warn(`同步完成，插入 ${allNewPosts.length} 个新帖子到 ${subscription.forum} 分区 ${subscription.thread} 的帖子列表。`);
 

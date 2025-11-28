@@ -1,4 +1,4 @@
-import { NextResponse,NextRequest } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { fetch2048PostDetail, fetchSehuatangPostDetail, fetchJavbusPostDetail, fetchT66yPostDetail, fetchSouthPlusPostDetail } from "@/lib/tasks/forum";
@@ -31,6 +31,7 @@ export async function GET(
     })
 
     if (!forumSubscribe) {
+
       return NextResponse.json({ error: 'Forum subscription not found' }, { status: 404 });
     }
     // 获取帖子
@@ -44,38 +45,40 @@ export async function GET(
     }
     // 如果帖子有内容，则直接返回
     if (post?.content) {
+      
       return NextResponse.json({ data: post }, { status: 200 });
     }
 
     // 获取帖子详情 逻辑
-    let updatedPost:any = null;
+    let updatedPost: any = null;
     if (forumId === '2048') {
       updatedPost = await fetch2048PostDetail(post.postId);
     } else if (forumId === 'sehuatang') {
       updatedPost = await fetchSehuatangPostDetail(post.postId);
-    } 
+    }
     else if (forumId === 'javbus') {
       updatedPost = await fetchJavbusPostDetail(post.postId);
     } else if (forumId === 't66y') {
       if (!post.url) {
         return NextResponse.json({ error: 'Post URL is required' }, { status: 400 });
       }
-      updatedPost = await fetchT66yPostDetail(post.postId,post.url as string);
+      updatedPost = await fetchT66yPostDetail(post.postId, post.url as string);
     } else if (forumId === 'southPlus') {
       updatedPost = await fetchSouthPlusPostDetail(post.postId);
     } else {
       return NextResponse.json({ error: 'Invalid forum ID' }, { status: 400 });
     }
     // 更新帖子
-    const result  = await db.forumPost.update({
+    const result = await db.forumPost.update({
       where: {
         forumSubscribeId_postId: {
           forumSubscribeId: forumSubscribe.id,
           postId: post.postId,
-      },
+        },
       },
       data: {
         ...updatedPost,
+        readed: true,
       },
     })
     return NextResponse.json({

@@ -11,6 +11,9 @@ import { SystemStatsProvider } from '@/components/providers/system-stats-provide
 import { getSubscribeListCount, getSubscribeMovieCount, getWeeklyAddedMovieData } from '@/services/subscribe';
 import { getDocumentDownloadCount } from '@/services/download';
 import { MovieStatus } from '@prisma/client';
+import { db } from '@/lib/db';
+import { RandomMovie } from '@/features/overview/components/random-movie';
+import { cn } from '@/lib/utils';
 
 
 export default async function OverviewPage() {
@@ -19,7 +22,19 @@ export default async function OverviewPage() {
   const downloadingCount = await getDocumentDownloadCount(MovieStatus.downloading);
   const addedCount = await getSubscribeMovieCount(MovieStatus.added);
   const subscribeListCount = await getSubscribeListCount();
+
   
+  const addedMovies = await db.movie.findMany({
+    where: {
+      status: MovieStatus.added,
+      cover:{
+        not: null
+      },
+      
+    }
+  })
+
+
   return (
     <SystemStatsProvider>
       <PageContainer>
@@ -36,17 +51,18 @@ export default async function OverviewPage() {
               <MediaStatistics subscribeCount={subscribeCount} downloadingCount={downloadingCount} subscribeListCount={subscribeListCount} addedCount={addedCount} />
             </div>
           </div>
-          <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
+          <div className={cn("grid gap-4 grid-cols-1", addedMovies ? 'grid-cols-4' : 'grid-cols-3')}>
 
             <RecentlyAddedCard recentlyAddedData={recentlyAddedData} />
-            <RealtimeSpeedCard  />
+            <RealtimeSpeedCard />
             <BackgroundTasksCard />
-
-            <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <CpuUsageCard />
-            <MemoryUsageCard />
-            </div>
+            {addedMovies && <RandomMovie movies={addedMovies} />}
+            
           </div>
+          <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <CpuUsageCard />
+              <MemoryUsageCard />
+            </div>
 
         </div>
 

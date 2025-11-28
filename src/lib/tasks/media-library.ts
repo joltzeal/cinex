@@ -235,3 +235,60 @@ export async function taskMovieLibraryUpdate() {
   }
 }
 
+
+
+export function processMediaItemsForNumbers(mediaItems: JellyfinMediaItem[]) {
+  // 正则表达式：匹配至少一个大写字母，接着一个连字符，再接着至少一个数字
+  // 允许前后有其他字符，但我们只捕获番号部分
+  const numberRegex = /[A-Z]+\-\d+/g; // 使用 g 标志可以找到所有匹配项
+
+  const matchedItems: { item: JellyfinMediaItem; numbers: string[] }[] = [];
+  const unmatchedItems: JellyfinMediaItem[] = [];
+  const allExtractedNumbers: string[] = []; // 用于检测所有提取到的番号
+  const filteredMediaItems = mediaItems.filter(item => item.Type !== 'BoxSet');
+  filteredMediaItems.forEach(item => {
+      const foundNumbers: string[] = [];
+      const fieldsToSearch = [item.Name, item.OriginalTitle, item.SortName];
+
+      for (const field of fieldsToSearch) {
+          if (field) {
+              // 使用 matchAll 找到所有匹配项
+              const matches = field.matchAll(numberRegex);
+              for (const match of matches) {
+                  // 将匹配到的番号转换为大写，并添加到 foundNumbers
+                  foundNumbers.push(match[0].toUpperCase());
+              }
+          }
+      }
+
+      if (foundNumbers.length > 0) {
+          // 过滤掉重复的番号（如果一个媒体项的多个字段包含相同的番号）
+          const uniqueFoundNumbers = Array.from(new Set(foundNumbers));
+          matchedItems.push({ item: item, numbers: uniqueFoundNumbers });
+          allExtractedNumbers.push(...uniqueFoundNumbers);
+      } else {
+          unmatchedItems.push(item);
+      }
+  });
+
+  // 查找所有提取到的番号中的重复项
+  const duplicateNumbers: string[] = [];
+  const numberCounts = new Map<string, number>();
+
+  allExtractedNumbers.forEach(num => {
+      numberCounts.set(num, (numberCounts.get(num) || 0) + 1);
+  });
+
+  for (const [num, count] of numberCounts.entries()) {
+      if (count > 1) {
+          duplicateNumbers.push(num);
+      }
+  }
+
+  return {
+      matchedItems,        // 匹配到番号的媒体项及其提取到的番号
+      unmatchedItems,      // 未匹配到番号的媒体项
+      allExtractedNumbers, // 所有提取到的番号（包含重复，用于调试）
+      duplicateNumbers     // 提取到的番号中重复的番号列表
+  };
+}

@@ -452,7 +452,7 @@ export default function JavbusSubscribeInfoItem({ info }: { info: SubscribeWithM
                 >
                   <div className="flex flex-col items-center space-y-2 w-[100px] flex-shrink-0 cursor-pointer group">
                     <div className="relative w-full h-[150px] rounded-md overflow-hidden bg-muted">
-                      <LazyImage src={proxiedSrc}
+                      <LazyImage src={proxiedSrc} 
                         alt={movie.title} className="w-full h-full object-cover" />
 
                       {/* 5. 添加状态 Badge */}

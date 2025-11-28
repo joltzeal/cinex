@@ -7,10 +7,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { AlertCircle, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
-import MovieDetailDisplay from "@/components/search/movie-detail"; 
+import { useEffect, useState, useRef } from "react";
+import MovieDetailDisplay from "@/components/search/movie-detail";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { toast } from "sonner";
 import { Movie } from "@prisma/client";
 
 const LoadingState = () => (
@@ -35,60 +34,23 @@ const MessageState = ({ title, message }: { title: string, message: string }) =>
 // --- Dialog Content (Contains all the data fetching logic) ---
 
 interface MovieDetailDialogContentProps {
-  movieId: string;
-  mediaServer?: MediaServerConfig | null;
+  movie: Movie | null;
+  isLoading: boolean;
+  error: string | null;
 }
 
-function MovieDetailDialogContent({ movieId, mediaServer }: MovieDetailDialogContentProps) {
-  // 1. Get data and actions from the Zustand Store
-
-  // 2. Local state for loading and errors
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [movie, setMovie] = useState<Movie | null>(null);
-
-  //   // If store data is not a match, fetch new movie data
-  const fetchMovieData = async () => {
-    console.log(`MovieDetailDialog: Fetching data for ID: ${movieId}...`);
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/movie/${movieId}`);
-      if (!response.ok) throw new Error(`Request failed: ${response.status}`);
-
-      const result = await response.json();
-      if (!result || !result.data) throw new Error("Movie data not found.");
-
-      setMovie(result.data);
-
-    } catch (err: any) {
-      setError(err.message || "An unknown error occurred while loading data.");
-      setMovie(null); // Clear data on error
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchMovieData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [movieId]);
-
-  const isFetchingData = isLoading && (!movie || movie.number !== movieId);
-
+function MovieDetailDialogContent({ movie, isLoading, error }: MovieDetailDialogContentProps) {
   // --- Render Logic ---
-  if (isFetchingData) {
+  if (isLoading) {
     return <LoadingState />;
   }
 
   if (error) {
-    return <MessageState title="Loading Error" message={error} />;
+    return <MessageState title="加载错误" message={error} />;
   }
 
-  // Ensure currentMovie is not null and matches the requested movieId
-  if (!movie || movie.number !== movieId) {
-    return <MessageState title="No Data" message="Could not find information for this movie." />;
+  if (!movie) {
+    return <MessageState title="无数据" message="找不到该影片的信息。" />;
   }
 
   return <MovieDetailDisplay movie={movie}  />;
@@ -104,13 +66,69 @@ interface MovieDetailDialogProps {
 
 export function MovieDetailDialog({ movieId, children }: MovieDetailDialogProps) {
   const [open, setOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [movie, setMovie] = useState<Movie | null>(null);
+  
+  // 使用 ref 跟踪是否已经获取过数据
+  const hasFetchedRef = useRef(false);
+  const lastMovieIdRef = useRef<string | null>(null);
+
+  // 当对话框打开时触发数据获取
+  useEffect(() => {
+    // 只有在对话框打开且未获取过数据，或者 movieId 变化时才获取
+    if (open && (!hasFetchedRef.current || lastMovieIdRef.current !== movieId)) {
+      const fetchMovieData = async () => {
+        console.log(`MovieDetailDialog: Fetching data for ID: ${movieId}...`);
+        setIsLoading(true);
+        setError(null);
+
+        try {
+          const response = await fetch(`/api/movie/${movieId}`);
+          if (!response.ok) throw new Error(`请求失败: ${response.status}`);
+
+          const result = await response.json();
+          if (!result || !result.data) throw new Error("未找到影片数据。");
+
+          setMovie(result.data);
+          hasFetchedRef.current = true;
+          lastMovieIdRef.current = movieId;
+
+        } catch (err: any) {
+          setError(err.message || "加载数据时发生未知错误。");
+          setMovie(null);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchMovieData();
+    }
+  }, [open, movieId]);
+
+  // 当对话框关闭时，重置获取标志（可选，根据需求决定）
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    // 如果关闭对话框，可以选择清理状态
+    // if (!newOpen) {
+    //   hasFetchedRef.current = false;
+    //   setMovie(null);
+    //   setError(null);
+    // }
+  };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTitle className="sr-only">电影详情</DialogTitle>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="min-w-[90vw] p-0">
-        {open && <MovieDetailDialogContent movieId={movieId} />}
+        {open && (
+          <MovieDetailDialogContent 
+            movie={movie} 
+            isLoading={isLoading} 
+            error={error} 
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

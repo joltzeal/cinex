@@ -10,7 +10,7 @@ import metatubeClient from "../metatube";
 import NfoGenerator, { mapMovieDetailToNFO } from "../nfo-generator";
 import { generatePathFromRule } from "../parse/file-number-parser";
 import { getFileInfo } from "../parse/get-file-info";
-import { proxyFetch } from "../proxyFetch";
+import { proxyRequest } from "../proxyFetch";
 async function downloadImage(url: string, outputDir: string) {
   const urlObj = new URL(url); // 解析 URL
   const refererOrigin = urlObj.origin; // 获取 origin，例如 "https://www.example.com"
@@ -44,15 +44,16 @@ async function downloadImage(url: string, outputDir: string) {
     // }
   };
 
-  const res = await proxyFetch(url, fetchOptions); // 将选项传递给 fetch
-  if (!res.ok) {
-    throw new Error(`下载失败: ${url} (状态码: ${res.status})`);
+  const res = await proxyRequest(url, {
+    ...fetchOptions,
+    responseType: 'buffer',
+  }); // 将选项传递给 proxyRequest
+  if (res.statusCode !== 200) {
+    throw new Error(`下载失败: ${url} (状态码: ${res.statusCode})`);
   }
 
-  // res.blob() 是浏览器 API。在 Node.js 中，如果使用内置的 fetch，它返回的是 ReadableStream。
-  // 如果使用 node-fetch，res.blob() 会返回一个 Blob，或者 res.arrayBuffer() 更直接。
-  // 这里假设 res.blob() 返回一个 Blob-like 对象，其 arrayBuffer() 方法可用。
-  const bufferBlob = await res.blob();
+  // 使用 got 的 rawBody 属性获取 Buffer
+  const buffer = res.rawBody;
 
   // 获取文件名
   // 最佳实践是从 Content-Disposition 头中获取文件名，如果存在的话
@@ -69,7 +70,7 @@ async function downloadImage(url: string, outputDir: string) {
   const filePath = path.join(outputDir, fileName);
 
   await fs.mkdir(outputDir, { recursive: true });
-  await fs.writeFile(filePath, Buffer.from(await bufferBlob.arrayBuffer()));
+  await fs.writeFile(filePath, buffer);
 }
 async function fileExists(path: string) {
   try {
@@ -125,23 +126,29 @@ async function downloadMoviePicture(params: DownloadMoviePictureParams) {
     'sec-fetch-site': 'same-origin',
     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
   }
-  const posterRes = await proxyFetch(posterUrl, {
+  // 确保目录存在
+  await fs.mkdir(filePath, { recursive: true });
+  
+  const posterRes = await proxyRequest(posterUrl, {
     headers: headers,
+    responseType: 'buffer',
   });
-  if (!posterRes.ok) throw new Error(`下载失败: ${posterUrl}`);
-  const posterBuffer = await posterRes.blob();
+  if (posterRes.statusCode !== 200) throw new Error(`下载失败: ${posterUrl} (状态码: ${posterRes.statusCode})`);
+  const posterBuffer = posterRes.rawBody;
   const posterFilePath = path.join(filePath, `${fileName}-poster.jpg`);
-  await fs.writeFile(posterFilePath, Buffer.from(await posterBuffer.arrayBuffer()));
+  await fs.writeFile(posterFilePath, posterBuffer);
+  
   // 下载 fanart 和 thumb
-  const thumbRes = await proxyFetch(thumbUrl, {
+  const thumbRes = await proxyRequest(thumbUrl, {
     headers: headers,
+    responseType: 'buffer',
   });
-  if (!thumbRes.ok) throw new Error(`下载失败: ${thumbUrl}`);
-  const thumbBuffer = await thumbRes.blob();
+  if (thumbRes.statusCode !== 200) throw new Error(`下载失败: ${thumbUrl} (状态码: ${thumbRes.statusCode})`);
+  const thumbBuffer = thumbRes.rawBody;
   const thumbFilePath = path.join(filePath, `${fileName}-thumb.jpg`);
   const fanartFilePath = path.join(filePath, `${fileName}-fanart.jpg`);
-  await fs.writeFile(thumbFilePath, Buffer.from(await thumbBuffer.arrayBuffer()));
-  await fs.writeFile(fanartFilePath, Buffer.from(await thumbBuffer.arrayBuffer()));
+  await fs.writeFile(thumbFilePath, thumbBuffer);
+  await fs.writeFile(fanartFilePath, thumbBuffer);
 
   // 添加水印
   const watermarkKeys = ['leak', 'cWord', 'destroyed', 'wuma', 'youma'];

@@ -1,8 +1,6 @@
-// src/lib/scrapers/laowang.ts
 import * as cheerio from 'cheerio';
 import { IScraper, TorrentSearchResult } from './interface';
-import { log } from 'node:console';
-import { proxyFetch } from '../proxyFetch';
+import {  proxyRequest } from '../proxyFetch';
 
 export class LaoWangScraper implements IScraper {
   public static readonly sourceName = '老王磁力';
@@ -74,12 +72,12 @@ export class LaoWangScraper implements IScraper {
 
     const verifyUrl = `${this.baseUrl}/anti/recaptcha/v4/verify?token=${LaoWangScraper.randomString(100)}&aywcUid=${aywcUid}&costtime=${1000 + Math.floor(Math.random() * 1000)}`;
 
-    const response = await proxyFetch(verifyUrl, {
+    const response = await proxyRequest(verifyUrl, {
       headers: { ...this.headers, 'Cookie': `aywcUid=${aywcUid}` },
       redirect: 'manual' // 必须是manual，这样才能拿到302重定向的header
     });
 
-    const setCookieHeader = response.headers.get('set-cookie');
+    const setCookieHeader = response.headers?.['set-cookie']?.toString();
     if (!setCookieHeader) {
       throw new Error("Failed to get anti-bot cookies from header.");
     }
@@ -109,19 +107,19 @@ export class LaoWangScraper implements IScraper {
       const sortParam = this.sortMap[sort] || 'relevance';
       const searchUrl = `${this.baseUrl}/search?keyword=${encodeURIComponent(keyword)}&sos=${sortParam}&sofs=all&sot=all&soft=all&som=auto&p=${page}`;
       console.log(`[${LaoWangScraper.sourceName}] Fetching page ${page} from: ${searchUrl}`);
-      let response = await proxyFetch(searchUrl, { headers: { ...this.headers, 'Cookie': cookie, 'Referer': this.baseUrl } });
-      console.log(`[${LaoWangScraper.sourceName}] Response status: ${response.status}`);
+      let response = await proxyRequest(searchUrl, { headers: { ...this.headers, 'Cookie': cookie, 'Referer': this.baseUrl } });
+      console.log(`[${LaoWangScraper.sourceName}] Response status: ${response.statusCode}`);
       
-      if (response.status !== 200) {
-        console.log(`[${LaoWangScraper.sourceName}] Cookie might be invalid (status: ${response.status}). Refreshing...`);
+      if (response.statusCode !== 200) {
+        console.log(`[${LaoWangScraper.sourceName}] Cookie might be invalid (status: ${response.statusCode}). Refreshing...`);
         cookie = await this._getCookie(true);
-        response = await proxyFetch(searchUrl, { headers: { ...this.headers, 'Cookie': cookie, 'Referer': this.baseUrl } });
-        if (response.status !== 200) {
+        response = await proxyRequest(searchUrl, { headers: { ...this.headers, 'Cookie': cookie, 'Referer': this.baseUrl } });
+        if (response.statusCode !== 200) {
           console.error(`[${LaoWangScraper.sourceName}] Failed to fetch page ${page} even after cookie refresh.`);
           continue;
         }
       }
-      const html = await response.text();
+      const html = response.body;
       const pageResults = await this._parseHtmlAndFetchMagnets(html, searchUrl);
       allResults.push(...pageResults);
     }
@@ -187,12 +185,12 @@ export class LaoWangScraper implements IScraper {
   private async _getMagnetLink(detailPageUrl: string, referer: string): Promise<string | null> {
     if (!LaoWangScraper.cookie) return null;
     try {
-      const response = await proxyFetch(detailPageUrl, { headers: { ...this.headers, 'Cookie': LaoWangScraper.cookie, 'Referer': referer } });
+      const response = await proxyRequest(detailPageUrl, { headers: { ...this.headers, 'Cookie': LaoWangScraper.cookie, 'Referer': referer } });
       if (!response.ok) {
-        console.error(`[${LaoWangScraper.sourceName}] Failed to fetch magnet from ${detailPageUrl}. Status: ${response.status}`);
+        console.error(`[${LaoWangScraper.sourceName}] Failed to fetch magnet from ${detailPageUrl}. Status: ${response.statusCode}`);
         return null;
       }
-      const html = await response.text();
+      const html = response.body;
       const $ = cheerio.load(html);
       return $('#magnet').attr('href') || null;
     } catch (error) {

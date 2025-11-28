@@ -124,7 +124,7 @@ export async function taskJavbusSubscribeUpdate() {
             if (existingMovie) {
               await db.movie.update({
                 where: { id: existingMovie.id },
-                data: { poster: movie.img,tags:movie.tags }
+                data: { poster: movie.img }
               });
               logger.info(`影片 ${movie.id} 已存在，跳过。`);
               await db.subscribeMovie.upsert({
@@ -141,7 +141,6 @@ export async function taskJavbusSubscribeUpdate() {
               number: movie.id,
               title: movie.title,
               date: movie.date,
-              tags: movie.tags,
               poster: movie.img,
               status: MovieStatus.uncheck,
             };

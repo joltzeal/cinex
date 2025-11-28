@@ -27,7 +27,7 @@ export function RecentlyAddedCard({ recentlyAddedData }: {
   const router = useRouter();
   return (
     <>
-      <Card className="flex flex-col">
+      <Card className="flex flex-col gap-1">
         <CardHeader>
           <CardTitle>最近入库</CardTitle>
         </CardHeader>
@@ -57,7 +57,7 @@ export function RecentlyAddedCard({ recentlyAddedData }: {
           </p>
         </CardContent>
         <CardFooter>
-          <Button className="w-full bg-purple-600 hover:bg-purple-700" onClick={() => {
+          <Button className="w-full " onClick={() => {
             router.push('/dashboard/file/scraper');
           }}>
             查看详情

@@ -16,6 +16,7 @@ export enum SettingKey {
   DownloaderSettings = 'downloaderSettings',
   TelegramConfig = 'telegramConfig',
   ForumCookie = 'forumCookie',
+  ProxyConfig = 'proxyConfig',
 }
 
 /**
@@ -32,6 +33,7 @@ interface SettingTypeMap {
   [SettingKey.DownloaderSettings]: DownloaderSettingsData;
   [SettingKey.TelegramConfig]: TelegramConfig;
   [SettingKey.ForumCookie]: ForumCookie;
+  [SettingKey.ProxyConfig]: ProxyConfig;
 }
 
 interface GetSettingParams {
@@ -91,4 +93,10 @@ export async function getCookieByWebsite(website: string) {
   const obj = setting as any;
   return obj[website];
   // return null;
+}
+
+export async function getProxyUrl() {
+  const setting = await getSetting(SettingKey.ProxyConfig);
+  if (!setting) return null;
+  return setting;
 }

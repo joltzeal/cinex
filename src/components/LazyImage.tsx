@@ -21,18 +21,12 @@ export function LazyImage({ src, alt, className, fallbackText = "No Image" }: { 
     return () => observer.disconnect();
   }, []);
 
-  // 调试信息
-  useEffect(() => {
-    if (isVisible && src) {
-      console.log(`[LazyImage] Loading image: ${src}`);
-    }
-  }, [isVisible, src]);
-
   const handleLoad = () => {
     setIsLoaded(true);
   };
 
-  const handleError = () => {
+  const handleError = (error: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    console.log(error);
     setHasError(true);
   };
 
@@ -56,6 +50,7 @@ export function LazyImage({ src, alt, className, fallbackText = "No Image" }: { 
       src={src} 
       alt={alt} 
       className={`${className} transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
+      rel="noreferrer"
       onLoad={handleLoad} 
       onError={handleError}
       ref={imgRef}

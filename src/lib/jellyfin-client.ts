@@ -19,7 +19,7 @@ export interface JellyfinMediaItem {
     OriginalTitle?: string; // 原标题
     SortName?: string; // 排序标题
     ServerId: string;
-    Type: 'Movie' | 'Episode' | 'Series' | 'Folder' | 'Video';
+    Type: 'Movie' | 'Episode' | 'Series' | 'Folder' | 'Video' | 'BoxSet';
     Path?: string;
     ProviderIds?: { [key: string]: string }; // 例如 { "Imdb": "tt1234567", "Tmdb": "123" }
     PremiereDate?: string; // 首映日期 (ISO 8601 格式)

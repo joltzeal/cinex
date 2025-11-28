@@ -98,6 +98,8 @@ model Movie {
   status       MovieStatus       @default(uncheck)
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
+  rating       String?           // 评分
+  comment      String?           // 评价
   detail       Json?
   magnets      Json?
   mediaLibrary Json?
@@ -149,6 +151,7 @@ model ForumPost {
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
   isStar          Boolean      @default(false)
+  readed          Boolean      @default(false)
   
   forumSubscribeId  String         // 外键
   forumSubscribe    ForumSubscribe @relation(fields: [forumSubscribeId], references: [id], onDelete: Cascade)

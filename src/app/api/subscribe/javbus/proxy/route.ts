@@ -1,6 +1,6 @@
 
 import { ALLOWED_DOMAINS } from '@/constants/data';
-import { proxyFetch } from '@/lib/proxyFetch';
+import { proxyRequest } from '@/lib/proxyFetch';
 import { NextRequest, NextResponse } from 'next/server';
 
 
@@ -56,31 +56,33 @@ export async function GET(request: NextRequest) {
       headers['Referer'] = `${urlObject.protocol}//${urlObject.hostname}/`;
     }
 
-    const imageResponse = await proxyFetch(imageUrl, {
+    const imageResponse = await proxyRequest(imageUrl, {
       headers,
+      responseType: 'buffer'
     });
 
 
-    // 4. 检查目标服务器的响应
-    if (!imageResponse.ok) {
-      console.error(`[IMAGE PROXY] Image fetch failed: ${imageResponse.status} ${imageResponse.statusText}`);
-      return new Response(imageResponse.statusText, { status: imageResponse.status });
+    if (imageResponse.statusCode && (imageResponse.statusCode < 200 || imageResponse.statusCode >= 300)) {
+      console.error(`[IMAGE PROXY] Image fetch failed: ${imageResponse.statusCode} ${imageResponse.statusMessage}`);
+      return new Response(imageResponse.statusMessage || 'Failed to fetch image from origin', { status: imageResponse.statusCode });
     }
 
     // 5. 将图片流式传回给客户端
     // 从原始响应中获取内容类型 (e.g., 'image/jpeg')
-    const contentType = imageResponse.headers.get('content-type') || 'application/octet-stream';
+    // got 的 headers 是一个 Headers 对象，可以直接访问
+    const contentType = imageResponse.headers['content-type'] || 'application/octet-stream';
+    // console.log("Content-Type from origin:", contentType);
 
-    // 使用 ReadableStream 直接将数据从 fetch 管道传到响应，性能更高
-    const stream = imageResponse.body;
+    // imageResponse.body 现在已经是 Buffer 类型了，因为设置了 responseType: 'buffer'
+    const imageBuffer = imageResponse.body;
+    // console.log("Image Buffer Length:", imageBuffer.length);
 
-    return new Response(stream, {
+    return new Response(imageBuffer as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': contentType,
-        // 添加强大的缓存头，浏览器和CDN（如Vercel）会缓存这张图片
-        // 后续请求将直接从缓存加载，不会再请求你的API或源站，速度极快！
         'Cache-Control': 'public, max-age=31536000, immutable',
+        'Access-Control-Allow-Origin': '*',
       },
     });
 

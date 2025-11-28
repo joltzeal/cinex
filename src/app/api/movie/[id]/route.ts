@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { MovieStatus, Prisma } from '@prisma/client';
 import { findMediaItemByIdOrTitle } from "@/lib/tasks/media-library";
 import { logger } from "@/lib/logger";
+import { HTTPError } from "got";
 
 
 export async function GET(
@@ -12,10 +13,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const id = (await params).id.toUpperCase();
+    // const { id } = await params;
     if (!id) {
       return NextResponse.json({ error: "Movie ID is required" }, { status: 400 });
     }
+    // const upperId = id.toUpperCase();
     const movie = await db.movie.findUnique({
       where: { number: id }
     });
@@ -33,9 +36,10 @@ export async function GET(
         sortOrder: 'desc'
       });
       if (!movie) {
+        logger.info(`影片 ${id} 不存在，创建影片`);
         const createdMovie = await db.movie.create({
           data: {
-            number: id,
+            number: movieDetail.id,
             title: movieDetail.title,
             detail: movieDetail as unknown as Prisma.InputJsonValue,
             magnets: magnets as unknown as Prisma.InputJsonValue,
@@ -64,8 +68,17 @@ export async function GET(
 
     }
 
-  } catch (error) {
-    console.error('Error fetching movie detail:', error);
+  } catch (error: any) {
+    if (error instanceof HTTPError) {
+      if (error.message.includes('404')) {
+        return NextResponse.json({ error: "Movie not found" }, { status: 404 });
+      }
+      else if (error.message.includes('403')) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      return NextResponse.json({ error: "[network error] Fetch failed" }, { status: 500 });
+    }
+    logger.error(`Error fetching movie detail:${error}`, );
     return NextResponse.json({ error: "Failed to fetch movie detail" }, { status: 500 });
   }
 }

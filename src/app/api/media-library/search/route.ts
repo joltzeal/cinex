@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  findMediaItemByIdOrTitle, 
+import {
+  findMediaItemByIdOrTitle,
   getMediaLibraryCache,
-  refreshMediaLibraryCache 
+  processMediaItemsForNumbers,
+  refreshMediaLibraryCache
 } from '@/lib/tasks/media-library';
+import { JellyfinMediaItem } from '@/lib/jellyfin-client';
+import { logger } from '@/lib/logger';
+import { db } from '@/lib/db';
+import { getMovieDetail, getMovieMagnets, getPoster } from '@/lib/javbus-parser';
+import { Magnet, MovieDetail } from '@/types/javbus';
+import { Prisma } from 'generated/prisma';
+import { MovieStatus } from '@prisma/client';
+import { HTTPError } from 'got';
 
 /**
  * GET /api/media-library/search
@@ -43,7 +52,7 @@ export async function GET(request: NextRequest) {
 
     if (!mediaItem) {
       return NextResponse.json(
-        { 
+        {
           error: '未找到匹配的媒体项',
           searchParams: { sourceId, title }
         },
@@ -80,3 +89,74 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export async function POST(request: NextRequest) {
+  try {
+    await refreshMediaLibraryCache();
+    const a = getMediaLibraryCache().items;
+    const list: JellyfinMediaItem[] = getMediaLibraryCache().items;
+    const { matchedItems, unmatchedItems, allExtractedNumbers, duplicateNumbers } = processMediaItemsForNumbers(list);
+    logger.info(`媒体库中提取到的番号数量: ${allExtractedNumbers.length}`);
+    const inDbNumbers = await db.movie.findMany({
+      select: {
+        number: true
+      },
+      where: {
+        number: {
+          in: allExtractedNumbers
+        }
+      }
+    });
+
+    logger.info(`在数据库中存在的番号数量: ${inDbNumbers.map(item => item.number)}`);
+    const allExtractedNumbersSet = new Set(allExtractedNumbers);
+    logger.info(`在数据库中不存在的番号数量: ${allExtractedNumbersSet.size - inDbNumbers.length}`);
+    const notInDbNumbers = allExtractedNumbers.filter(item => !inDbNumbers.some(dbItem => dbItem.number === item));
+    for (const itemNumber of notInDbNumbers) {
+      try {
+        logger.info(`开始获取番号: ${itemNumber},时间: ${new Date().toISOString()}`);
+        const movieDetail: MovieDetail = await getMovieDetail(itemNumber);
+        // TODO: 添加搜索错误处理
+        const magnets: Magnet[] = await getMovieMagnets({
+          movieId: movieDetail.id,
+          gid: movieDetail.gid!,
+          uc: movieDetail.uc!,
+          sortBy: 'date',
+          sortOrder: 'desc'
+
+        });
+        await db.movie.upsert({
+          where: { number: movieDetail.id },
+          update: {
+          },
+          create: {
+            number: movieDetail.id,
+            title: movieDetail.title,
+            detail: movieDetail as unknown as Prisma.InputJsonValue,
+            magnets: magnets as unknown as Prisma.InputJsonValue,
+            cover: movieDetail.img,
+            poster: getPoster(movieDetail.img!) ?? null,
+            date: movieDetail.date,
+            status: MovieStatus.uncheck,
+          }
+        });
+
+      } catch (error) {
+        if (error instanceof HTTPError) {
+          logger.error(`无法在 Javbus 获取到${itemNumber} 的详情`);
+        }
+        logger.error(`获取番号: ${itemNumber} 失败: ${error}`);
+      } finally {
+        // 添加等待
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      }
+    }
+    return NextResponse.json({ success: true, data: allExtractedNumbers.length }, { status: 200 });
+  } catch (error) {
+    
+    console.error('[API] 媒体库查询失败:', error);
+    return NextResponse.json(
+      { error: '服务器内部错误', message: String(error) },
+      { status: 500 }
+    );
+  }
+}

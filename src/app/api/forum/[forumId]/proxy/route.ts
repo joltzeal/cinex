@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { proxyFetch } from '@/lib/proxyFetch';
+import { proxyRequest } from '@/lib/proxyFetch';
 import { logger } from '@/lib/logger';
 
 /**
@@ -27,7 +27,7 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid URL' }, { status: 400 });
     }
 
-    logger.info(`Proxying image for ${forumId}: ${imageUrl}`);
+    
 
     // 根据不同论坛设置不同的请求头
     const headers: HeadersInit = {
@@ -42,25 +42,38 @@ export async function GET(
       // 色花堂可能需要特殊的 cookie 或 header
       headers['Referer'] = 'https://www.sehuatang.net/';
     } else if (forumId === 'javbus') {
-      headers['Referer'] = 'https://www.javbus.com/';
+      
+      headers['Referer'] = `https://www.javbus.com/`;
+      headers['Accept'] = 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8';
+      headers['Accept-Language'] = 'zh-CN,zh;q=0.9';
+      headers['cache-control'] = 'no-cache';
+      headers['dnt'] = '1';
+      headers['pragma'] = 'no-cache';
+      headers['priority'] = 'u=1, i';
+      headers['sec-ch-ua'] = '"Chromium";v="139", "Not;A=Brand";v="99"';
+      headers['sec-ch-ua-mobile'] = '?0';
+      headers['sec-ch-ua-platform'] = '"macOS"';
+      headers['sec-fetch-dest'] = 'empty';
+      
     }
 
     // 使用 proxyFetch 获取图片
-    const response = await proxyFetch(imageUrl, {
+    const response = await proxyRequest(imageUrl, {
       headers,
+      responseType: 'buffer'
     });
 
     if (!response.ok) {
-      logger.error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+      logger.error(`Failed to fetch image: ${response.statusCode} ${response.statusMessage}`);
       return NextResponse.json(
         { error: 'Failed to fetch image' },
-        { status: response.status }
+        { status: response.statusCode }
       );
     }
 
     // 获取图片数据
-    const imageBuffer = await response.arrayBuffer();
-    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    const imageBuffer = response.body;
+    const contentType = response.headers?.['content-type']?.toString() || 'image/jpeg';
 
     // 返回图片，设置适当的缓存头
     return new NextResponse(imageBuffer, {

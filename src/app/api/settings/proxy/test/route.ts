@@ -1,9 +1,10 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
 import type { Agent } from 'http';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { SocksProxyAgent } from 'socks-proxy-agent';
-import { NextRequest, NextResponse } from 'next/server';
+import got from "got";
 
+import { NextRequest, NextResponse } from 'next/server';
+import { object } from 'zod';
 // The list of websites to test, as requested.
 const SITES_TO_TEST = [
   "https://www.javbus.com",
@@ -34,14 +35,30 @@ interface NodeRequestInit extends RequestInit {
 async function testSiteConnection(targetUrl: string, proxyUrl: string | undefined): Promise<TestResult> {
   let agent: Agent | undefined = undefined;
 
-  console.log(proxyUrl);
-
+  agent = new HttpsProxyAgent(proxyUrl!);
+  // 2. Prepare fetch options, including the agent and a timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000); // 8-second timeout
+  const options = {
+    method: 'GET',
+    signal: controller.signal,
+    agent:{},
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+  };
   // 1. If a proxy URL is provided, create the appropriate agent
   if (proxyUrl) {
     if (/^https?:\/\//.test(proxyUrl)) {
-      agent = new HttpsProxyAgent(proxyUrl);
+      options.agent = {
+        https: new HttpsProxyAgent(proxyUrl),
+        http: new HttpsProxyAgent(proxyUrl)
+      };
     } else if (/^socks/.test(proxyUrl)) {
-      agent = new SocksProxyAgent(proxyUrl);
+      options.agent = {
+        https: new SocksProxyAgent(proxyUrl),
+        http: new SocksProxyAgent(proxyUrl)
+      };
     } else {
       // If the protocol is invalid, we can return an error immediately
       return {
@@ -52,35 +69,19 @@ async function testSiteConnection(targetUrl: string, proxyUrl: string | undefine
       };
     }
   }
-
-  // 2. Prepare fetch options, including the agent and a timeout
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000); // 8-second timeout
-
-  const options: NodeRequestInit = {
-    method: 'GET',
-    agent: agent,
-    signal: controller.signal,
-    // Add a user-agent to mimic a real browser request
-    headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    }
-  };
-
   // 3. Perform the fetch and handle the result
   try {
-    const response = await fetch(targetUrl, options);
+    const response = await got(targetUrl, options as any);
+    console.log(response.statusCode);
     clearTimeout(timeoutId);
     const isOk = response.ok;
-    console.log(response.status);
     return {
       site: targetUrl,
       success: response.ok, // success is true for status codes 200-299
-      status: response.status,
+      status: response.statusCode,
     };
   } catch (error: any) {
     clearTimeout(timeoutId);
-    console.log(error);
     return {
       site: targetUrl,
       success: false,
@@ -96,6 +97,9 @@ export async function POST(request: NextRequest) {
   if (typeof proxyUrl !== 'string' && typeof proxyUrl !== 'undefined') {
     return NextResponse.json({ message: 'Invalid proxyUrl provided.' }, { status: 400 });
   }
+
+  // console.log(proxyUrl);
+
 
   try {
     // Run all connection tests in parallel for better performance

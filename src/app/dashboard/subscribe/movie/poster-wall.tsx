@@ -50,7 +50,7 @@ export default function SubscribePosterWallPage(props: pageProps) {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
-      {subscribeMovieList.map((item) => {
+      {subscribeMovieList.map((item:any) => {
         const proxiedSrc = item.cover
           ? `/api/subscribe/javbus/proxy?url=${encodeURIComponent(item.cover)}`
           : "";
