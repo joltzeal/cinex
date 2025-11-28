@@ -9,17 +9,20 @@ RUN npm install -g pnpm && \
     apk add --no-cache libc6-compat
 
 # 复制依赖文件
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml ./
 COPY prisma ./prisma
+
+# 复制 pnpm-workspace.yaml（如果存在）
+COPY pnpm-workspace.yaml* ./
 
 # 安装依赖
 RUN pnpm install --frozen-lockfile
 
+# 生成 Prisma client（在安装依赖后）
+RUN pnpm prisma generate
+
 # 复制源代码
 COPY . .
-
-# 生成 Prisma client
-RUN pnpm dlx prisma generate
 
 # 设置环境变量
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -28,13 +31,10 @@ ENV NODE_ENV=production
 # 构建应用
 RUN pnpm build
 
-# 移除了 Prisma seed 相关的配置，将在应用启动时处理用户初始化
-
 # 运行阶段
 FROM node:20-alpine AS runner
 
 WORKDIR /app
-
 
 # 安装运行时依赖
 RUN apk add --no-cache \
@@ -42,6 +42,7 @@ RUN apk add --no-cache \
     bash \
     dumb-init \
     coreutils
+
 # 复制构建产物和必要文件
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
@@ -62,10 +63,6 @@ COPY docker/start.sh /app/
 # 设置权限
 RUN chmod +x /app/start.sh && \
     chown -R root:root /app
-
-# RUN chmod +x /app/start.sh && \
-# chown -R root:root /app
-
 
 # 暴露端口
 EXPOSE 3000
