@@ -75,4 +75,6 @@ jobs:
 
       # 7. 输出镜像信息
       - name: Image digest
-        run: echo "Image pushed with tags: ${{ steps.meta.outputs.tags }}"
+        run: |
+          echo "Image pushed with tags:"
+          echo "${{ steps.meta.outputs.tags }}"
