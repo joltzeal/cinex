@@ -1,0 +1,278 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id
+  name          String
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+
+model Document {
+  id           String                @id @default(uuid()) @db.Uuid
+  title        String
+  description  String?
+  images       String[]
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  downloadURLs DocumentDownloadURL[]
+
+  //@@map("documents")
+}
+
+model DocumentDownloadURL {
+  id               String                 @id @default(uuid()) @db.Uuid
+  url              String
+  documentId       String                 @db.Uuid
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  status           DocumentDownloadStatus @default(undownload)
+  detail           Json?
+  subscribeDataIds Json?
+  hash             String?
+  type             String?
+  downloadAt       DateTime?
+  number           String?                // 如果是 type，则需要一个番号
+  document         Document               @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  //@@map("download_urls")
+}
+
+enum MovieStatus {
+  uncheck
+  checked
+  undownload
+  downloading
+  downloaded
+  added
+  subscribed
+  transfered
+}
+
+model Subscribe {
+  id          String            @id @default(uuid())
+  filter      Json
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  starInfo    Json?
+  filterType  String
+  filterValue String
+  movies      SubscribeMovie[]  // 通过中间表关联 Movie
+}
+
+model Movie {
+  id           String            @id @default(uuid())
+  number       String            @unique  // 番号，全局唯一
+  title        String            // 标题
+  cover        String?           // 横屏高清封面
+  poster       String?           // 竖屏海报（一般为缩略图）
+  date         String?           // 上映日期
+  tags         Json?
+  status       MovieStatus       @default(uncheck)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  rating       String?           // 评分
+  comment      String?           // 评价
+  detail       Json?
+  magnets      Json?
+  mediaLibrary Json?
+  addedAt      DateTime?             
+  downloadAt   DateTime?
+  subscribeAt  DateTime?
+  subscribes   SubscribeMovie[]  // 通过中间表关联 Subscribe
+}
+
+// 订阅和电影的多对多关系中间表
+model SubscribeMovie {
+  id          String    @id @default(uuid())
+  subscribeId String
+  movieId     String
+  createdAt   DateTime  @default(now())
+  
+  subscribe   Subscribe @relation(fields: [subscribeId], references: [id], onDelete: Cascade)
+  movie       Movie     @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@unique([subscribeId, movieId])  // 同一个订阅不能重复添加同一个电影
+  @@index([subscribeId])
+  @@index([movieId])
+}
+model ForumSubscribe {
+  id          String      @id @default(uuid())
+  title       String      // 标题
+  forum       String      // 论坛名称
+  thread      String      // 主题/帖子唯一标识
+  url         String?     // 订阅链接
+  lastChecked DateTime?   // 最后检查时间
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  posts       ForumPost[]
+
+  @@unique([thread, forum])
+  @@index([forum])
+  @@index([lastChecked])
+}
+
+model ForumPost {
+  id                String         @id @default(uuid())
+  title             String         // 标题
+  postId             String         // 帖子唯一标识
+  content           String?        @db.Text // 内容
+  author            String?        // 作者
+  cover           String?        // 封面
+  url               String?        // 帖子链接
+  publishedAt       DateTime?      // 帖子发布时间
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  isStar          Boolean      @default(false)
+  readed          Boolean      @default(false)
+  
+  forumSubscribeId  String         // 外键
+  forumSubscribe    ForumSubscribe @relation(fields: [forumSubscribeId], references: [id], onDelete: Cascade)
+
+  @@index([forumSubscribeId])
+  @@index([publishedAt])
+  @@unique([forumSubscribeId, postId]) // 防止同一订阅下重复的帖子
+}
+
+
+
+model Setting {
+  key       String   @id @unique
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FileTransferLog {
+  id              String         @id @default(uuid())
+  
+  // 基础信息
+  title           String
+  number      String?         // 新增的番号字段，替代 subtitle，可选
+  sourcePath      String          @db.Text // 源文件路径，使用 Text 类型以支持长路径
+  destinationPath String          @db.Text // 目标文件路径，使用 Text 类型
+
+  // 转移方法与状态
+  transferMethod  TransferMethod
+  status          TransferStatus @default(PROCESSING) // 默认新任务为“处理中”
+
+  // 附加信息
+  errorMessage    String?         @db.Text // 如果转移失败，在此记录错误信息
+  
+  // 时间戳
+  initiatedAt     DateTime       @default(now()) // 任务创建（开始处理）的时间
+  completedAt     DateTime?      // 任务完成（成功或失败）的时间
+  updatedAt       DateTime       @updatedAt      // 记录最后更新的时间
+}
+
+model TelegramMessage {
+  id         Int      @id @default(autoincrement())
+  messageId  String
+  chatId     String?
+  chatTitle  String?
+  text       String?
+  tags       String[]
+  forwardUrl String?
+  mediaType  String?
+  fileName   String?
+  filePath   String[] // 改为字符串数组，支持多个文件路径
+  mediaCount Int?     @default(0) // 添加媒体数量字段
+  processed  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([messageId, chatId])
+}
+
+
+enum DocumentDownloadStatus {
+  undownload
+  downloading
+  downloaded
+  paused
+  checking
+  error
+}
+
+enum TransferStatus {
+  SUCCESS
+  FAILURE
+  PROCESSING
+}
+
+/// 文件转移所使用的方法
+enum TransferMethod {
+  COPY
+  MOVE
+  HARDLINK
+  SOFTLINK
+}

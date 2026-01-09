@@ -35,17 +35,35 @@ import {
   IconUsers,
   IconCrown,
   IconStar,
-  IconBox
+  IconBox,
+  IconAdjustmentsDown,
+  IconSearch,
+  IconListCheck,
+  IconRss,
+  IconBrandTelegram,
+  IconChartBarPopular,
+  IconMovie,
+  IconMessage,
+  IconLayersSelected,
+  IconFileRss,
+  IconAdjustmentsSearch
 } from '@tabler/icons-react';
 
 export type Icon = React.ComponentType<IconProps>;
 
 export const Icons = {
+  downloader: IconAdjustmentsDown,
+  search: IconSearch,
+  listCheck: IconListCheck,
+  rss: IconRss,
+  telegram: IconBrandTelegram,
+  recommended: IconChartBarPopular,
+  movie: IconMovie,
   dashboard: IconLayoutDashboard,
   logo: IconCommand,
   login: IconLogin,
   close: IconX,
-  product: IconBox,
+  product: IconShoppingBag,
   spinner: IconLoader2,
   kanban: IconLayoutKanban,
   chevronLeft: IconChevronLeft,
@@ -63,19 +81,17 @@ export const Icons = {
   add: IconPlus,
   warning: IconAlertTriangle,
   user: IconUser,
+  forum: IconMessage,
   arrowRight: IconArrowRight,
   help: IconHelpCircle,
   pizza: IconPizza,
+  layersSelected: IconLayersSelected,
   sun: IconSun,
   moon: IconMoon,
+  fileRss: IconFileRss,
   laptop: IconDeviceLaptop,
   github: IconBrandGithub,
   twitter: IconBrandTwitter,
   check: IconCheck,
-  workspace: IconFolder,
-  teams: IconUsers,
-  pro: IconCrown,
-  exclusive: IconStar,
-  account: IconUserCircle,
-  profile: IconUser
+  adjustSearch: IconAdjustmentsSearch
 };

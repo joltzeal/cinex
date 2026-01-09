@@ -42,3 +42,15 @@ export interface FooterItem {
 export type MainNavItem = NavItemWithOptionalChildren;
 
 export type SidebarNavItem = NavItemWithChildren;
+
+export interface SseProgress {
+  stage:
+    | 'AI_START'
+    | 'AI_COMPLETE'
+    | 'DOWNLOAD_SUBMIT'
+    | 'PROGRESS'
+    | 'DONE'
+    | 'ERROR';
+  message: string;
+  data?: any;
+}
