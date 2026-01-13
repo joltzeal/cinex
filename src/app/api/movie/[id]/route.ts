@@ -1,3 +1,4 @@
+import { findVideoFiles } from '@/lib/parse/file';
 import { prisma } from '@/lib/prisma';
 import { getMovieDetail, getMovieMagnets } from '@/lib/javbus/javbus-parser';
 import { MovieDetail, Magnet } from '@/types/javbus';
@@ -24,12 +25,14 @@ export async function GET(
     const movie = await prisma.movie.findUnique({
       where: { number: id }
     });
+    
     const isAdded = findMediaItemByIdOrTitle(id);
 
     if (movie && movie.detail && movie.magnets) {
       return NextResponse.json({ data: movie }, { status: 200 });
     } else {
       const movieDetail: MovieDetail = await getMovieDetail(id);
+      
       const magnets: Magnet[] = await getMovieMagnets({
         movieId: id,
         gid: movieDetail.gid!,
@@ -37,8 +40,9 @@ export async function GET(
         sortBy: 'date',
         sortOrder: 'desc'
       });
+      
       if (!movie) {
-        logger.info(`影片 ${id} 不存在，创建影片`);
+        
         const createdMovie = await prisma.movie.create({
           data: {
             number: movieDetail.id,
@@ -55,7 +59,6 @@ export async function GET(
         });
         return NextResponse.json({ data: createdMovie }, { status: 200 });
       } else if (!movie.detail || !movie.magnets) {
-        logger.info(`影片 ${id} 没有详情，更新详情`);
         const updatedMovie = await prisma.movie.update({
           where: { number: movieDetail.id },
           data: {

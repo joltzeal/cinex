@@ -42,6 +42,8 @@ import {
 import { MovieReviewDialog } from '@/features/subscribe/movie-review';
 import { Magnet, MovieDetail } from '@/types/javbus';
 import { MagnetPreviewDialog } from '../magnet/magnet-preview-dialog';
+import { useMediaServer } from '@/contexts/media-server-context';
+import { SubscribeMovieStatusMap } from '@/constants/data';
 
 const useMovie = (movie: Movie) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -449,7 +451,7 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
     isReviewDialogOpen,
     setIsReviewDialogOpen
   } = useMovie(movie);
-
+  const mediaServer = useMediaServer();
   const { open, images, initialIndex, openPreview, setOpen } =
     useImagePreview();
   return (
@@ -567,21 +569,49 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
                 </CardHeader>
                 <CardContent className='grid gap-3'>
                   <div className='grid grid-cols-2 gap-3'>
-                    <Button
-                      className='w-full'
-                      onClick={handleSubscribeMovie}
-                      disabled={isSubmitting}
-                      variant={
-                        movie.status === 'subscribed' ? 'outline' : 'default'
-                      }
-                    >
-                      {movie.status === 'subscribed' ? (
-                        <CheckCircle2 className='mr-2 h-4 w-4' />
-                      ) : (
-                        <PlayCircle className='mr-2 h-4 w-4' />
+                    {movie.status === 'uncheck' && (
+                      <Button
+                        variant='default'
+                        onClick={() => handleSubscribeMovie()}
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? '正在订阅...' : '添加订阅'}
+                      </Button>
+                    )}
+                    {movie.status === 'added' &&
+                      mediaServer?.publicAddress &&
+                      movie.mediaLibrary && (
+                        <Button
+                          variant='default'
+                          className='cursor-pointer'
+                          onClick={() => {
+                            window.open(
+                              `${mediaServer.publicAddress}/web/index.html#!/item?id=${(movie.mediaLibrary as any)?.Id}&serverId=${(movie.mediaLibrary as any)?.ServerId}`,
+                              '_blank'
+                            );
+                          }}
+                        >
+                          <PlayCircle className='ml-2 h-4 w-4' />
+                          已入库
+                        </Button>
                       )}
-                      {movie.status === 'subscribed' ? '已订阅' : '添加订阅'}
-                    </Button>
+                    {['downloading', 'downloaded', 'subscribed'].includes(
+                      movie.status
+                    ) && (
+                        <Button
+                          variant={
+                            SubscribeMovieStatusMap[
+                              movie.status as keyof typeof SubscribeMovieStatusMap
+                            ].variant as any
+                          }
+                        >
+                          {
+                            SubscribeMovieStatusMap[
+                              movie.status as keyof typeof SubscribeMovieStatusMap
+                            ].label
+                          }
+                        </Button>
+                      )}
                     <Button
                       variant='outline'
                       className='w-full'

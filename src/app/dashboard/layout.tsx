@@ -6,6 +6,8 @@ import { InfobarProvider } from '@/components/ui/infobar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
+import { MediaServerProvider } from '@/contexts/media-server-context';
+import { getSetting, SettingKey } from '@/services/settings';
 
 export const metadata: Metadata = {
   title: 'Next Shadcn Dashboard Starter',
@@ -17,6 +19,8 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+    const mediaServer = await getSetting(SettingKey.MediaServerConfig);
+
   // Persisting the sidebar state in the cookie.
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get('sidebar_state')?.value === 'true';
@@ -28,7 +32,9 @@ export default async function DashboardLayout({
           <SidebarInset>
             <Header />
             {/* page main content */}
+            <MediaServerProvider value={mediaServer}>
             {children}
+          </MediaServerProvider>
             {/* page main content ends */}
           </SidebarInset>
           <InfoSidebar side='right' />

@@ -54,3 +54,9 @@ export interface SseProgress {
   message: string;
   data?: any;
 }
+
+export type FileTreeNode = {
+  id: string;
+  name: string;
+  children?: FileTreeNode[];
+};

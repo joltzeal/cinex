@@ -5,7 +5,6 @@ import { Movie } from '@prisma/client';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import 'yet-another-react-lightbox/styles.css';
 
 // 加载状态组件
 const LoadingState = () => (

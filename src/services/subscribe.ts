@@ -4,8 +4,8 @@ import dayjs from 'dayjs';
 interface GetSubscribeMovieListParams {
   where?: Prisma.MovieWhereInput;
   orderBy?:
-    | Prisma.MovieOrderByWithRelationInput
-    | Prisma.MovieOrderByWithRelationInput[];
+  | Prisma.MovieOrderByWithRelationInput
+  | Prisma.MovieOrderByWithRelationInput[];
   skip?: number;
   take?: number;
 }
@@ -186,4 +186,19 @@ export async function getExistingMovieStatusByNumber(
     return existingMovie.status;
   }
   return null;
+}
+
+export async function getRecentlyAddedMovies() {
+  const recentlyAdded = await prisma.movie.findMany({
+    where: {
+      status: MovieStatus.added,
+      poster: { not: null },
+      addedAt: { not: null }
+    },
+    orderBy: {
+      addedAt: 'desc'
+    },
+    take: 4
+  })
+  return recentlyAdded;
 }

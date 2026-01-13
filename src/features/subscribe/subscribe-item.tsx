@@ -7,27 +7,20 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from '@/components/ui/tooltip';
-import { MovieStatus, Prisma } from '@prisma/client';
+import { Movie, MovieStatus, Prisma } from '@prisma/client';
 import {
   Bookmark,
-  Building,
-  Eye,
-  EyeClosed,
-  Clapperboard,
+  Building, Clapperboard,
   Film,
   PlayCircle,
   Tag,
   User,
-  Trash2,
-  Plus,
-  List,
+  Trash2, List,
   FilterX,
   Tags,
   FileQuestion,
-  Grab,
-  RefreshCcwIcon,
-  Download
-} from 'lucide-react'; // 1. 导入新图标
+  Grab, Download
+} from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -47,12 +40,10 @@ import {
   AlertDialogTrigger
 } from '@/components/ui/alert-dialog';
 import { useState, useRef, useEffect } from 'react';
-import { MovieDetailDialog } from '@/components/search/movie-detail-dialog';
+import { SimpleMovieDetailDialog } from '@/components/search/simple-movie-detail-dialog';
 import { MovieDetail, Property } from '@/types/javbus';
 import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
+  Empty, EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle
@@ -75,9 +66,8 @@ const statusMap: {
   uncheck: { label: null, variant: 'secondary' },
   checked: { label: null, variant: 'outline' },
   undownload: { label: null, variant: 'outline' },
-  // 只有这些状态会显示 Badge
   downloading: { label: '下载中', variant: 'default' },
-  downloaded: { label: '已完成', variant: 'default' }, // "已下载" 改为 "已完成" 更简洁
+  downloaded: { label: '已完成', variant: 'default' },
   added: { label: '已入库', variant: 'destructive' },
   subscribed: { label: '已订阅', variant: 'default' },
   transfered: { label: '已转移', variant: 'default' }
@@ -120,7 +110,8 @@ export default function JavbusSubscribeInfoItem({
   const [isHidden, setIsHidden] = useState(false);
   // 筛选模式：0-全部, 1-排除特定tag, 2-只显示特定tag, 3-detail为空
   const [filterMode, setFilterMode] = useState(0);
-
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [movieData, setMovieData] = useState<Movie | null>(null);
   // 使用原生事件监听器来更好地控制滚轮事件
   useEffect(() => {
     const scrollAreaElement = scrollAreaRef.current;
@@ -265,8 +256,8 @@ export default function JavbusSubscribeInfoItem({
       <div className='flex justify-between'>
         <div className='flex min-w-0 flex-1 items-start space-x-3'>
           {/* 图标 */}
-          {}
-          <div className='bg-muted relative flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl'>
+          { }
+          <div className='bg-muted relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl'>
             {icon}
           </div>
 
@@ -374,6 +365,53 @@ export default function JavbusSubscribeInfoItem({
   };
 
   const filterModeConfig = getFilterModeIcon();
+
+  const handleClickSubscribeItem = (movie: Movie) => () => {
+    if (!movie.number) {
+      toast.error('影片编号不存在');
+      return;
+    }
+
+    const fetchMovieData = async () => {
+      const response = await fetch(`/api/movie/${movie.number}`);
+
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error(`请求失败: JavBus未收录该影片`);
+        }
+        throw new Error(`请求失败: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+
+      console.log(result);
+      
+
+      if (!result || !result.data) {
+        throw new Error('未找到影片数据。');
+      }
+
+      return result.data;
+    };
+
+    const promise = fetchMovieData();
+    const toastId = toast.loading('正在加载影片信息...');
+
+    promise
+      .then((data) => {
+        toast.dismiss(toastId);
+        setMovieData(data);
+        setDialogOpen(true);
+      })
+      .catch((err) => {
+        toast.error(err.message || '加载数据时发生未知错误。', {
+          id: toastId
+        });
+        console.error('Failed to load movie:', err);
+      });
+  };
   return (
     <Card className='table w-full table-fixed'>
       <CardHeader className='pb-1'>
@@ -381,36 +419,36 @@ export default function JavbusSubscribeInfoItem({
           {/* 4. 渲染动态生成的 headerContent */}
           <div className='min-w-0 flex-1 overflow-hidden'>{headerContent}</div>
           {/* 更新时间 Badge 和删除按钮 */}
-          <div className='flex flex-shrink-0 items-center space-x-1 sm:space-x-2'>
+          <div className='flex shrink-0 items-center space-x-1 sm:space-x-2'>
             <div className='flex flex-col items-end space-y-1'>
               <div className='flex items-center space-x-1'>
                 <Badge variant='default'>{info.movies.length} 部影片</Badge>
                 {info.movies.filter(
                   (movie: any) => movie.movie.status === MovieStatus.downloading
                 ).length > 0 && (
-                  <Badge variant='outline'>
-                    {
-                      info.movies.filter(
-                        (movie: any) =>
-                          movie.movie.status === MovieStatus.downloading
-                      ).length
-                    }{' '}
-                    部正在下载
-                  </Badge>
-                )}
+                    <Badge variant='outline'>
+                      {
+                        info.movies.filter(
+                          (movie: any) =>
+                            movie.movie.status === MovieStatus.downloading
+                        ).length
+                      }{' '}
+                      部正在下载
+                    </Badge>
+                  )}
                 {info.movies.filter(
                   (movie: any) => movie.movie.status === MovieStatus.added
                 ).length > 0 && (
-                  <Badge variant='destructive'>
-                    媒体库中已添加
-                    {
-                      info.movies.filter(
-                        (movie: any) => movie.movie.status === MovieStatus.added
-                      ).length
-                    }{' '}
-                    部
-                  </Badge>
-                )}
+                    <Badge variant='destructive'>
+                      媒体库中已添加
+                      {
+                        info.movies.filter(
+                          (movie: any) => movie.movie.status === MovieStatus.added
+                        ).length
+                      }{' '}
+                      部
+                    </Badge>
+                  )}
               </div>
 
               <Badge variant='outline'>
@@ -508,7 +546,7 @@ export default function JavbusSubscribeInfoItem({
           className='w-full rounded-md whitespace-nowrap'
         >
           {info.movies.filter(filterMovie).length === 0 && (
-            <Empty className='from-muted/50 to-background h-full bg-gradient-to-b from-30%'>
+            <Empty className='from-muted/50 to-background h-full bg-linear-to-b from-30%'>
               <EmptyHeader>
                 <EmptyMedia variant='icon'>
                   <IconBell />
@@ -534,82 +572,75 @@ export default function JavbusSubscribeInfoItem({
                 const mediaInfo =
                   movie.mediaLibrary as JellyfinMediaItem | null;
                 return (
-                  <MovieDetailDialog movieId={movie.number!} key={movie.id}>
-                    <div className='group flex w-[100px] flex-shrink-0 cursor-pointer flex-col items-center space-y-2'>
-                      <div className='bg-muted relative h-[150px] w-full overflow-hidden rounded-md'>
-                        <LazyImage
-                          src={proxiedSrc}
-                          alt={movie.title}
-                          className='h-full w-full object-cover'
-                        />
+                  <div className='group flex w-25 shrink-0 cursor-pointer flex-col items-center space-y-2' onClick={handleClickSubscribeItem(movie)}>
+                    <div className='bg-muted relative h-37.5 w-full overflow-hidden rounded-md' >
+                      <LazyImage
+                        src={proxiedSrc}
+                        alt={movie.title}
+                        className='h-full w-full object-cover'
+                      />
 
-                        {/* 5. 添加状态 Badge */}
-                        {statusConfig && statusConfig.label && (
-                          <Badge
-                            variant={statusConfig.variant}
-                            // 3. 调整 Badge 样式
-                            className='absolute top-1.5 right-1.5 h-4 px-1.5 text-[10px] font-semibold backdrop-blur-sm'
+                      {statusConfig && statusConfig.label && (
+                        <Badge
+                          variant={statusConfig.variant}
+                          // 3. 调整 Badge 样式
+                          className='absolute top-1.5 right-1.5 h-4 px-1.5 text-[10px] font-semibold backdrop-blur-sm'
+                        >
+                          {statusConfig.label}
+                        </Badge>
+                      )}
+                      {movie.status === 'added' &&
+                        mediaInfo &&
+                        mediaServer &&
+                        mediaServer.publicAddress && (
+                          <a
+                            href={`${mediaServer.publicAddress}/web/index.html#!/item?id=${mediaInfo.Id}&serverId=${mediaInfo.ServerId}`}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            // 阻止点击事件冒泡到父级的 MovieDetailsTrigger
+                            onClick={(e) => e.stopPropagation()}
+                            className='absolute right-1.5 bottom-1.5 z-10 cursor-pointer'
                           >
-                            {statusConfig.label}
+                            <Button
+                              variant='ghost'
+                              size='icon'
+                              className='h-7 w-7 bg-black/50 text-white hover:bg-black/70 hover:text-white'
+                            >
+                              <PlayCircle className='h-5 w-5' />
+                            </Button>
+                          </a>
+                        )}
+                      {
+                        movie.detail &&
+                        (movie.detail as unknown as MovieDetail).genres.some(
+                          (tag: any) => tag.name in genresMap
+                        ) && (
+                          <Badge
+                            variant={'destructive'}
+                            className='absolute bottom-1.5 left-1.5 h-4 px-1.5 text-[10px] font-semibold backdrop-blur-sm'
+                          >
+                            {getGenres(
+                              (movie.detail as unknown as MovieDetail).genres
+                            ).join('/')}
                           </Badge>
                         )}
-                        {movie.status === 'added' &&
-                          mediaInfo &&
-                          mediaServer &&
-                          mediaServer.publicAddress && (
-                            <a
-                              href={`${mediaServer.publicAddress}/web/index.html#!/item?id=${mediaInfo.Id}&serverId=${mediaInfo.ServerId}`}
-                              target='_blank'
-                              rel='noopener noreferrer'
-                              // 阻止点击事件冒泡到父级的 MovieDetailsTrigger
-                              onClick={(e) => e.stopPropagation()}
-                              className='absolute right-1.5 bottom-1.5 z-10 cursor-pointer'
-                            >
-                              <Button
-                                variant='ghost'
-                                size='icon'
-                                className='h-7 w-7 bg-black/50 text-white hover:bg-black/70 hover:text-white'
-                              >
-                                <PlayCircle className='h-5 w-5' />
-                              </Button>
-                            </a>
-                          )}
-                        {movie.tags &&
-                          movie.detail &&
-                          (movie.detail as unknown as MovieDetail).genres.some(
-                            (tag: any) => tag.name in genresMap
-                          ) && (
-                            // <Button variant="ghost" size="icon" className="absolute bottom-1.5 right-1.5 z-10 cursor-pointer">
-                            //   <FolderOpen className="h-5 w-5" />
-                            // </Button>
-                            <Badge
-                              variant={'destructive'}
-                              // 3. 调整 Badge 样式
-                              className='absolute bottom-1.5 left-1.5 h-4 px-1.5 text-[10px] font-semibold backdrop-blur-sm'
-                            >
-                              {getGenres(
-                                (movie.detail as unknown as MovieDetail).genres
-                              ).join('/')}
-                            </Badge>
-                          )}
-                      </div>
-                      <TooltipProvider delayDuration={100}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <p className='text-foreground group-hover:text-primary w-full truncate text-center text-xs leading-tight'>
-                              {movie.number}
-                            </p>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className='max-w-xs'>{movie.title}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <p className='text-muted-foreground truncate text-xs leading-tight'>
-                        {movie.date}
-                      </p>
                     </div>
-                  </MovieDetailDialog>
+                    <TooltipProvider delayDuration={100}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <p className='text-foreground group-hover:text-primary w-full truncate text-center text-xs leading-tight'>
+                            {movie.number}
+                          </p>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className='max-w-xs'>{movie.title}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <p className='text-muted-foreground truncate text-xs leading-tight'>
+                      {movie.date}
+                    </p>
+                  </div>
                 );
               })}
             </div>
@@ -617,6 +648,12 @@ export default function JavbusSubscribeInfoItem({
           <ScrollBar orientation='horizontal' />
         </ScrollArea>
       </CardContent>
+
+      <SimpleMovieDetailDialog
+        movie={movieData}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
     </Card>
   );
 }

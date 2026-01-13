@@ -16,8 +16,10 @@ import {
 } from 'lucide-react';
 import PageContainer from '@/components/layout/page-container';
 import { VideoInfo } from '@/types/javdb';
-import { MovieDetailDialog } from '@/components/search/movie-detail-dialog';
+import { SimpleMovieDetailDialog } from '@/components/search/simple-movie-detail-dialog';
 import { SubscribeMovieStatusMap } from '@/constants/data';
+import { toast } from 'sonner';
+import { Movie } from '@prisma/client';
 
 interface JAVDBResponse {
   success: boolean;
@@ -42,15 +44,59 @@ function PosterCard({
   video: VideoInfo;
   aspectRatioValue: number;
 }) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [movieData, setMovieData] = useState<Movie | null>(null);
+
+  const handleClick = async () => {
+    if (!video.code) {
+      toast.error('影片编号不存在');
+      return;
+    }
+
+    const fetchMovieData = async () => {
+      const response = await fetch(`/api/movie/${video.code}`);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error(`请求失败: JavBus未收录该影片`);
+        }
+        throw new Error(`请求失败: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (!result || !result.data) {
+        throw new Error('未找到影片数据。');
+      }
+
+      return result.data;
+    };
+
+    const promise = fetchMovieData();
+    const toastId = toast.loading('正在加载影片信息...');
+
+    promise
+      .then((data) => {
+        toast.dismiss(toastId);
+        setMovieData(data);
+        setDialogOpen(true);
+      })
+      .catch((err) => {
+        toast.error(err.message || '加载数据时发生未知错误。', {
+          id: toastId
+        });
+        console.error('Failed to load movie:', err);
+      });
+  };
+
   return (
-    // 控制卡片之间的间距
-    <MovieDetailDialog movieId={video.code!}>
-      <div className='cursor-pointer p-1.5'>
+    <>
+      <div className='cursor-pointer p-1.5' onClick={handleClick}>
         <div className='group relative overflow-hidden rounded-lg'>
           <AspectRatio ratio={aspectRatioValue}>
             <img
               src={video.cover || '/placeholder.png'}
-              alt={video.code || 'Poster'} // 使用 code 作为图片的 alt 文本
+              alt={video.code || 'Poster'}
               className='h-full w-full object-cover transition-transform duration-300 group-hover:scale-105'
             />
           </AspectRatio>
@@ -91,7 +137,13 @@ function PosterCard({
           )}
         </div>
       </div>
-    </MovieDetailDialog>
+
+      <SimpleMovieDetailDialog
+        movie={movieData}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
+    </>
   );
 }
 

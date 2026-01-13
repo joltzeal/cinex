@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cinex-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cinex}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cinex}
+      POSTGRES_DB: ${POSTGRES_DB:-cinex}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cinex}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cinex-app
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cinex}:${POSTGRES_PASSWORD:-cinex}@postgres:5432/${POSTGRES_DB:-cinex}
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

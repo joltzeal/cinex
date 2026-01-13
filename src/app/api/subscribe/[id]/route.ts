@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { Prisma } from '@prisma/client';
-import { getMovieDetail } from '@/lib/javbus-parser';
+import { getMovieDetail } from '@/lib/javbus/javbus-parser';
 
 // 根据 subscribe 进行订阅
 export async function POST(
@@ -10,7 +10,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const subscribe = await db.subscribe.findUnique({
+  const subscribe = await prisma.subscribe.findUnique({
     where: { id },
     include: {
       movies: true
@@ -30,7 +30,7 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const nullDetailMovies = await db.movie.findMany({
+    const nullDetailMovies = await prisma.movie.findMany({
       where: {
         subscribes: {
           some: {
@@ -66,10 +66,10 @@ export async function PUT(
 
       // 并发执行当前批次的所有请求
       await Promise.all(
-        batch.map(async (movie) => {
+        batch.map(async (movie: { number: string; id: any; }) => {
           try {
             const movieDetail = await getMovieDetail(movie.number);
-            await db.movie.update({
+            await prisma.movie.update({
               where: { id: movie.id },
               data: {
                 detail: movieDetail as unknown as Prisma.InputJsonValue,

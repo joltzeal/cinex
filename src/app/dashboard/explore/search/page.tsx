@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TorrentSearchResult } from '@/lib/scrapers/interface';
+import { Filters } from '@/components/search/filter-search-bar';
 // import { useLoading } from '@/contexts/loading-context';
 
 // --- Type Definitions ---
@@ -64,7 +65,7 @@ export default function SearchPage() {
   const [sortOption, setSortOption] = useState<string>('0');
   const [searchResults, setSearchResults] = useState<ApiResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const { showLoader, hideLoader, updateLoadingMessage } = useLoading();
+  // const { showLoader, hideLoader, updateLoadingMessage } = useLoading();
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [previewingMagnet, setPreviewingMagnet] = useState<string | null>(null);
@@ -81,7 +82,7 @@ export default function SearchPage() {
     e.preventDefault();
     if (!keyword.trim()) return;
 
-    showLoader(`正在搜索  "${keyword}"  相关的磁力链接 ...`);
+    // showLoader(`正在搜索  "${keyword}"  相关的磁力链接 ...`);
     setIsLoading(true);
 
     setError(null);
@@ -100,7 +101,7 @@ export default function SearchPage() {
       // Also transition to show the error in the results view
       setHasSearched(true);
     } finally {
-      hideLoader();
+      // hideLoader();
       setIsLoading(false);
     }
   };
@@ -231,10 +232,10 @@ export default function SearchPage() {
             {searchResults && !error && (
               <div className='grid grid-cols-1 lg:grid-cols-4 lg:gap-8'>
                 <main className='lg:col-span-3'>
-                  <SearchResultsTabs
+                  {/* <SearchResultsTabs
                     data={filteredData}
                     onPreviewMagnet={setPreviewingMagnet}
-                  />
+                  /> */}
                 </main>
                 <aside className='mt-8 lg:col-span-1 lg:mt-0'>
                   <div className='mb-6 flex items-center'>
@@ -247,10 +248,10 @@ export default function SearchPage() {
                       重新搜索
                     </Button>
                   </div>
-                  <FilterSidebar
+                  {/* <FilterSidebar
                     allData={searchResults.data}
                     onFilterChange={setFilters}
-                  />
+                  /> */}
                 </aside>
               </div>
             )}
@@ -266,11 +267,11 @@ export default function SearchPage() {
       )} */}
 
       {/* Magnet Preview Dialog remains unchanged */}
-      <MagnetPreviewDialog
+      {/* <MagnetPreviewDialog
         open={!!previewingMagnet}
         onOpenChange={(open) => !open && setPreviewingMagnet(null)}
         magnetLink={previewingMagnet || ''}
-      />
+      /> */}
     </div>
   );
 }

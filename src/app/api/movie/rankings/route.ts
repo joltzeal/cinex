@@ -12,6 +12,58 @@ import { parseVideoList } from '@/lib/javdb/javdb-parser';
 import { VideoInfo } from '@/types/javdb';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+function ip6SafeRegex(): RegExp {
+  // 参考多段组合写法，覆盖 8 组、压缩、尾部省略、多种展开
+  const part = "[A-Fa-f0-9]{1,4}";
+  const ipv6Std = `(?:${part}:){7}${part}`;
+  const ipv6CompressedVariants = [
+    `(?:${part}:){1,7}:`,
+    `:${part}(?::${part}){1,7}`,
+    `(?:${part}:){1,6}:${part}`,
+    `(?:${part}:){1,5}(?::${part}){1,2}`,
+    `(?:${part}:){1,4}(?::${part}){1,3}`,
+    `(?:${part}:){1,3}(?::${part}){1,4}`,
+    `(?:${part}:){1,2}(?::${part}){1,5}`,
+    `${part}(?::${part}){1,6}`,
+    `:(?::${part}){1,7}`,
+    `::`,
+  ];
+  const full = `\\b(?:${ipv6Std}|${ipv6CompressedVariants.join("|")})\\b`;
+  return new RegExp(full, "i");
+}
+
+// 严格 IPv4（每段 0–255）
+const ipv4Strict =
+  /\b(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\b/;
+
+// IPv6 完整正则（支持标准、压缩、带嵌套 IPv4、区分大小写无关，支持 :: 缩写）
+const ipv6 =
+  /\b(?:(?:[A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}|(?:[A-Fa-f0-9]{1,4}:){1,7}:|:(?::[A-Fa-f0-9]{1,4}){1,7}|(?:[A-Fa-f0-9]{1,4}:){1,6:[A-Fa-f0-9]{1,4}}|(?:[A-Fa-f0-9]{1,4}:){1,5(?::[A-Fa-f0-9]{1,4}){1,2}}|(?:[A-Fa-f0-9]{1,4}:){1,4(?::[A-Fa-f0-9]{1,4}){1,3}}|(?:[A-Fa-f0-9]{1,4}:){1,3(?::[A-Fa-f0-9]{1,4}){1,4}}|(?:[A-Fa-f0-9]{1,4}:){1,2(?::[A-Fa-f0-9]{1,4}){1,5}}|[A-Fa-f0-9]{1,4}:(?:(?::[A-Fa-f0-9]{1,4}){1,6})|(?::(?::[A-Fa-f0-9]{1,4}){1,7}))\b/;
+
+// 更稳妥的 IPv6 组合（包含 IPv4 嵌套形式，如 ::ffff:192.0.2.128）
+const ipv6WithEmbeddedIPv4 =
+  /\b(?:(?:[A-Fa-f0-9]{1,4}:){6}(?:\d{1,3}\.){3}\d{1,3}|(?:[A-Fa-f0-9]{1,4}:){0,5}:(?:\d{1,3}\.){3}\d{1,3}|::(?:[A-Fa-f0-9]{1,4}:){0,4}(?:\d{1,3}\.){3}\d{1,3})\b/;
+
+/**
+ * 提取文本中的唯一 IP（IPv4 或 IPv6）。如果找到多个，默认返回第一个。
+ * @param text 多行字符串
+ * @param preferIPv6 如果同一位置既可能是 IPv4 又可能是 IPv6（极少见），可选是否优先 IPv6
+ * @returns 单个 IP 字符串或 null
+ */
+export function extractSingleIP(text: string, preferIPv6: boolean = true): string | null {
+  // 先尝试匹配 IPv6（含嵌套 IPv4 的 IPv6 表示），再匹配纯 IPv4
+  const ipv6Match =
+    text.match(ipv6WithEmbeddedIPv4)?.[0] ??
+    text.match(ip6SafeRegex())?.[0] ?? // 使用构造函数生成更可靠的 IPv6 正则
+    null;
+
+  const ipv4Match = text.match(ipv4Strict)?.[0] ?? null;
+
+  if (preferIPv6) {
+    return ipv6Match ?? ipv4Match;
+  }
+  return ipv4Match ?? ipv6Match;
+}
 
 async function addMovieStatus(videoList: VideoInfo[]): Promise<VideoInfo[]> {
   const movies = await prisma.movie.findMany({
@@ -97,6 +149,7 @@ async function getCachedData(
       { headers: { 'X-Cache': 'MISS' } }
     );
   } catch (error) {
+    
     // Handle specific, known errors from the fetcher
     if (error instanceof AccessDeniedError) {
       return NextResponse.json(
@@ -156,7 +209,9 @@ export async function GET(req: NextRequest) {
   else if (website === 'avfan') {
     const cacheKey = `avfan:${period}`;
     return getCachedData(cacheKey, async () => {
+      console.log(`https://avfan.com/zh-CN/rankings/fanza_ranking?t=${period}`);
       const response = await proxyRequest(
+        
         `https://avfan.com/zh-CN/rankings/fanza_ranking?t=${period}`,
         {
           method: 'GET',
@@ -166,8 +221,11 @@ export async function GET(req: NextRequest) {
           }
         }
       );
+      
+      
       const body = response.body;
-      console.log(`body: ${body}`);
+      // console.log(body);
+      
       if (!body) {
         throw new Error('Failed to fetch');
       }
@@ -180,27 +238,48 @@ export async function GET(req: NextRequest) {
     const cacheKey = `javdb:${period}`;
     return getCachedData(cacheKey, async () => {
       const url = `${RANKINGS_JAVDB_BASE_URL}?p=${period}&t=censored`;
-      const response = await proxyRequest(url, {
-        method: 'GET',
-        headers: { 'User-Agent': USER_AGENT }
-      });
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch`);
-      }
+      try {
+        const response = await proxyRequest(url, {
+          method: 'GET',
+          headers: { 'User-Agent': USER_AGENT }
+        });
 
-      const body = response.body;
-      if (!body) {
-        throw new Error('Failed to fetch');
-      }
 
-      // For JavDB, we have a specific access denied message to check for
-      if (body.toString().includes(ARANKINGS_CCESS_DENIED_MESSAGE)) {
-        throw new AccessDeniedError(
-          '由於版權限制，本站禁止了你的網路所在國家的訪問。'
-        );
+        const bodyText = response.body;
+
+        
+        return await addMovieStatus(parseVideoList(bodyText));
+      } catch (error: any) {
+        // 如果是 AccessDeniedError，直接抛出让 getCachedData 处理
+        if (error instanceof AccessDeniedError) {
+          throw error;
+        }
+
+        // got 会在非 2xx 状态码时抛出错误
+        if (error.response) {
+          
+          // 检查错误响应中是否包含访问被拒绝的消息
+          const errorBody = error.response.body || '';
+          if (errorBody.includes(ARANKINGS_CCESS_DENIED_MESSAGE)) {
+            throw new AccessDeniedError(
+              '由於版權限制，本站禁止了你的網路所在國家的訪問。'
+            );
+          }
+
+          if (errorBody.includes('於你的異常行為，管理員禁止了你的訪問，將在3-7日後解除。')) {
+            throw new AccessDeniedError(
+              `<${extractSingleIP(errorBody, false)}> 由於你的異常行為，管理員禁止了你的訪問，將在3-7日後解除。`
+            );
+          }
+
+          throw new Error(`Failed to fetch: ${error.response.statusCode} ${error.response.statusMessage}`);
+        }
+
+        // 其他错误（网络错误等）
+        console.error('Request error:', error.message);
+        throw new Error(`Failed to fetch: ${error.message}`);
       }
-      return await addMovieStatus(parseVideoList(body.toString()));
     });
   }
 

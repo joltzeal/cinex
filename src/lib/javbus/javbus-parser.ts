@@ -363,6 +363,7 @@ function multipleInfoFinder<T>(
 
 export async function getMovieDetail(id: string): Promise<MovieDetail> {
   const client = await getJavbusClient();
+  
   const res = await client(`${JAVBUS}/${id}`).text();
   const doc = parse(res);
 

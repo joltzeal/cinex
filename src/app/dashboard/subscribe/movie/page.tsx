@@ -26,48 +26,43 @@ export default async function Page(props: pageProps) {
   const page = searchParamsCache.get('page');
   const pageLimit = searchParamsCache.get('perPage');
   const filterType = searchParamsCache.get('filterType');
-  // const subscribedMovieList = await getSubscribeMovieList({
-  //   where: {
-  //     status: MovieStatus.subscribed
-  //   }
-  // });
-  // const donwloadingMovieList = await getSubscribeMovieList({
-  //   where: {
-  //     status: MovieStatus.downloading
-  //   }
-  // });
+  const subscribedMovieList = await getSubscribeMovieList({
+    where: {
+      status: MovieStatus.subscribed
+    }
+  });
+  const donwloadingMovieList = await getSubscribeMovieList({
+    where: {
+      status: MovieStatus.downloading
+    }
+  });
 
-  // const downloadMovieList = await getSubscribeMovieList({
-  //   where: {
-  //     status: MovieStatus.downloaded
-  //   }
-  // });
+  const downloadMovieList = await getSubscribeMovieList({
+    where: {
+      status: MovieStatus.downloaded
+    }
+  });
 
-  // const addedMovieList = await getSubscribeMovieList({
-  //   where: {
-  //     addedAt: {
-  //       not: null
-  //     }
-  //   },
-  //   orderBy: {
-  //     addedAt: 'desc'
-  //   }
-  // });
+  const addedMovieList = await getSubscribeMovieList({
+    where: {
+      addedAt: {
+        not: null
+      }
+    },
+    orderBy: {
+      addedAt: 'desc'
+    }
+  });
 
-  // const libraryMovieList = await getSubscribeMovieList({
-  //   where: {
-  //     status: MovieStatus.added
-  //   },
-  //   orderBy: {
-  //     date: 'desc'
-  //   }
-  // });
+  const libraryMovieList = await getSubscribeMovieList({
+    where: {
+      status: MovieStatus.added
+    },
+    orderBy: {
+      date: 'desc'
+    }
+  });
 
-  const libraryMovieList: Movie[] = [];
-  const subscribedMovieList: Movie[] = [];
-  const donwloadingMovieList: Movie[] = [];
-  const addedMovieList: Movie[] = [];
-  const downloadMovieList: Movie[] = [];
   return (
     <PageContainer scrollable={true}>
       <div className='w-full space-y-8'>

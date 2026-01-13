@@ -35,16 +35,36 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# IDEs
 .idea/
+.vscode/
+*.swp
+*.swo
+
 # clerk configuration (can include secrets)
 /.clerk/
 
-
-# cursor 
+# cursor
 .cursorrules
 /memory-bank
 
 # Sentry Config File
 .env.sentry-build-plugin
 
+# Prisma
 /generated/prisma
+
+# Docker
+.dockerignore
+
+# Media files
+/media/
+
+# Logs
+logs/
+*.log
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
