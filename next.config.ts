@@ -2,6 +2,7 @@ import type { NextConfig } from 'next';
 
 // Define the base Next.js configuration
 const baseConfig: NextConfig = {
+  output: 'standalone',
   images: {
     remotePatterns: [
       {
