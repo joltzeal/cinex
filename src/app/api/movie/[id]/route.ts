@@ -4,7 +4,7 @@ import { getMovieDetail, getMovieMagnets } from '@/lib/javbus/javbus-parser';
 import { MovieDetail, Magnet } from '@/types/javbus';
 import { NextRequest, NextResponse } from 'next/server';
 import { MovieStatus, Prisma } from '@prisma/client';
-import { findMediaItemByIdOrTitle } from '@/lib/tasks/media-library';
+import { findMediaItemByIdOrTitle, getMediaLibraryCache, refreshMediaLibraryCache } from '@/lib/tasks/media-library';
 import { logger } from '@/lib/logger';
 import { HTTPError } from 'got';
 
@@ -25,8 +25,20 @@ export async function GET(
     const movie = await prisma.movie.findUnique({
       where: { number: id }
     });
-    
+
+    // 检查缓存是否为空，如果为空则刷新
+    const cache = getMediaLibraryCache();
+    if (cache.items.length === 0) {
+      try {
+        await refreshMediaLibraryCache();
+      } catch (error) {
+        logger.warn('[Movie API] 刷新媒体库缓存失败，继续处理请求');
+      }
+    }
+
     const isAdded = findMediaItemByIdOrTitle(id);
+
+    
 
     if (movie && movie.detail && movie.magnets) {
       return NextResponse.json({ data: movie }, { status: 200 });

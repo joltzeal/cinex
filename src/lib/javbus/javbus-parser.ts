@@ -515,3 +515,24 @@ export function getPoster(img: string): string | null {
   // 拼接新地址
   return `${base}/pics/thumb/${code}.jpg`;
 }
+
+export function getCover(img: string): string | null {
+  // https://www.javbus.com/pics/thumb/bmrv.jpg
+  // -> https://www.javbus.com/pics/cover/bmrv_b.jpg
+
+  const u = new URL(img);
+
+  // https://www.javbus.com
+  const base = u.origin;
+
+  // bmrv.jpg
+  const filename = u.pathname.split('/').pop();
+
+  // 提取 bmrv
+  const match = filename?.match(/^(.+?)\.jpg$/i);
+  if (!match) return null;
+
+  const code = match[1];
+
+  return `${base}/pics/cover/${code}_b.jpg`;
+}

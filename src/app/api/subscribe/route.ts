@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getMoviesByPage, getStarInfo } from '@/lib/javbus/javbus-parser';
+import { getCover, getMoviesByPage, getStarInfo } from '@/lib/javbus/javbus-parser';
 import { FilterType, Movie, StarInfo } from '@/types/javbus';
 import { sleep } from '@/lib/utils';
 import { getExistingSubscribe } from '@/services/subscribe';
@@ -194,7 +194,8 @@ export async function POST(request: NextRequest) {
         const movie = await prisma.movie.upsert({
           where: { number: m.id },
           update: {
-            poster: m.img ?? null
+            poster: m.img ?? null,
+            cover:m.img?getCover(m.img):null,
             // 如果已存在，可以选择更新或不更新
             // 这里选择不更新，保留原有数据
           },
@@ -203,6 +204,7 @@ export async function POST(request: NextRequest) {
             title: m.title ?? '',
             date: m.date ?? null,
             poster: m.img ?? null,
+            cover:m.img?getCover(m.img):null,
             status: MovieStatus.uncheck // 设置默认状态
           }
         });

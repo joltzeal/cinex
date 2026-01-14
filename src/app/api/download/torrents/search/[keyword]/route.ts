@@ -10,8 +10,8 @@ import { BtDiggScraper } from '@/lib/scrapers/btdig';
 // 将来有新的爬虫类，只需要在这里添加即可
 // ===================================================================
 const SCRAPER_CLASSES: ScraperClass[] = [
-  // ClgClgScraper,
-  // LaoWangScraper, // 在这里注册
+  ClgClgScraper,
+  LaoWangScraper, // 在这里注册
   AnyBtScraper,
   BtDiggScraper
   // FutureScraper, // 示例：将来添加新的爬虫

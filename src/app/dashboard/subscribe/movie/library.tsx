@@ -27,6 +27,8 @@ type FilterType = 'rating' | 'tag' | 'keyword';
 
 export default function LibraryPage(props: pageProps) {
   const { subscribeMovieList } = props;
+  console.log(subscribeMovieList);
+
   const mediaServer = useMediaServer();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [movieData, setMovieData] = useState<Movie | null>(null);
@@ -123,8 +125,46 @@ export default function LibraryPage(props: pageProps) {
   ]);
 
   const handleClickMovie = (item: Movie) => {
-    setMovieData(item);
-    setDialogOpen(true);
+    if (item.detail) {
+      setMovieData(item);
+      setDialogOpen(true);
+    } else {
+      const fetchMovieData = async () => {
+        const response = await fetch(`/api/movie/${item.number}`);
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            throw new Error(`请求失败: JavBus未收录该影片`);
+          }
+          throw new Error(`请求失败: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (!result || !result.data) {
+          throw new Error('未找到影片数据。');
+        }
+
+        return result.data;
+      };
+
+      const promise = fetchMovieData();
+      const toastId = toast.loading('正在加载影片信息...');
+
+      promise
+        .then((data) => {
+          toast.dismiss(toastId);
+          setMovieData(data);
+          setDialogOpen(true);
+        })
+        .catch((err) => {
+          toast.error(err.message || '加载数据时发生未知错误。', {
+            id: toastId
+          });
+          console.error('Failed to load movie:', err);
+        });
+    }
+
   }
 
   return (
@@ -271,9 +311,11 @@ export default function LibraryPage(props: pageProps) {
               const proxiedSrc = item.cover
                 ? `/api/subscribe/javbus/proxy?url=${encodeURIComponent(item.cover)}`
                 : "";
-              if (!item.detail) {
-                return null;
-              }
+              // if (!item.detail) {
+              //   return null;
+              // }
+              // console.log(detail);
+
               // 解析 detail 数据
               const detail = item.detail as {
                 stars?: Property[];
@@ -288,9 +330,9 @@ export default function LibraryPage(props: pageProps) {
                 <div key={item.number}>
 
                   {item.cover ? (
-                    
+
                     // <MovieDetailDialog movieId={item.number}>
-                    <div onClick={()=>handleClickMovie(item)}><GlareCard className="w-full cursor-pointer hover:scale-105 transition-transform duration-200">
+                    <div onClick={() => handleClickMovie(item)}><GlareCard className="w-full cursor-pointer hover:scale-105 transition-transform duration-200">
                       <div className="relative w-full h-full">
                         {item.cover ? (
                           <img
@@ -371,7 +413,7 @@ export default function LibraryPage(props: pageProps) {
 
                     </div>
                   </div>
-                  
+
                 </div>
 
               );
@@ -380,10 +422,10 @@ export default function LibraryPage(props: pageProps) {
         )}
       </div>
       <SimpleMovieDetailDialog
-                    movie={movieData}
-                    open={dialogOpen}
-                    onOpenChange={setDialogOpen}
-                  />
+        movie={movieData}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
     </div>
   );
 }

@@ -57,8 +57,6 @@ next-env.d.ts
 # Docker
 .dockerignore
 
-# Media files
-/media/
 
 # Logs
 logs/

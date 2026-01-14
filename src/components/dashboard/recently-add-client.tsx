@@ -26,36 +26,48 @@ export const MediaGrid = ({ movies }: { movies: Movie[] }) => {
         </Button>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {movies.map((movie) => {
-          const movieDetail = movie.detail as unknown as MovieDetail
-          return (
-          <div
-            key={movie.id}
-            className="group relative aspect-2/3 overflow-hidden rounded-xl bg-muted cursor-pointer shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
-          >
-            <div
-              className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-              style={{ backgroundImage: `url("${fetchImage(movie.poster!)}")` }}
-            />
-            <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-            <div className="absolute bottom-0 left-0 p-4 w-full translate-y-4 group-hover:translate-y-0 transition-transform duration-300 opacity-0 group-hover:opacity-100">
-              <h4 className="text-white font-bold text-sm leading-tight truncate">
-                {movie.title}
-              </h4>
-              <div className="flex items-center gap-2 mt-2">
-                <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm border-0 rounded">
-                  {movie.number}
-                </Badge>
-                <span className="text-[10px] font-mono text-gray-300">
-                                  {movieDetail.date}
-
-              </span>
+        {movies.length === 0 ? (
+          <div className="col-span-2 md:col-span-4 flex flex-col items-center justify-center py-16 rounded-xl bg-muted/50 border-2 border-dashed border-muted-foreground/20">
+            <div className="flex flex-col items-center gap-3">
+              <div className="p-4 rounded-full bg-muted">
+                <Play size={32} className="text-muted-foreground/40" />
               </div>
+              <p className="text-sm font-medium text-muted-foreground">暂无影片</p>
+              <p className="text-xs text-muted-foreground/60">订阅后的影片将显示在这里</p>
             </div>
           </div>
-        )
-        })}
+        ) : (
+          movies.map((movie) => {
+            const movieDetail = movie.detail as unknown as MovieDetail
+            return (
+            <div
+              key={movie.id}
+              className="group relative aspect-2/3 overflow-hidden rounded-xl bg-muted cursor-pointer shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+            >
+              <div
+                className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
+                style={{ backgroundImage: `url("${fetchImage(movie.poster!)}")` }}
+              />
+              <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+              <div className="absolute bottom-0 left-0 p-4 w-full translate-y-4 group-hover:translate-y-0 transition-transform duration-300 opacity-0 group-hover:opacity-100">
+                <h4 className="text-white font-bold text-sm leading-tight truncate">
+                  {movie.title}
+                </h4>
+                <div className="flex items-center gap-2 mt-2">
+                  <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm border-0 rounded">
+                    {movie.number}
+                  </Badge>
+                  <span className="text-[10px] font-mono text-gray-300">
+                                    {movieDetail.date}
+
+                </span>
+                </div>
+              </div>
+            </div>
+          )
+          })
+        )}
       </div>
     </div>
   )

@@ -49,17 +49,17 @@ export function startScheduler() {
     const timezone = "Asia/Shanghai";
     
     // 每小时执行一次JAVBus增量更新
-    // cron.schedule('0 * * * *', runJavbusMovieUpdate, { timezone });
-    // cron.schedule('0 * * * *', runJavbusSubscribeUpdate, { timezone });
+    cron.schedule('0 * * * *', runJavbusMovieUpdate, { timezone });
+    cron.schedule('0 * * * *', runJavbusSubscribeUpdate, { timezone });
 
     // 每5分钟执行一次下载状态同步
-    // cron.schedule('*/5 * * * *', runDownloadStatusSync, { timezone });
+    cron.schedule('*/5 * * * *', runDownloadStatusSync, { timezone });
 
-    // // 每5分钟媒体库同步
-    // cron.schedule('*/5 * * * *', runMediaLibrarySync, { timezone });
+    // 每5分钟媒体库同步
+    cron.schedule('*/5 * * * *', runMediaLibrarySync, { timezone });
     
-    // // 每5分钟论坛更新
-    // cron.schedule('*/5 * * * *', runForumUpdate, { timezone });
+    // 每5分钟论坛更新
+    cron.schedule('*/5 * * * *', runForumUpdate, { timezone });
 
     console.log('[Scheduler] 所有定时任务已注册。');
 
