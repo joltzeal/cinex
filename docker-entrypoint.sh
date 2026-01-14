@@ -22,47 +22,43 @@ done
 
 echo "Database is ready!"
 
-# Run Prisma migrations
-echo "Running Prisma database migrations..."
+# Run Prisma migrations with smart handling
+echo "Running database migrations..."
 
-# First, try to mark existing migrations as applied (baseline)
-echo "Checking migration status..."
-pnpm exec prisma migrate resolve --applied 20260108034655_add_better_auth 2>/dev/null || true
-pnpm exec prisma migrate resolve --applied 20260114200108_add_missing_tables 2>/dev/null || true
+# Check if _prisma_migrations table exists
+MIGRATIONS_TABLE_EXISTS=$(psql "$DATABASE_URL" -tAc "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = '_prisma_migrations');")
 
-# Then deploy any pending migrations
-if pnpm exec prisma migrate deploy; then
-  echo "Prisma migrations completed successfully"
-else
-  echo "Warning: Prisma migrations failed, but continuing..."
-fi
+if [ "$MIGRATIONS_TABLE_EXISTS" = "f" ]; then
+  echo "First time setup - creating all tables..."
 
-# Apply better-auth migrations if they exist
-if [ -d "./better-auth_migrations" ] && [ "$(ls -A ./better-auth_migrations/*.sql 2>/dev/null)" ]; then
-  echo "Applying better-auth migrations..."
+  # Apply all migration SQLs directly
+  for migration_dir in prisma/migrations/*/; do
+    if [ -d "$migration_dir" ]; then
+      migration_name=$(basename "$migration_dir")
+      migration_file="${migration_dir}migration.sql"
 
-  for migration_file in ./better-auth_migrations/*.sql; do
-    if [ -f "$migration_file" ]; then
-      echo "Applying migration: $(basename "$migration_file")"
-
-      # Extract database connection details from DATABASE_URL
-      # Format: postgresql://user:password@host:port/database
-      DB_URL="${DATABASE_URL}"
-
-      if [ -n "$DB_URL" ]; then
-        # Use psql to apply the migration
-        psql "$DB_URL" -f "$migration_file" 2>&1 | grep -v "already exists" || true
-        echo "Migration $(basename "$migration_file") applied"
-      else
-        echo "Warning: DATABASE_URL not set, skipping better-auth migrations"
-        break
+      if [ -f "$migration_file" ]; then
+        echo "Applying migration: $migration_name"
+        psql "$DATABASE_URL" -f "$migration_file" 2>&1 | grep -v "already exists" || true
       fi
     fi
   done
 
-  echo "Better-auth migrations completed"
+  # Initialize Prisma migrations table and mark all as applied
+  echo "Initializing Prisma migrations tracking..."
+  pnpm exec prisma migrate resolve --applied 20260108034655_add_better_auth || true
+  pnpm exec prisma migrate resolve --applied 20260114200108_add_missing_tables || true
+
+  echo "Initial setup completed"
 else
-  echo "No better-auth migrations found, skipping..."
+  echo "Existing database detected - checking for pending migrations..."
+
+  # Deploy any new migrations
+  if pnpm exec prisma migrate deploy; then
+    echo "Migrations completed successfully"
+  else
+    echo "Warning: Migration check failed, but continuing..."
+  fi
 fi
 
 echo "==================================="

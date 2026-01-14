@@ -59,18 +59,15 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy Prisma schema and migrations
+# Copy Prisma files
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
 
-# Copy better-auth migrations
-COPY --from=builder --chown=nextjs:nodejs /app/better-auth_migrations ./better-auth_migrations
-
-# Copy package.json and pnpm-lock.yaml for prisma commands
+# Copy package files for prisma commands
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 COPY --from=builder --chown=nextjs:nodejs /app/pnpm-lock.yaml ./pnpm-lock.yaml
 
-# Copy entire node_modules from builder (includes all prisma generated files in .pnpm structure)
+# Copy entire node_modules from builder (includes all prisma generated files)
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 # Copy startup script
