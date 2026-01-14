@@ -24,6 +24,13 @@ echo "Database is ready!"
 
 # Run Prisma migrations
 echo "Running Prisma database migrations..."
+
+# First, try to mark existing migrations as applied (baseline)
+echo "Checking migration status..."
+pnpm exec prisma migrate resolve --applied 20260108034655_add_better_auth 2>/dev/null || true
+pnpm exec prisma migrate resolve --applied 20260114200108_add_missing_tables 2>/dev/null || true
+
+# Then deploy any pending migrations
 if pnpm exec prisma migrate deploy; then
   echo "Prisma migrations completed successfully"
 else
