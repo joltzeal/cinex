@@ -1,6 +1,6 @@
 FROM node:20-alpine AS base
 
-# Install dependencies only when needed
+# Dependencies stage
 FROM base AS deps
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
@@ -10,7 +10,7 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-# Rebuild the source code only when needed
+# Builder stage
 FROM base AS builder
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@latest --activate
@@ -21,7 +21,7 @@ COPY . .
 RUN pnpm exec prisma generate
 RUN pnpm build
 
-# Production image
+# Production stage
 FROM base AS runner
 WORKDIR /app
 
@@ -33,11 +33,14 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY docker-entrypoint.sh ./
 
-RUN pnpm install --prod --frozen-lockfile
+RUN chmod +x docker-entrypoint.sh
 
 USER nextjs
 
@@ -46,4 +49,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["sh", "-c", "pnpm exec prisma migrate deploy && node server.js"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
