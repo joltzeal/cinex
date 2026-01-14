@@ -68,3 +68,5 @@ pnpm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+
+docker-compose.local.yml

@@ -1,7 +1,7 @@
 import pino, { Logger } from 'pino';
 
 export const logger: Logger =
-  process.env['NODE_ENV'] === 'production'
+  (process.env.NODE_ENV || 'production') === 'production'
     ? // JSON in production
       pino({ level: 'warn' })
     : // Pretty print in development
