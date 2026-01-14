@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
 import { getSetting, SettingKey } from '@/services/settings';
 export async function GET() {
   try {
