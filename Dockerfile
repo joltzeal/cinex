@@ -12,8 +12,8 @@ WORKDIR /app
 # Copy package files
 COPY package.json ./
 
-# Install dependencies with npm
-RUN npm install --production=false
+# Install dependencies with npm (use legacy-peer-deps for React 19 compatibility)
+RUN npm install --legacy-peer-deps
 
 # Rebuild the source code only when needed
 FROM base AS builder
