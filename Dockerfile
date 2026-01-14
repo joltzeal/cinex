@@ -9,21 +9,15 @@ RUN apk add --no-cache libc6-compat openssl
 
 WORKDIR /app
 
-# Enable pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
 # Copy package files
-COPY package.json pnpm-lock.yaml ./
+COPY package.json package-lock.json* ./
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Install dependencies with npm
+RUN npm ci
 
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
-
-# Enable pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
@@ -32,10 +26,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Generate Prisma Client
-RUN pnpm exec prisma generate
+RUN npx prisma generate
 
 # Build Next.js application
-RUN pnpm build
+RUN npm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner
@@ -47,9 +41,6 @@ RUN apk add --no-cache openssl postgresql-client
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
-
-# Enable pnpm for runtime (needed for prisma commands)
-RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Set environment to production
 ENV NODE_ENV=production
@@ -65,10 +56,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 # Copy better-auth migrations
 COPY --from=builder --chown=nextjs:nodejs /app/better-auth_migrations ./better-auth_migrations
 
-# Copy package.json for prisma commands
+# Copy package.json for reference
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 
-# Copy node_modules with prisma binaries (from builder since prisma generate was run there)
+# Copy node_modules with Prisma binaries
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
