@@ -1,11 +1,14 @@
 #!/bin/sh
 set -e
 
+echo "Installing Prisma CLI..."
+pnpm add -g prisma
+
 echo "Generating Prisma Client..."
-pnpm exec prisma generate
+prisma generate
 
 echo "Running database migrations..."
-pnpm exec prisma migrate deploy
+prisma migrate deploy
 
 echo "Starting application..."
 exec node server.js
