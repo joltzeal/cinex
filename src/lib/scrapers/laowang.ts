@@ -26,7 +26,6 @@ export class LaoWangScraper implements IScraper {
     4: 'relevance'
   };
 
-  // ----------- 辅助工具函数 (从原JS代码翻译) -----------
   private static randomString(len: number, charSet?: string): string {
     charSet = charSet || 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let randomString = '';
@@ -72,10 +71,16 @@ export class LaoWangScraper implements IScraper {
 
     const verifyUrl = `${this.baseUrl}/anti/recaptcha/v4/verify?token=${LaoWangScraper.randomString(100)}&aywcUid=${aywcUid}&costtime=${1000 + Math.floor(Math.random() * 1000)}`;
 
+    console.log(`[${LaoWangScraper.sourceName}] Request URL: ${verifyUrl}`);
+    console.log(`[${LaoWangScraper.sourceName}] Request headers:`, { ...this.headers, 'Cookie': `aywcUid=${aywcUid}` });
+
     const response = await proxyRequest(verifyUrl, {
       headers: { ...this.headers, 'Cookie': `aywcUid=${aywcUid}` },
-      redirect: 'manual' // 必须是manual，这样才能拿到302重定向的header
+      followRedirect: false
     });
+
+    console.log(`[${LaoWangScraper.sourceName}] Response status: ${response.statusCode}`);
+    console.log(`[${LaoWangScraper.sourceName}] Response headers:`, response.headers);
 
     const setCookieHeader = response.headers?.['set-cookie']?.toString();
     if (!setCookieHeader) {
@@ -107,9 +112,12 @@ export class LaoWangScraper implements IScraper {
       const sortParam = this.sortMap[sort] || 'relevance';
       const searchUrl = `${this.baseUrl}/search?keyword=${encodeURIComponent(keyword)}&sos=${sortParam}&sofs=all&sot=all&soft=all&som=auto&p=${page}`;
       console.log(`[${LaoWangScraper.sourceName}] Fetching page ${page} from: ${searchUrl}`);
+      console.log(`[${LaoWangScraper.sourceName}] Request headers:`, { ...this.headers, 'Cookie': cookie, 'Referer': this.baseUrl });
+
       let response = await proxyRequest(searchUrl, { headers: { ...this.headers, 'Cookie': cookie, 'Referer': this.baseUrl } });
       console.log(`[${LaoWangScraper.sourceName}] Response status: ${response.statusCode}`);
-      
+      console.log(`[${LaoWangScraper.sourceName}] Response body length: ${response.body?.length || 0}`);
+
       if (response.statusCode !== 200) {
         console.log(`[${LaoWangScraper.sourceName}] Cookie might be invalid (status: ${response.statusCode}). Refreshing...`);
         cookie = await this._getCookie(true);

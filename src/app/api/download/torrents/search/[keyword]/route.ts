@@ -10,10 +10,10 @@ import { BtDiggScraper } from '@/lib/scrapers/btdig';
 // 将来有新的爬虫类，只需要在这里添加即可
 // ===================================================================
 const SCRAPER_CLASSES: ScraperClass[] = [
-  ClgClgScraper,
-  LaoWangScraper, // 在这里注册
+  // ClgClgScraper,
+  // LaoWangScraper, // 在这里注册
   AnyBtScraper,
-  // BtDiggScraper
+  BtDiggScraper
   // FutureScraper, // 示例：将来添加新的爬虫
 ];
 // ===================================================================
@@ -66,15 +66,21 @@ export async function GET(
       };
     });
 
-    const results = await Promise.all(promises);
+    const results = await Promise.allSettled(promises);
 
-    // 4. 将结果聚合成最终的数据结构
+    // 4. 将结果聚合成最终的数据结构，只包含成功的爬虫
     const data: { [key: string]: { count: number; list: any[] } } = {};
     for (const result of results) {
-      data[result.source] = {
-        count: result.count,
-        list: result.list,
-      };
+      if (result.status === 'fulfilled') {
+        data[result.value.source] = {
+          count: result.value.count,
+          list: result.value.list,
+        };
+      } else {
+        const error = result.reason;
+        const statusCode = error?.response?.statusCode || error?.statusCode || 'N/A';
+        console.error(`Scraper failed with status ${statusCode}:`, error?.message || error);
+      }
     }
 
     // 5. 返回规范化的 JSON 响应

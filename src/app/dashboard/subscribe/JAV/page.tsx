@@ -42,7 +42,7 @@ const filterTypeMap = {
 };
 
 export const metadata = {
-  title: 'Subscribe: JAV'
+  title: '订阅源'
 };
 type pageProps = {
   searchParams: Promise<SearchParams>;

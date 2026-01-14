@@ -1,10 +1,8 @@
-import { z } from 'zod';
 import SettingsPageClient from './settings-client-view';
 import { allSettings } from '@/services/settings';
-
-
-
-// This is the main Server Component
+export const metadata = {
+  title: '设置'
+};
 export default async function SettingsPage() {
 
   const settings = await allSettings()

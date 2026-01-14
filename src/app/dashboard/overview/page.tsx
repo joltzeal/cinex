@@ -2,18 +2,17 @@ import { MetricsSection } from "@/components/dashboard/overview-client";
 import { SystemOverviewWrapper } from "@/components/dashboard/system-overview-wrapper";
 import { RecentlyAddedWrapper } from "@/components/dashboard/recently-added";
 import { TasksWidget } from "@/components/dashboard/tasks-widget";
-import { StorageData, StorageWidget } from "@/components/dashboard/storage";
+import { StorageWidget } from "@/components/dashboard/storage";
+import { getStorageInfo } from "@/lib/disk";
+import { DOCKER_MOUNT_PATH } from "@/constants/data";
 
-
-const MOCK_STORAGE: StorageData = {
-  poolName: "Drive Pool A",
-  temperature: 32,
-  usedSpace: 2.8,
-  totalSpace: 4.0,
-  percentUsed: 70,
+export const metadata = {
+  title: '仪表盘'
 };
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const storageInfo = await getStorageInfo(DOCKER_MOUNT_PATH);
+
   return (
     <div>
       <main className="flex-1 overflow-y-auto">
@@ -31,7 +30,7 @@ export default function DashboardPage() {
 
             {/* Right Column (4 cols) */}
             <div className="lg:col-span-4 flex flex-col gap-6">
-              <StorageWidget data={MOCK_STORAGE} />
+              <StorageWidget storageInfo={storageInfo} />
               <TasksWidget  />
             </div>
           </div>

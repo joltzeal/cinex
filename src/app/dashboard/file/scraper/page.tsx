@@ -39,7 +39,9 @@ function getDirectoryTree(dir: string): FileTreeNode[] {
 }
 
 
-
+export const metadata = {
+  title: '视频整理'
+};
 export default async function OrganizeRecordsPage() {
   // 在服务端同时获取表格数据和文件树数据
   const transferLogs = await prisma.fileTransferLog.findMany(

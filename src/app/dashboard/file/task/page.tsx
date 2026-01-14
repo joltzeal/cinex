@@ -8,7 +8,7 @@ import { DocumentsTable } from '@/features/download/components/documents-table';
 import { Suspense } from 'react';
 
 export const metadata = {
-  title: 'Dashboard: 下载任务'
+  title: '下载任务'
 };
 
 type PageProps = {

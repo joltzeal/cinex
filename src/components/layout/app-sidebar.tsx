@@ -148,10 +148,7 @@ export default function AppSidebar() {
                     Profile
                   </DropdownMenuItem>
 
-                  <DropdownMenuItem>
-                    <IconBell className='mr-2 h-4 w-4' />
-                    Notifications
-                  </DropdownMenuItem>
+                  
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

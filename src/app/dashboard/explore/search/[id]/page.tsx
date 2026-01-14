@@ -1,5 +1,5 @@
 'use client';
-import MovieDetailDisplay from '@/components/search/movie-detail';
+import MovieDetailDisplay from '@/components/search/movie';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Movie } from '@prisma/client';
 import { AlertCircle, Loader2 } from 'lucide-react';

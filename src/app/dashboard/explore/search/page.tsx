@@ -1,277 +1,423 @@
-'use client';
+"use client"
 
-import { useState, useMemo } from 'react';
-import { Loader2, Search, ArrowLeft } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-// import { SearchResultsTabs } from '@/components/search/search-results-tabs';
-// import { FilterSidebar, type Filters } from '@/components/search/filter-search-bar';
-// import { MagnetPreviewDialog } from '@/components/magnet-preview-dialog';
+import React, { useState, useMemo } from "react"
+import {
+  Search, Zap, Film, Music, FileArchive,
+  File, ArrowRight, Download, Link as LinkIcon,
+  Copy, ChevronDown, LayoutGrid, Loader2,
+  Eye
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Slider } from "@/components/ui/slider"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Separator } from "@/components/ui/separator"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Card, CardContent } from "@/components/ui/card"
+import { MagnetPreviewDialog } from '@/components/magnet/magnet-preview-dialog';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { cn } from "@/lib/utils"
+import { TorrentSearchResult } from '@/lib/scrapers/interface'
+import { useLoading } from '@/contexts/loading-context'
+import { toast } from "sonner"
 
-// Import shadcn/ui components
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TorrentSearchResult } from '@/lib/scrapers/interface';
-import { Filters } from '@/components/search/filter-search-bar';
-// import { useLoading } from '@/contexts/loading-context';
-
-// --- Type Definitions ---
 interface SourceData {
-  count: number;
-  list: TorrentSearchResult[];
+  count: number
+  list: TorrentSearchResult[]
 }
 
 interface ApiResponse {
   query: {
-    keyword: string;
-    sort: string;
-  };
+    keyword: string
+    sort: string
+  }
   data: {
-    [source: string]: SourceData;
-  };
+    [source: string]: SourceData
+  }
 }
 
-const SORT_OPTIONS = [
-  { value: '0', label: '默认' },
-  { value: '3', label: '热度' },
-  { value: '1', label: '文件大小' },
-  { value: '2', label: '添加日期' },
-  { value: '4', label: '最后下载' }
-];
-
-// --- Animation Variants ---
-const viewVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -20 }
-};
-
-// --- Helper Function ---
 const parseSizeToMB = (sizeStr: string): number => {
-  if (!sizeStr) return 0;
-  const size = parseFloat(sizeStr);
-  if (isNaN(size)) return 0;
-  if (sizeStr.toUpperCase().includes('GB')) return size * 1024;
-  if (sizeStr.toUpperCase().includes('TB')) return size * 1024 * 1024;
-  if (sizeStr.toUpperCase().includes('KB')) return size / 1024;
-  return size; // Assume MB
-};
+  if (!sizeStr) return 0
+  const size = parseFloat(sizeStr)
+  if (isNaN(size)) return 0
+  if (sizeStr.toUpperCase().includes('GB')) return size * 1024
+  if (sizeStr.toUpperCase().includes('TB')) return size * 1024 * 1024
+  if (sizeStr.toUpperCase().includes('KB')) return size / 1024
+  return size
+}
 
-export default function SearchPage() {
-  // --- State Management ---
-  const [keyword, setKeyword] = useState<string>('');
-  const [sortOption, setSortOption] = useState<string>('0');
-  const [searchResults, setSearchResults] = useState<ApiResponse | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  // const { showLoader, hideLoader, updateLoadingMessage } = useLoading();
-  const [error, setError] = useState<string | null>(null);
-  const [hasSearched, setHasSearched] = useState(false);
-  const [previewingMagnet, setPreviewingMagnet] = useState<string | null>(null);
-  const [filters, setFilters] = useState<Filters>({
-    sources: [],
-    minSize: null,
-    maxSize: null,
-    minFiles: null,
-    maxFiles: null
-  });
+export default function MagnetPage() {
+  const [hasSearched, setHasSearched] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState<ApiResponse | null>(null)
+  const [selectedResult, setSelectedResult] = useState<TorrentSearchResult | null>(null)
+  const [activeSource, setActiveSource] = useState<string>("")
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [minSize, setMinSize] = useState(0)
+  const [maxSize, setMaxSize] = useState(100)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const { showLoader, hideLoader } = useLoading()
 
-  // --- Handlers ---
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!keyword.trim()) return;
+  const filteredResults = useMemo(() => {
+    if (!searchResults?.data[activeSource]) return []
+    return searchResults.data[activeSource].list.filter((item) => {
+      const itemSizeMB = parseSizeToMB(item.size)
+      const itemSizeGB = itemSizeMB / 1024
+      return itemSizeGB >= minSize && itemSizeGB <= maxSize
+    })
+  }, [searchResults, activeSource, minSize, maxSize])
 
-    // showLoader(`正在搜索  "${keyword}"  相关的磁力链接 ...`);
-    setIsLoading(true);
+  const handleSearch = async (e?: React.FormEvent) => {
+    e?.preventDefault()
+    if (!searchQuery.trim()) return
 
-    setError(null);
-    setSearchResults(null);
+    setIsLoading(true)
+    showLoader(`正在搜索 "${searchQuery}" 相关的磁力链接...`)
+    setError(null)
+    setSearchResults(null)
 
     try {
-      const url = `/api/download/torrents/search/${encodeURIComponent(keyword)}?sort=${sortOption}`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Error: ${response.statusText}`);
-      const data: ApiResponse = await response.json();
-      setSearchResults(data);
-      // 🔥 Transition to results view upon successful search
-      setHasSearched(true);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch search results.');
-      // Also transition to show the error in the results view
-      setHasSearched(true);
-    } finally {
-      // hideLoader();
-      setIsLoading(false);
-    }
-  };
+      const url = `/api/download/torrents/search/${encodeURIComponent(searchQuery)}?sort=0`
+      const response = await fetch(url)
+      if (!response.ok) throw new Error(`Error: ${response.statusText}`)
+      const data: ApiResponse = await response.json()
+      setSearchResults(data)
 
-  const handleNewSearch = () => {
-    setHasSearched(false);
-    // Optionally reset search results after animation out
-    setTimeout(() => {
-      setSearchResults(null);
-      setError(null);
-    }, 300); // Corresponds with animation duration
-  };
-
-  // --- Memoized Filtering Logic ---
-  const filteredData = useMemo(() => {
-    if (!searchResults?.data) return {};
-    const filtered: ApiResponse['data'] = {};
-    for (const source in searchResults.data) {
-      if (!filters.sources.includes(source)) continue;
-      const sourceData = searchResults.data[source];
-      const filteredList = sourceData.list.filter((item) => {
-        const itemSizeMB = parseSizeToMB(item.size);
-        if (filters.minSize != null && itemSizeMB < filters.minSize)
-          return false;
-        if (filters.maxSize != null && itemSizeMB > filters.maxSize)
-          return false;
-        const fileCount = item.fileList
-          ? parseInt(item.fileList.length.toString(), 10)
-          : 0;
-        if (!isNaN(fileCount)) {
-          if (filters.minFiles != null && fileCount < filters.minFiles)
-            return false;
-          if (filters.maxFiles != null && fileCount > filters.maxFiles)
-            return false;
+      const sources = Object.keys(data.data)
+      if (sources.length > 0) {
+        setActiveSource(sources[0])
+        if (data.data[sources[0]].list.length > 0) {
+          setSelectedResult(data.data[sources[0]].list[0])
         }
-        return true;
-      });
-      if (filteredList.length > 0) {
-        filtered[source] = { count: filteredList.length, list: filteredList };
       }
+      setHasSearched(true)
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch search results.')
+      setHasSearched(true)
+    } finally {
+      setIsLoading(false)
+      hideLoader()
     }
-    return filtered;
-  }, [searchResults, filters]);
+  }
 
-  // --- Render Logic ---
+  const handleReset = () => {
+    setHasSearched(false)
+    setSearchQuery("")
+    setSearchResults(null)
+    setError(null)
+  }
+
+  const handleSourceChange = (source: string) => {
+    setActiveSource(source)
+    if (searchResults && searchResults.data[source]?.list.length > 0) {
+      setSelectedResult(searchResults.data[source].list[0])
+    }
+  }
+
+  const copyMagnet = (magnet: string) => {
+    navigator.clipboard.writeText(magnet)
+    toast.info('磁力已复制')
+  }
+
   return (
-    <div className='relative min-h-[calc(100vh-8rem)]'>
-      {/* 🔥 AnimatePresence manages the transition between the two views */}
-      <AnimatePresence mode='wait'>
-        {!hasSearched ? (
-          // --- VIEW 1: SEARCH FORM ---
-          <motion.div
-            key='search-view'
-            variants={viewVariants}
-            initial='hidden'
-            animate='visible'
-            exit='exit'
-            transition={{ duration: 0.3 }}
-            className='container mx-auto flex min-h-[70vh] max-w-2xl items-center justify-center p-4 md:p-8'
-          >
-            <Card className='w-full'>
-              <CardHeader>
-                <CardTitle className='text-center text-2xl font-bold'>
-                  资源搜索
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSearch} className='space-y-6'>
-                  <div className='flex w-full items-center space-x-2'>
-                    <Input
-                      type='search'
-                      placeholder='输入关键词搜索磁力链接'
-                      value={keyword}
-                      onChange={(e) => setKeyword(e.target.value)}
-                      className='p-6 text-lg'
-                    />
-                    <Button type='submit' size='lg' disabled={isLoading}>
-                      {isLoading ? (
-                        <Loader2 className='h-5 w-5 animate-spin' />
-                      ) : (
-                        <Search className='h-5 w-5' />
-                      )}
-                    </Button>
+    <div className="flex flex-col w-full h-full  bg-background text-foreground font-sans">
+
+      {!hasSearched ? (
+        <div className="flex-1 flex flex-col items-center justify-center px-4 animate-in fade-in duration-500">
+
+          <div className="mb-10 flex flex-col items-center gap-4">
+            <div className="flex items-center justify-center w-16 h-16 rounded-xl bg-primary/10 border border-primary/20 shadow-[0_0_20px_-5px_hsl(var(--primary))]">
+              <Zap className="w-8 h-8 text-primary" />
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight">磁力搜索</h1>
+          </div>
+
+          <form onSubmit={handleSearch} className="w-full max-w-2xl relative mb-8">
+            <div className="relative flex items-center w-full group">
+              <Search className="absolute left-5 text-muted-foreground w-6 h-6 group-focus-within:text-primary transition-colors" />
+              <Input
+                className="h-16 pl-14 pr-16 rounded-full text-lg shadow-lg border-muted bg-card/50 hover:bg-card focus-visible:ring-primary/50 transition-all"
+                placeholder="Search hash, name, or tag..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <Button
+                type="submit"
+                size="icon"
+                disabled={isLoading}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full w-12 h-12"
+              >
+                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
+              </Button>
+            </div>
+          </form>
+
+          <div className="flex flex-wrap items-center justify-center gap-2 max-w-2xl">
+            <span className="text-xs font-bold text-primary uppercase mr-2 tracking-wider flex items-center gap-1">
+              <Zap className="w-3 h-3" /> Hot:
+            </span>
+            {["Linux ISO", "Open Source", "Public Domain 4K", "Blender Assets", "FLAC"].map((tag) => (
+              <Badge
+                key={tag}
+                variant="outline"
+                className="cursor-pointer hover:bg-primary/10 hover:text-primary hover:border-primary/30 px-3 py-1 transition-colors"
+                onClick={() => {
+                  setSearchQuery(tag)
+                  handleSearch()
+                }}
+              >
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
+
+          <div className="flex-none h-16 border-b bg-background/95 backdrop-blur px-4 sm:px-6 flex items-center gap-4 z-20">
+            <div className="flex items-center gap-2 cursor-pointer mr-2" onClick={handleReset}>
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+                <Zap className="w-4 h-4 text-primary" />
+              </div>
+            </div>
+
+            <form onSubmit={handleSearch} className="flex-1 max-w-xl">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  className="pl-9 pr-12 bg-muted/50 border-transparent focus-visible:bg-background transition-colors"
+                  placeholder="Refine search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </form>
+
+            <div className="ml-auto flex items-center gap-2">
+              <Button variant="ghost" size="sm" className="hidden sm:flex gap-2">
+                <LayoutGrid className="w-4 h-4" />
+                View
+              </Button>
+            </div>
+          </div>
+
+          {error && (
+            <div className="m-4 rounded-md bg-red-100 p-8 text-center text-red-500 dark:bg-red-900/20">
+              <p><strong>搜索出错:</strong> {error}</p>
+            </div>
+          )}
+
+          {searchResults && !error && (
+            <div className="flex flex-1 overflow-hidden">
+              <aside className="w-64 bg-card/30 border-r hidden lg:flex flex-col overflow-y-auto">
+                <div className="p-4 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Filters</h2>
+                    <Button variant="link" className="text-xs h-auto p-0 text-primary" onClick={() => { setMinSize(0); setMaxSize(100) }}>Reset</Button>
                   </div>
-                  <RadioGroup
-                    value={sortOption}
-                    onValueChange={setSortOption}
-                    className='flex flex-wrap justify-center gap-4 pt-2'
-                  >
-                    {SORT_OPTIONS.map((option) => (
+
+                  <div className="space-y-4">
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Size</span>
+                        <span className="font-mono">{minSize} - {maxSize} GB</span>
+                      </div>
+                      <Slider value={[maxSize]} onValueChange={(v) => setMaxSize(v[0])} max={100} step={1} className="py-2" />
+                    </div>
+
+                    <Separator />
+
+                    <Accordion type="multiple" defaultValue={["quality", "source"]} className="w-full">
+                      <AccordionItem value="quality" className="border-none">
+                        <AccordionTrigger className="py-2 text-sm font-semibold hover:no-underline">Quality</AccordionTrigger>
+                        <AccordionContent className="pt-1 pb-2 space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox id="4k" defaultChecked />
+                            <label htmlFor="4k" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1">4K UHD</label>
+                            <span className="text-xs text-muted-foreground font-mono">124</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox id="1080p" />
+                            <label htmlFor="1080p" className="text-sm font-medium leading-none flex-1">1080p</label>
+                            <span className="text-xs text-muted-foreground font-mono">852</span>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+
+                      <AccordionItem value="source" className="border-none">
+                        <AccordionTrigger className="py-2 text-sm font-semibold hover:no-underline">Trackers</AccordionTrigger>
+                        <AccordionContent className="pt-1 pb-2">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox id="verified" defaultChecked />
+                            <label htmlFor="verified" className="text-sm font-medium leading-none flex-1">Verified Only</label>
+                            <Zap className="w-3 h-3 text-primary" />
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  </div>
+                </div>
+              </aside>
+
+              <main className="flex-1 flex flex-col min-w-0 bg-background relative">
+                <div className="border-b px-4 py-3">
+                  <Tabs value={activeSource} onValueChange={handleSourceChange}>
+                    <TabsList className="bg-muted/50">
+                      {Object.keys(searchResults.data).map((source) => (
+                        <TabsTrigger key={source} value={source} className="gap-2">
+                          {source}
+                          <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-[10px]">
+                            {searchResults.data[source].count}
+                          </Badge>
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                </div>
+
+                <div className="sticky top-0 bg-background/95 backdrop-blur z-10 border-b px-4 py-3 grid grid-cols-12 gap-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <div className="col-span-12 sm:col-span-6 flex items-center gap-2 cursor-pointer hover:text-foreground">
+                    Name <ChevronDown className="w-3 h-3" />
+                  </div>
+                  <div className="hidden sm:block sm:col-span-2 text-right">Size</div>
+                  <div className="hidden sm:block sm:col-span-2 text-right">Date</div>
+                  <div className="hidden sm:block sm:col-span-2 text-right">热度</div>
+                </div>
+
+                <ScrollArea className="flex-1 h-full">
+                  <div className="p-2 space-y-1 min-h-0">
+                    {filteredResults.map((result, idx) => (
                       <div
-                        key={option.value}
-                        className='flex items-center space-x-2'
+                        key={idx}
+                        onClick={() => setSelectedResult(result)}
+                        className={cn(
+                          "group relative grid grid-cols-12 gap-4 items-center px-4 py-3 rounded-md cursor-pointer transition-colors border",
+                          selectedResult === result
+                            ? "bg-accent text-accent-foreground border-primary/50"
+                            : "bg-card/40 border-transparent hover:bg-muted hover:border-border"
+                        )}
                       >
-                        <RadioGroupItem
-                          value={option.value}
-                          id={`sort-${option.value}`}
-                        />
-                        <Label htmlFor={`sort-${option.value}`}>
-                          {option.label}
-                        </Label>
+                        <div className="col-span-12 sm:col-span-6 min-w-0">
+                          <div className="flex items-center gap-3">
+                            <FileArchive className={cn("w-5 h-5", selectedResult === result ? "text-primary" : "text-muted-foreground")} />
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-sm font-medium truncate">
+                                {result.fileName}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="hidden sm:block col-span-2 text-right font-mono text-xs text-muted-foreground">{result.size}</div>
+                        <div className="hidden sm:block col-span-2 text-right font-mono text-xs text-muted-foreground">{result.createdAt}</div>
+                        <div className="hidden sm:block col-span-2 text-right font-mono text-xs">
+                          <span className="text-primary font-bold">{result.heat}</span>
+                        </div>
                       </div>
                     ))}
-                  </RadioGroup>
-                </form>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ) : (
-          // --- VIEW 2: SEARCH RESULTS ---
-          <motion.div
-            key='results-view'
-            variants={viewVariants}
-            initial='hidden'
-            animate='visible'
-            exit='exit'
-            transition={{ duration: 0.3 }}
-            className='container mx-auto h-full px-4 py-8 md:px-8' // Full width with padding
-          >
-            {error && (
-              <div className='rounded-md bg-red-100 p-8 text-center text-red-500 dark:bg-red-900/20'>
-                <p>
-                  <strong>An error occurred:</strong> {error}
-                </p>
-              </div>
-            )}
-
-            {searchResults && !error && (
-              <div className='grid grid-cols-1 lg:grid-cols-4 lg:gap-8'>
-                <main className='lg:col-span-3'>
-                  {/* <SearchResultsTabs
-                    data={filteredData}
-                    onPreviewMagnet={setPreviewingMagnet}
-                  /> */}
-                </main>
-                <aside className='mt-8 lg:col-span-1 lg:mt-0'>
-                  <div className='mb-6 flex items-center'>
-                    <Button
-                      onClick={handleNewSearch}
-                      variant='outline'
-                      size='sm'
-                    >
-                      <ArrowLeft className='mr-2 h-4 w-4' />
-                      重新搜索
-                    </Button>
                   </div>
-                  {/* <FilterSidebar
-                    allData={searchResults.data}
-                    onFilterChange={setFilters}
-                  /> */}
-                </aside>
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+                </ScrollArea>
+              </main>
 
-      {/* Global Loading Overlay */}
-      {/* {isLoading && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <aside className="w-[360px] bg-card border-l hidden xl:flex flex-col z-10 shadow-xl">
+                {selectedResult && (
+                  <div className="flex flex-col h-full">
+                    <div className="p-6 border-b">
+                      <div className="flex gap-4">
+                        <div className="w-14 h-14 rounded-lg bg-muted flex-shrink-0 flex items-center justify-center border">
+                          <FileArchive className="text-primary w-7 h-7" />
+                        </div>
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <h2 className="text-sm font-bold leading-tight line-clamp-2">{selectedResult.fileName}</h2>
+                        </div>
+                      </div>
+
+                      <div className="mt-6 grid grid-cols-2 gap-3 ">
+                        <Card className="bg-muted shadow-none border-none py-2">
+                          <CardContent className="p-3">
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Size</div>
+                            <div className="text-lg font-mono font-medium">{selectedResult.size}</div>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-muted shadow-none border-none py-2">
+                          <CardContent className="p-3">
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">热度</div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-primary font-mono font-bold">{selectedResult.heat}</span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </div>
+
+                    <div className="p-4 border-b bg-muted/10">
+                      <div className="flex items-center gap-2 mb-3 bg-background p-2 rounded-md border text-xs text-muted-foreground font-mono">
+                        <LinkIcon className="w-3 h-3" />
+                        <span className="truncate flex-1">{selectedResult.magnet.substring(0, 30)}...</span>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyMagnet(selectedResult.magnet)}>
+                          <Copy className="w-3 h-3" />
+                        </Button>
+                      </div>
+
+                      <Button className="w-full gap-2 font-bold shadow-md" onClick={() => copyMagnet(selectedResult.magnet)}>
+                        <Copy className="w-4 h-4" />
+                        Copy Magnet Link
+                      </Button>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <Button variant='outline' className=" gap-2 font-bold " onClick={() => setPreviewOpen(true)}>
+                          <Eye className="w-4 h-4" />
+                          磁力预览
+                        </Button>
+                        <Button variant='outline' className=" gap-2 font-bold " onClick={() => copyMagnet(selectedResult.magnet)}>
+                          <Download className="w-4 h-4" />
+                          立即下载
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+                      <div className="px-6 py-3 border-b bg-muted/20">
+                        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">File Contents ({selectedResult.fileList.length})</h3>
+                      </div>
+                      <ScrollArea className="flex-1 h-full">
+                        <div className="p-4 space-y-1 min-h-0">
+                          {selectedResult.fileList.length > 0 ? (
+                            selectedResult.fileList.map((file, i) => (
+                              <div key={i} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors group">
+                                <File className="text-muted-foreground group-hover:text-primary w-4 h-4 transition-colors" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium truncate">{file}</p>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-center py-8 text-muted-foreground text-xs italic">
+                              File list not available.
+                            </div>
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  </div>
+                )}
+              </aside>
+            </div>
+          )}
         </div>
-      )} */}
-
-      {/* Magnet Preview Dialog remains unchanged */}
-      {/* <MagnetPreviewDialog
-        open={!!previewingMagnet}
-        onOpenChange={(open) => !open && setPreviewingMagnet(null)}
-        magnetLink={previewingMagnet || ''}
-      /> */}
+      )}
+      <MagnetPreviewDialog
+        magnetLink={selectedResult?.magnet || null}
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+      />
     </div>
-  );
+  )
 }

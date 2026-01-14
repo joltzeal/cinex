@@ -15,10 +15,7 @@ const META_THEME_COLORS = {
   dark: '#09090b'
 };
 
-export const metadata: Metadata = {
-  title: 'Next Shadcn',
-  description: 'Basic dashboard with Next.js and Shadcn'
-};
+
 
 export const viewport: Viewport = {
   themeColor: META_THEME_COLORS.light

@@ -1,11 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
 import { toast } from 'sonner';
 import {
   Copy,
-  Eye,
   File as FileIcon,
   Folder,
   HardDrive,
@@ -22,7 +20,15 @@ import {
   DialogTitle,
   DialogDescription
 } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+  type CarouselApi
+} from '@/components/ui/carousel';
+import { cn } from '@/lib/utils';
 
 function formatBytes(bytes: number, decimals = 2): string {
   if (bytes === 0) return '0 Bytes';
@@ -47,7 +53,8 @@ export function MagnetPreviewDialog({
   const [previewData, setPreviewData] = useState<PreviewResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [api, setApi] = useState<CarouselApi>();
+  const [current, setCurrent] = useState(0);
 
   useEffect(() => {
     if (magnetLink && open) {
@@ -73,6 +80,13 @@ export function MagnetPreviewDialog({
     }
   }, [magnetLink, open]);
 
+  useEffect(() => {
+    if (!api) return;
+    api.on('select', () => {
+      setCurrent(api.selectedScrollSnap());
+    });
+  }, [api]);
+
   const screenshots =
     previewData?.screenshots?.map((ss) => ({ src: ss.screenshot })) || [];
 
@@ -83,37 +97,18 @@ export function MagnetPreviewDialog({
     }
   };
 
-  const handleImageClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setLightboxOpen(true);
-  };
-
-  const handleLightboxClose = () => {
-    setLightboxOpen(false);
-  };
-
-  const handleDialogClose = (isOpen: boolean) => {
-    if (!isOpen) {
-      // 如果 lightbox 是打开的，先关闭 lightbox
-      if (lightboxOpen) {
-        setLightboxOpen(false);
-        return;
-      }
-      onOpenChange(false);
-    } else {
-      onOpenChange(true);
-    }
+  const handleThumbnailClick = (index: number) => {
+    api?.scrollTo(index);
   };
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={handleDialogClose}>
-        <DialogContent className='sm:max-w-2xl'>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className='sm:max-w-3xl max-h-[90vh]'>
           <DialogHeader>
             <DialogTitle className='break-all'>
               {previewData?.name || 'Loading Preview...'}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription asChild>
               <div
                 className='text-muted-foreground mt-2 flex cursor-pointer items-start text-xs'
                 onClick={handleCopy}
@@ -154,26 +149,51 @@ export function MagnetPreviewDialog({
                 </div>
 
                 {screenshots.length > 0 && (
-                  <div>
-                    <h4 className='mb-2 text-sm font-semibold'>Screenshots</h4>
-                    <ScrollArea className='h-72 w-full'>
-                      <div className='grid grid-cols-2 gap-2 pr-4 md:grid-cols-3'>
+                  <div className='space-y-3'>
+                    <h4 className='text-sm font-semibold'>Screenshots</h4>
+                    <Carousel setApi={setApi} className='w-full'>
+                      <CarouselContent>
                         {screenshots.map((ss, index) => (
-                          <div
+                          <CarouselItem key={index}>
+                            <div className='flex items-center justify-center rounded-lg overflow-hidden bg-muted'>
+                              <img
+                                src={ss.src}
+                                alt={`Screenshot ${index + 1}`}
+                                className='max-h-[50vh] w-full object-contain'
+                              />
+                            </div>
+                          </CarouselItem>
+                        ))}
+                      </CarouselContent>
+                      {screenshots.length > 1 && (
+                        <>
+                          <CarouselPrevious className='left-2' />
+                          <CarouselNext className='right-2' />
+                        </>
+                      )}
+                    </Carousel>
+                    {screenshots.length > 1 && (
+                      <div className='flex gap-2 overflow-x-auto py-2'>
+                        {screenshots.map((ss, index) => (
+                          <button
                             key={index}
-                            className='group relative aspect-video cursor-pointer overflow-hidden rounded-md'
-                            onClick={handleImageClick}
+                            onClick={() => handleThumbnailClick(index)}
+                            className={cn(
+                              'relative h-16 w-16 shrink-0 overflow-hidden rounded-md border-2 transition-all',
+                              current === index
+                                ? 'border-primary ring-2 ring-primary/20'
+                                : 'border-transparent hover:border-muted-foreground/30'
+                            )}
                           >
-                            <Image
+                            <img
                               src={ss.src}
-                              alt={`Screenshot ${index + 1}`}
-                              fill
-                              className='object-cover transition-transform duration-300 group-hover:scale-110'
+                              alt={`Thumbnail ${index + 1}`}
+                              className='h-full w-full object-cover'
                             />
-                          </div>
+                          </button>
                         ))}
                       </div>
-                    </ScrollArea>
+                    )}
                   </div>
                 )}
               </div>
@@ -181,6 +201,5 @@ export function MagnetPreviewDialog({
           </div>
         </DialogContent>
       </Dialog>
-    </>
   );
 }

@@ -32,23 +32,8 @@ const DEFAULT_THEMES = [
   }
 ];
 
-const SCALED_THEMES = [
-  {
-    name: 'Default',
-    value: 'default-scaled'
-  },
-  {
-    name: 'Blue',
-    value: 'blue-scaled'
-  }
-];
 
-const MONO_THEMES = [
-  {
-    name: 'Mono',
-    value: 'mono-scaled'
-  }
-];
+
 
 export function ThemeSelector() {
   const { activeTheme, setActiveTheme } = useThemeConfig();
@@ -56,7 +41,7 @@ export function ThemeSelector() {
   return (
     <div className='flex items-center gap-2'>
       <Label htmlFor='theme-selector' className='sr-only'>
-        Theme
+        主题
       </Label>
       <Select value={activeTheme} onValueChange={setActiveTheme}>
         <SelectTrigger
@@ -64,7 +49,7 @@ export function ThemeSelector() {
           className='justify-start *:data-[slot=select-value]:w-12'
         >
           <span className='text-muted-foreground hidden sm:block'>
-            Select a theme:
+            主题:
           </span>
           <span className='text-muted-foreground block sm:hidden'>Theme</span>
           <SelectValue placeholder='Select a theme' />
@@ -78,23 +63,7 @@ export function ThemeSelector() {
               </SelectItem>
             ))}
           </SelectGroup>
-          <SelectSeparator />
-          <SelectGroup>
-            <SelectLabel>Scaled</SelectLabel>
-            {SCALED_THEMES.map((theme) => (
-              <SelectItem key={theme.name} value={theme.value}>
-                {theme.name}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-          <SelectGroup>
-            <SelectLabel>Monospaced</SelectLabel>
-            {MONO_THEMES.map((theme) => (
-              <SelectItem key={theme.name} value={theme.value}>
-                {theme.name}
-              </SelectItem>
-            ))}
-          </SelectGroup>
+          
         </SelectContent>
       </Select>
     </div>

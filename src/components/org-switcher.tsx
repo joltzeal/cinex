@@ -20,15 +20,15 @@ export function OrgSwitcher() {
           size='lg'
           className='cursor-default hover:bg-transparent'
         >
-          <div className='bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg'>
+          <div className=' text-sidebar-primary-foreground flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg'>
             {/* 您可以在这里替换为您的 logo 图片 */}
-            {/* <Image
-              src="/cinex.png"
+            <Image
+              src="/icon.png"
               alt="Cinex"
-              width={32}
-              height={32}
+              width={28}
+              height={28}
               className='size-full object-cover'
-            /> */}
+            />
             <GalleryVerticalEnd className='size-4' />
           </div>
           <div
@@ -40,7 +40,7 @@ export function OrgSwitcher() {
           >
             <span className='truncate font-semibold'>Cinex</span>
             <span className='text-muted-foreground truncate text-xs'>
-              管理系统
+              保持干燥
             </span>
           </div>
         </SidebarMenuButton>

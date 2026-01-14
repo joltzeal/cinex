@@ -7,7 +7,7 @@ import { Terminal } from "lucide-react";
 import path from 'path';
 
 export const metadata = {
-  title: 'Dashboard : 文件管理'
+  title: '文件管理'
 };
 
 export default async function FileManagerPage() {

@@ -260,7 +260,7 @@ export default function LibraryPage(props: pageProps) {
       )}
 
       {/* 影片网格 - 优化响应式列数 */}
-      <div className='grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7'>
+      <div className='grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6 2xl:grid-cols-6'>
         {libraryMovieList.length === 0 ? (
           <div className='col-span-full py-20'>
             <EmptyState onReset={handleReset} isSearching={hasSearched} />

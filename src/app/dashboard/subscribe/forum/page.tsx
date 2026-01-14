@@ -5,7 +5,9 @@ import { ForumContent } from "./_components/forum-content";
 import { SubscribeTabs } from "./_components/subscribe-tabs";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-
+export const metadata = {
+  title: 'Forum'
+};
 export default async function ForumPage({
   searchParams,
 }: {

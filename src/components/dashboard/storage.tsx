@@ -1,23 +1,16 @@
 "use client"
 
-import { Progress } from "@radix-ui/react-progress";
+
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { HardDrive } from "lucide-react";
 import { Button } from "../ui/button";
 import { useRouter } from "next/navigation";
-export interface StorageData {
-  poolName: string;
-  temperature: number;
-  usedSpace: number;
-  totalSpace: number;
-  percentUsed: number;
-}
-export const StorageWidget = ({ data }: { data: StorageData }) => {
-    const router = useRouter();
-  const handleGoToFile = () => {
-    // TODO: 跳转到文件管理页面
-    router.push("/dashboard/file/manager");
-  }
+import { StorageInfo } from "@/lib/disk";
+import { Progress } from "../ui/progress";
+
+export const StorageWidget = ({ storageInfo }: { storageInfo: StorageInfo }) => {
+  const router = useRouter();
+
   return (
     <Card className="flex flex-col">
       <CardHeader>
@@ -25,20 +18,20 @@ export const StorageWidget = ({ data }: { data: StorageData }) => {
           <HardDrive size={18} />
           <span className="text-xs font-bold tracking-widest uppercase">存储空间</span>
         </div>
-        <CardTitle>{data.poolName}</CardTitle>
+        <CardTitle>存储池</CardTitle>
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col items-center justify-center pt-0">
         <div className="w-full space-y-3">
           <div className="flex items-baseline justify-between w-full">
             <div>
-              <span className="text-xl font-bold">{data.usedSpace}</span>
-              <span className="text-sm text-muted-foreground ml-1">TB</span>
+              <span className="text-xl font-bold">{storageInfo.used}</span>
             </div>
-            <span className="text-xs font-medium text-muted-foreground">of {data.totalSpace} TB</span>
+            <span className="text-xs font-medium text-muted-foreground">of {storageInfo.total}</span>
           </div>
-          <Progress value={data.percentUsed} className="h-2" />
-          <Button variant="outline" className="w-full mt-2" size="sm" onClick={handleGoToFile}>文件管理</Button>
+          
+          <Progress value={storageInfo.percentage} className="h-2" />
+          <Button variant="outline" className="w-full mt-2" size="sm" onClick={() => router.push("/dashboard/file/manager")}>文件管理</Button>
         </div>
       </CardContent>
     </Card>

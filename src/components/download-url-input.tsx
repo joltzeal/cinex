@@ -39,18 +39,21 @@ export const DownloadURLInput: React.FC<DownloadURLInputProps> = ({ control }) =
           control={control}
           name={`downloadURLs.${index}.url`}
           render={({ field }) => (
-            <FormItem className="flex items-center gap-2 mb-2">
-              <FormControl>
-                <Input placeholder="https://example.com/file.zip" {...field} />
-              </FormControl>
-              <Button
-                type="button"
-                variant="destructive"
-                size="icon"
-                onClick={() => remove(index)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+            <FormItem >
+              <div className="flex items-center gap-2 mb-2">
+                <FormControl>
+                  <Input placeholder="https://example.com/file.zip" {...field} />
+                </FormControl>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => remove(index)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+
               <FormMessage />
             </FormItem>
           )}

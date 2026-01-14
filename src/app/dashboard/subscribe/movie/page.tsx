@@ -1,19 +1,18 @@
 import PageContainer from '@/components/layout/page-container';
 import { Heading } from '@/components/ui/heading';
-import { prisma } from '@/lib/prisma';
 import { searchParamsCache } from '@/lib/searchparams';
 import { SearchParams } from 'nuqs';
 import SubscribePosterWallPage from './poster-wall';
 import { getSubscribeMovieList } from '@/services/subscribe';
-import { getSetting, SettingKey } from '@/services/settings';
-import { logger } from '@/lib/logger';
 import { Movie, MovieStatus } from '@prisma/client';
 import LibraryPage from './library';
 
 type pageProps = {
   searchParams: Promise<SearchParams>;
 };
-
+export const metadata = {
+  title: '影片'
+};
 async function uniqueMovieList(movieList: Movie[]) {
   return Array.from(
     new Map(movieList.map((item) => [item.number, item])).values()

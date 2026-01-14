@@ -8,11 +8,14 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { MediaServerProvider } from '@/contexts/media-server-context';
 import { getSetting, SettingKey } from '@/services/settings';
-
+import { LoadingProvider } from '@/contexts/loading-context';
 export const metadata: Metadata = {
-  title: 'Next Shadcn Dashboard Starter',
-  description: 'Basic dashboard with Next.js and Shadcn'
-};
+  title: {
+    template: '%s | Cinex',
+    default: 'Cinex',
+  },
+  description: 'Acme site',
+}
 
 export default async function DashboardLayout({
   children
@@ -26,7 +29,7 @@ export default async function DashboardLayout({
   const defaultOpen = cookieStore.get('sidebar_state')?.value === 'true';
   return (
     <KBar>
-      <SidebarProvider defaultOpen={defaultOpen}>
+      <LoadingProvider><SidebarProvider defaultOpen={defaultOpen}>
         <InfobarProvider defaultOpen={false}>
           <AppSidebar />
           <SidebarInset>
@@ -39,7 +42,8 @@ export default async function DashboardLayout({
           </SidebarInset>
           <InfoSidebar side='right' />
         </InfobarProvider>
-      </SidebarProvider>
+      </SidebarProvider></LoadingProvider>
+      
     </KBar>
   );
 }

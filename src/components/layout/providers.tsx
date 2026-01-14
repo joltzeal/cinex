@@ -22,6 +22,7 @@ export default function Providers({
     <>
       <ActiveThemeProvider initialTheme={activeThemeValue}>
         <AuthUIProvider
+        
           redirectTo='/dashboard'
           authClient={authClient}
           navigate={router.push}
@@ -31,6 +32,12 @@ export default function Providers({
             router.refresh();
           }}
           Link={Link}
+          additionalFields={{
+            
+          }}
+          account={{
+            fields: ["avatar", "name", "age","changePassword" ]
+          }}
         >
           {children}
         </AuthUIProvider>
