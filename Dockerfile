@@ -68,10 +68,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/better-auth_migrations ./better-a
 # Copy package.json for prisma commands
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 
-# Copy node_modules with prisma binaries
-COPY --from=deps --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=deps --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=deps --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
+# Copy node_modules with prisma binaries (from builder since prisma generate was run there)
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
 
 # Copy startup script
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./
