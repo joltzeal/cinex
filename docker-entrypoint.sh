@@ -24,7 +24,7 @@ echo "Database is ready!"
 
 # Run Prisma migrations
 echo "Running Prisma database migrations..."
-if npx prisma migrate deploy; then
+if pnpm exec prisma migrate deploy; then
   echo "Prisma migrations completed successfully"
 else
   echo "Warning: Prisma migrations failed, but continuing..."

@@ -9,15 +9,21 @@ RUN apk add --no-cache libc6-compat openssl
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json ./
+# Enable pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Install dependencies with npm (use legacy-peer-deps for React 19 compatibility)
-RUN npm install --legacy-peer-deps
+# Copy package files
+COPY package.json pnpm-lock.yaml ./
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
 
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
+
+# Enable pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
@@ -26,10 +32,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Generate Prisma Client
-RUN npx prisma generate
+RUN pnpm exec prisma generate
 
 # Build Next.js application
-RUN npm run build
+RUN pnpm build
 
 # Production image, copy all the files and run next
 FROM base AS runner
@@ -41,6 +47,9 @@ RUN apk add --no-cache openssl postgresql-client
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
+
+# Enable pnpm for runtime (needed for prisma commands)
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Set environment to production
 ENV NODE_ENV=production
@@ -56,13 +65,12 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 # Copy better-auth migrations
 COPY --from=builder --chown=nextjs:nodejs /app/better-auth_migrations ./better-auth_migrations
 
-# Copy package.json for reference
+# Copy package.json and pnpm-lock.yaml for prisma commands
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=nextjs:nodejs /app/pnpm-lock.yaml ./pnpm-lock.yaml
 
-# Copy node_modules with Prisma binaries
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
+# Copy entire node_modules from builder (includes all prisma generated files in .pnpm structure)
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 # Copy startup script
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./
