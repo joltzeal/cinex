@@ -17,14 +17,29 @@ services:
       retries: 5
 
   app:
-    image: joltzeal/cinex:main
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: cinex-app
     environment:
+      # Database configuration
       DATABASE_URL: postgresql://cinex:cinex@postgres:5432/cinex
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: cinex
+      DATABASE_PASSWORD: cinex
+      DATABASE_NAME: cinex
+
+      # Better Auth configuration
       BETTER_AUTH_SECRET: 8yJVW4w+oL4GVq6w7SGhabNG9OMESYBfwUDgzbQ2A3w=
       BETTER_AUTH_URL: http://localhost:3100
+
+      # API configuration
       METATUBE_API_HOST: https://your-metatube-api-url
       METATUBE_API_TOKEN: your-metatube-api-token
+
+      # Node environment
+      NODE_ENV: production
     volumes:
       - /vol5/1000/other 2/cinex-media:/app/media
     ports:
