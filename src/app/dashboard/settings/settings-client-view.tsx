@@ -50,6 +50,9 @@ export default function SettingsPageClient(props: SettingsPageClientProps) {
 
   const [config, setConfig] = useState<Record<string, any> | undefined>(undefined);
 
+  console.log(config);
+  
+
   useEffect(() => {
     const propsSettings = props.settings?.reduce((acc, item) => {
       acc[item.key] = item.value;
@@ -147,7 +150,7 @@ export default function SettingsPageClient(props: SettingsPageClientProps) {
               </section>
 
               <section id="proxy-settings">
-                <ProxySettingsComponent initialData={config?.proxyUrl} />
+                <ProxySettingsComponent initialData={config?.proxyConfig} />
               </section>
             </div>
           </div>

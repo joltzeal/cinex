@@ -37,7 +37,8 @@ export default async function AuthPage({
       <div className='bg-muted relative hidden h-full flex-col p-10 text-white lg:flex dark:border-r'>
         <div className='absolute inset-0 bg-zinc-900' />
         <div className='relative z-20 flex items-center text-lg font-medium'>
-          <svg
+          <img src="/icon.png" alt="" className='mr-2 h-6 w-6'/>
+          {/* <svg
             xmlns='http://www.w3.org/2000/svg'
             viewBox='0 0 24 24'
             fill='none'
@@ -48,8 +49,8 @@ export default async function AuthPage({
             className='mr-2 h-6 w-6'
           >
             <path d='M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3' />
-          </svg>
-          Logo
+          </svg> */}
+          Cinex
         </div>
         <InteractiveGridPattern
           className={cn(
@@ -60,17 +61,38 @@ export default async function AuthPage({
         <div className='relative z-20 mt-auto'>
           <blockquote className='space-y-2'>
             <p className='text-lg'>
-              &ldquo;This starter template has saved me countless hours of work
-              and helped me deliver projects to my clients faster than ever
-              before.&rdquo;
+              &ldquo;Choose your hard: The hardship of discipline or the hardship of failure.&rdquo;
             </p>
-            <footer className='text-sm'>Random Dude</footer>
+            <footer className='text-sm'>Cinex</footer>
           </blockquote>
         </div>
       </div>
       <div className='flex h-full items-center justify-center p-4 lg:p-8'>
         <div className='flex w-full max-w-md flex-col items-center justify-center space-y-6'>
-          <AuthView path={path} callbackURL='/dashboard' />
+          <AuthView path={path} callbackURL='/dashboard' localization={{
+            SIGN_IN: '登录',
+            SIGN_IN_ACTION:"登录",
+            NAME_PLACEHOLDER:"cinex",
+            EMAIL_PLACEHOLDER:"cinex@example.com",
+            PASSWORD_PLACEHOLDER:"输入你的密码",
+            SIGN_UP: '注册',
+            SIGN_UP_ACTION: '注册',
+            IS_REQUIRED: '必填',
+            IS_INVALID: '无效',
+            INVALID_EMAIL_OR_PASSWORD: '邮箱或密码无效',
+            FORGOT_PASSWORD_LINK: '忘记密码？',
+            ALREADY_HAVE_AN_ACCOUNT: '已有账号？',
+            FORGOT_PASSWORD: '忘记密码？',
+            FORGOT_PASSWORD_DESCRIPTION: '忘记密码？请输入您的邮箱地址，我们将发送一封重置密码的邮件给您。',
+            NAME:"用户名",
+            SIGN_IN_USERNAME_DESCRIPTION: '请输入您的用户名',
+            SIGN_UP_DESCRIPTION:"创建您的账号",
+            EMAIL: '邮箱',
+            PASSWORD: '密码',
+            SIGN_IN_DESCRIPTION: '使用您的邮箱和密码登录',
+            DONT_HAVE_AN_ACCOUNT: '没有账号？',
+
+          }}/>
         </div>
       </div>
     </div>

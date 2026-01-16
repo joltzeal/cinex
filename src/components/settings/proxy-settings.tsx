@@ -59,6 +59,9 @@ export function ProxySettingsComponent({ initialData }: ProxySettingsProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [testResults, setTestResults] = useState<TestResult[] | null>(null);
 
+  console.log(initialData);
+  
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: initialData || {

@@ -1,6 +1,8 @@
 import { Movie, MovieStatus } from '@prisma/client';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
+import { useLoading } from "@/contexts/loading-context";
+import { useRouter } from "next/navigation";
 import {
   BookText,
   Building,
@@ -46,10 +48,11 @@ import { useMediaServer } from '@/contexts/media-server-context';
 import { SubscribeMovieStatusMap } from '@/constants/data';
 
 const useMovie = (movie: Movie) => {
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
-
+  const { showLoader, hideLoader, updateLoadingMessage } = useLoading();
   const movieDetail = useMemo(() => {
     const detail = (movie.detail as any) || {};
     const magnets = (movie.magnets as any) || [];
@@ -74,22 +77,110 @@ const useMovie = (movie: Movie) => {
       .catch(() => toast.error('复制失败'));
   }, []);
 
-  const handleSubscribeMovie = useCallback(async () => {
+  const handleSubscribeMovie = async () => {
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      toast.success('订阅成功 (模拟)');
-    }, 1000);
-  }, [movieDetail?.id]);
+    try {
+      const response = await fetch(`/api/movie/${movieDetail.id}/subscribe`, {
+        method: "POST",
+      });
 
-  const handleDownloadMagnet = useCallback(async (magnet: any) => {
-    if (!magnet) return;
-    setIsSubmitting(true);
-    setTimeout(() => {
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+
+        if (response.status === 400 && errorMessage.includes("影片已订阅")) {
+          toast.error("该影片已经订阅过了");
+        } else if (response.status === 404) {
+          toast.error("影片未找到");
+        } else if (response.status >= 500) {
+          toast.error("服务器错误，请稍后重试");
+        } else {
+          toast.error(`订阅失败: ${errorMessage}`);
+        }
+        return;
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        toast.success("订阅成功！");
+        movie.status = MovieStatus.subscribed;
+        // movieDetail.status = 'subscribed';
+      } else {
+        toast.error("订阅失败");
+      }
+    } catch (error) {
+      console.error("订阅失败:", error);
+      if (error instanceof Error) {
+        if (error.name === 'NetworkError' || error.message.includes('fetch')) {
+          toast.error("网络错误，请检查网络连接");
+        } else {
+          toast.error(`订阅失败: ${error.message}`);
+        }
+      } else {
+        toast.error("订阅失败，请重试");
+      }
+    } finally {
       setIsSubmitting(false);
-      toast.success('下载任务已提交 (模拟)');
-    }, 1000);
-  }, []);
+    }
+  };
+
+  const handleDownloadMagnet = async (movie: MovieDetail, magnet: Magnet) => {
+    if (!magnet) {
+      toast.error("没有磁力链接");
+      return;
+    }
+
+    // 重置状态
+    // setProgress([]);
+    // setTaskId(null);
+    setIsSubmitting(true);
+    console.log(movie.title);
+    console.log(magnet.link);
+
+
+    const formData = new FormData();
+    formData.append('title', movie.title ?? movie.id)
+    formData.append("downloadURLs", JSON.stringify([magnet.link]));
+    formData.append("downloadImmediately", 'true');
+    const movieData: any = movie
+    movieData.type = 'jav'
+    formData.append('movie', JSON.stringify(movieData))
+
+    // 🔥 关键：显示全屏 loading
+    showLoader("正在提交下载任务...");
+
+    try {
+      const response = await fetch("/api/download", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "创建失败");
+      }
+
+      if (response.status === 202 && result.taskId) {
+        // 异步任务启动，更新 loader 文本并开始监听
+        // setTaskId(result.taskId); // 设置 taskId
+        updateLoadingMessage("任务已启动，正在连接服务器...");
+        // listenToSse(result.taskId);
+        // **不隐藏 loader**，让 SSE 处理器来控制
+      } else {
+        // 同步创建成功
+        hideLoader(); // 隐藏 loader
+        toast.success(result.message || "文档创建成功！");
+        router.refresh();
+        setIsSubmitting(false);
+      }
+    } catch (error: any) {
+      console.error('[Submit] 错误:', error);
+      hideLoader(); // 隐藏 loader
+      toast.error(`发生错误: ${error.message}`);
+      setIsSubmitting(false); // 出错时解锁按钮
+    }
+  };
 
   const handleSubmitReview = async (data: {
     rating: string;
