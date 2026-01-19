@@ -70,6 +70,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/pnpm-lock.yaml ./pnpm-lock.yaml
 
 # Copy entire node_modules from builder (includes all prisma generated files)
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+RUN mkdir -p /app/media && chown -R nextjs:nodejs /app/media
 
 # Copy startup script
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./
