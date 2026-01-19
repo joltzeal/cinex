@@ -57,18 +57,7 @@ export async function POST(request: NextRequest) {
       });
       manualTransfer({ file: { id: filePath, name: fileName }, number: name, transferMethod: transferMethod, fileTransferLogId: fileTransfer.id });
       return NextResponse.json({ success: true }, { status: 200 });
-      // const searchResults = await metatubeClient.searchByNumber(name);
-      // console.log(searchResults);
 
-      // if (searchResults.length > 0) {
-      //   const movieDetail = await metatubeClient.getDetails(searchResults[0].provider, searchResults[0].id);
-      //   console.log(movieDetail);
-      //   const nfoData = mapMovieDetailToNFO(movieDetail);
-      //   const nfoGenerator = new NfoGenerator(nfoData);
-
-      //   const xmlContent = nfoGenerator.generateXml();
-      //   fs.writeFile('./nfo.xml', xmlContent);
-      // }
     } catch (error: any) {
       console.log(error);
       

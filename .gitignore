@@ -68,3 +68,5 @@ pnpm-debug.log*
 Thumbs.db
 
 docker-compose.local.yml
+docker-compose.nas.yml
+media/

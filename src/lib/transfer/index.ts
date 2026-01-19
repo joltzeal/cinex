@@ -11,6 +11,7 @@ import NfoGenerator, { mapMovieDetailToNFO } from "../nfo-generator";
 import { generatePathFromRule } from "../parse/file-number-parser";
 import { getFileInfo } from "../parse/get-file-info";
 import { proxyRequest } from "../proxyFetch";
+import { BASE_PARSE_CONFIG } from "@/constants/data";
 async function downloadImage(url: string, outputDir: string) {
   const urlObj = new URL(url); // 解析 URL
   const refererOrigin = urlObj.origin; // 获取 origin，例如 "https://www.example.com"
@@ -128,7 +129,7 @@ async function downloadMoviePicture(params: DownloadMoviePictureParams) {
   }
   // 确保目录存在
   await fs.mkdir(filePath, { recursive: true });
-  
+
   const posterRes = await proxyRequest(posterUrl, {
     headers: headers,
     responseType: 'buffer',
@@ -137,7 +138,7 @@ async function downloadMoviePicture(params: DownloadMoviePictureParams) {
   const posterBuffer = posterRes.rawBody;
   const posterFilePath = path.join(filePath, `${fileName}-poster.jpg`);
   await fs.writeFile(posterFilePath, posterBuffer);
-  
+
   // 下载 fanart 和 thumb
   const thumbRes = await proxyRequest(thumbUrl, {
     headers: headers,
@@ -245,38 +246,34 @@ export async function manualTransfer(
   let createdFiles: string[] = [];
   let originalFilePath: string | null = null;
   let tempFilePath: string | null = null;
-
   try {
+
+    // 1. 获取文件信息 - 根据文件名解析文件信息
     const fileInfo = await getFileInfo(params.file.id);
     if (!fileInfo.number || !fileInfo.letters) {
       throw new Error('无法解析文件信息');
     }
-
+    // 2. 根据番号获取元数据
     const filePath = params.file.id;
-    logger.info('===========================================');
-    logger.info(filePath);
-    logger.info('===========================================');
-    // 文件路径
     originalFilePath = filePath;
-
+    // 3. 判断文件是否存在
     if (!await fileExists(filePath)) {
       throw new Error('源文件不存在');
     }
+    // 4. 获取刮削规则
+    const parseConfig = await getSetting(SettingKey.MovieParseConfig) || BASE_PARSE_CONFIG;
 
-    const parseConfig = await getSetting(SettingKey.MovieParseConfig);
-    if (!parseConfig) {
-      throw new Error('无法获取解析配置');
-    }
-    // 根据番号获取元数据
+    // 5. 根据番号获取元数据 需要配置 metatube api
     const movieSearchList = await metatubeClient.searchByNumber(params.number);
-    logger.info(movieSearchList);
-
     if (movieSearchList.length === 0) {
       throw new Error('未找到匹配的影片信息');
     }
 
-    const movieDetail = await metatubeClient.getDetails(movieSearchList[0].provider, movieSearchList[0].id);
+    console.log(movieSearchList);
 
+
+    // 6. 判断影片是否存在于数据库中
+    const movieDetail = await metatubeClient.getDetails(movieSearchList[0].provider, movieSearchList[0].id);
     if (!movieDetail) {
       throw new Error('无法获取影片详情');
     }
@@ -421,6 +418,22 @@ export async function manualTransfer(
     });
 
     // 6. 更新数据库为成功状态
+    const dbMovie = await prisma.movie.findUnique({
+      where: {
+        number: movieDetail.number,
+      },
+    })
+    if (dbMovie) {
+      await prisma.movie.update({
+        where: {
+          number: movieDetail.number,
+        },
+        data: {
+          status: MovieStatus.transfered,
+          addedAt: new Date(),
+        }
+      });
+    }
     await prisma.fileTransferLog.update({
       where: { id: params.fileTransferLogId },
       data: {
@@ -431,15 +444,7 @@ export async function manualTransfer(
         completedAt: new Date(),
       },
     });
-    await prisma.movie.update({
-      where: {
-        number: movieDetail.number,
-      },
-      data: {
-        status: MovieStatus.transfered,
-        addedAt: new Date(),
-      }
-    });
+
 
     logger.info('文件转移完成');
 

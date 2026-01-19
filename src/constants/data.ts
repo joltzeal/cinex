@@ -96,6 +96,18 @@ export const SubscribeMovieStatusMap = {
   }
 };
 
+export const BASE_PARSE_CONFIG: MovieParseConfig = { 
+  nfoTitleRule: "number title", 
+  directoryRule: "year/letters/[number]-actor", 
+  downloadFanart: true, 
+  fileNamingRule: "number", 
+  watermarkTypes: ["subtitles", "cracked", "leaked", "uncensored"], 
+  cleanupExtensions: ".html|.url", 
+  cleanupMinFileSize: 10, 
+  enableAiTranslation: false, 
+  cleanupFilenameContains: "直 播 盒 子|最 新 情 報|最 新 位 址|注册免费送|房间火爆|美女荷官|妹妹直播|精彩直播" 
+}
+
 export const videoExtensions = [
   '.mp4',
   '.mkv',
