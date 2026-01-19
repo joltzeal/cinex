@@ -91,7 +91,11 @@ async function fetchJavbusTitle(threadId: string) {
 async function fetchSehuatangTitle(threadId: string) {
   const url = `https://www.sehuatang.net/forum-${threadId}-1.html`;
 
+  logger.info(`获取${url}的标题`);
+
   const safeid = await getSehuatangSafeid();
+  // const safeid = 'e5q5RTxBV5T5TTr5';
+  // logger.info(`获取到safeid: ${safeid}`);
   if (!safeid) {
     throw new Error('_safe获取失败');
   }

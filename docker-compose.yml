@@ -41,7 +41,7 @@ services:
       # Node environment
       NODE_ENV: production
     volumes:
-      - /vol5/1000/other 2/cinex-media:/app/media
+      - /vol5/1000/other 2/cinex-media:/media
     ports:
       - "3100:3000"
     depends_on:

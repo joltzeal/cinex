@@ -122,6 +122,7 @@
     "uuid": "^11.0.3",
     "vaul": "^1.1.2",
     "xmlbuilder2": "^4.0.3",
+    "yet-another-react-lightbox": "^3.28.0",
     "zod": "^4.1.8",
     "zustand": "^5.0.2"
   },

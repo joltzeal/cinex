@@ -51,7 +51,8 @@ const SITES_TO_TEST = [
   "https://www.javbus.com",
   "https://javdb.com",
   "https://www.avfan.com",
-  "https://onejav.com"
+  "https://onejav.com",
+  "https://www.sehuatang.net"
 ];
 
 export function ProxySettingsComponent({ initialData }: ProxySettingsProps) {

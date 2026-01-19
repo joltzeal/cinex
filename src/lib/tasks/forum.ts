@@ -1,7 +1,7 @@
 import { ForumSubscribe } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { logger } from '../logger';
-import {  proxyRequest } from "../proxyFetch";
+import { proxyRequest } from "../proxyFetch";
 import * as cheerio from "cheerio";
 import { BASE_HEADER, FORUM_MAP } from '@/constants/data';
 import { getCookieByWebsite } from '@/services/settings';
@@ -211,7 +211,7 @@ export async function fetchSouthPlusPostDetail(postId: string) {
  */
 async function fetchNewSafeid(): Promise<string | null> {
     try {
-        const homeFetch = await proxyRequest('https://www.sehuatang.net/', { // 假设 proxyRequest 是一个全局或导入的 fetch 封装
+        const response = await proxyRequest('https://www.sehuatang.net/forum-2-1.html', {
             headers: {
                 'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
                 'accept-language': 'zh-CN,zh;q=0.9',
@@ -219,15 +219,12 @@ async function fetchNewSafeid(): Promise<string | null> {
                 'dnt': '1',
                 'pragma': 'no-cache',
                 'priority': 'u=0, i',
-            }
+                'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36'
+            },
         });
 
-        if (!homeFetch.ok) {
-            // 抛出错误以便在 catch 块中处理
-            throw new Error(`Failed to fetch from sehuatang, status: ${homeFetch.statusCode}`);
-        }
+        const homeHtml = response.body;
 
-        const homeHtml = homeFetch.body;
         const pattern = /var\s+safeid='(.+?)';/;
         const match = homeHtml.match(pattern);
 
@@ -612,6 +609,7 @@ async function fetchT66yPost(threadId: string, page: number, forumSubscribeId: s
  */
 export async function fetchSehuatangPost(threadId: string, page: number, forumSubscribeId: string): Promise<ForumPost[]> {
     // https://www.sehuatang.net/forum.php?mod=forumdisplay&fid=2&page=1
+    // https://www.sehuatang.net/forum.php?mod=forumdisplay&fid=2&orderby=dateline&filter=author&page=2
     const params = {
         mod: 'forumdisplay',
         fid: threadId.toString(),
@@ -622,26 +620,50 @@ export async function fetchSehuatangPost(threadId: string, page: number, forumSu
     const url = new URL(FORUM_MAP.sehuatang);
     url.search = new URLSearchParams(params).toString();
     const safeid = await getSehuatangSafeid();
+    logger.info(`获取 98 堂 分区 ${threadId} 的帖子列表，safeid: ${safeid}`);
+    console.log(`https://www.sehuatang.net/forum.php?mod=forumdisplay&fid=${threadId}&orderby=dateline&filter=author&page=${page}`);
+
     if (!safeid) {
         logger.error('无法获取 98 堂 safeid，无法获取帖子列表');
         return [];
     }
     try {
-        const response = await proxyRequest(url.toString(), {
+        const response = await proxyRequest(`https://www.sehuatang.net/forum.php?mod=forumdisplay&fid=${threadId}&orderby=dateline&filter=author&page=${page}`, {
             headers: {
                 'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                'accept-language': 'zh-CN,zh;q=0.9',
-                'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+                'accept-language': 'zh,en-US;q=0.9,en;q=0.8,zh-CN;q=0.7',
+                'cache-control': 'no-cache',
+                'pragma': 'no-cache',
+                'priority': 'u=0, i',
+                'sec-ch-ua': '"Not(A:Brand";v="8", "Chromium";v="144"',
+                'sec-ch-ua-mobile': '?0',
+                'sec-ch-ua-platform': '"macOS"',
+                'sec-fetch-dest': 'document',
+                'sec-fetch-mode': 'navigate',
+                'sec-fetch-site': 'none',
+                'sec-fetch-user': '?1',
+                'upgrade-insecure-requests': '1',
+                'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36',
+                
+                // 'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                // 'accept-language': 'zh-CN,zh;q=0.9',
+                // 'cache-control': 'no-cache',
+                // 'dnt': '1',
+                // 'pragma': 'no-cache',
+                // 'priority': 'u=0, i',
+                // 'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36',
                 'cookie': `_safe=${safeid}`
-            }
+            },
+            throwHttpErrors: false
         });
-
+        // console.log(response.body);
         if (!response.ok) {
             logger.error(`无法获取 98 堂 分区 ${threadId} 的帖子列表，状态: ${response.statusCode}`);
             return [];
         }
 
         const html = response.body;
+
 
         const $ = cheerio.load(html);
 
@@ -824,7 +846,7 @@ export async function syncAndPaginateForum(subscription: ForumSubscribe, maxPage
         }
 
         // 更新订阅的最后检查时间
-        
+
 
         logger.warn(`同步完成，插入 ${allNewPosts.length} 个新帖子到 ${subscription.forum} 分区 ${subscription.thread} 的帖子列表。`);
 

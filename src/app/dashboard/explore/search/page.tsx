@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils"
 import { TorrentSearchResult } from '@/lib/scrapers/interface'
 import { useLoading } from '@/contexts/loading-context'
 import { toast } from "sonner"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface SourceData {
   count: number
@@ -51,6 +52,17 @@ const parseSizeToMB = (sizeStr: string): number => {
   if (sizeStr.toUpperCase().includes('TB')) return size * 1024 * 1024
   if (sizeStr.toUpperCase().includes('KB')) return size / 1024
   return size
+}
+
+const truncateFileName = (fileName: string, maxLength = 30): string => {
+  if (fileName.length <= maxLength) return fileName
+  const lastDot = fileName.lastIndexOf('.')
+  if (lastDot === -1) return fileName.slice(0, maxLength) + '...'
+  const ext = fileName.slice(lastDot)
+  const name = fileName.slice(0, lastDot)
+  const keepChars = 3
+  if (name.length <= keepChars) return fileName
+  return name.slice(0, maxLength - ext.length - keepChars - 3) + '...' + name.slice(-keepChars) + ext
 }
 
 export default function MagnetPage() {
@@ -160,7 +172,7 @@ export default function MagnetPage() {
             </div>
           </form>
 
-          <div className="flex flex-wrap items-center justify-center gap-2 max-w-2xl">
+          {/* <div className="flex flex-wrap items-center justify-center gap-2 max-w-2xl">
             <span className="text-xs font-bold text-primary uppercase mr-2 tracking-wider flex items-center gap-1">
               <Zap className="w-3 h-3" /> Hot:
             </span>
@@ -177,7 +189,7 @@ export default function MagnetPage() {
                 {tag}
               </Badge>
             ))}
-          </div>
+          </div> */}
         </div>
       ) : (
         <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
@@ -202,10 +214,10 @@ export default function MagnetPage() {
             </form>
 
             <div className="ml-auto flex items-center gap-2">
-              <Button variant="ghost" size="sm" className="hidden sm:flex gap-2">
+              {/* <Button variant="ghost" size="sm" className="hidden sm:flex gap-2">
                 <LayoutGrid className="w-4 h-4" />
                 View
-              </Button>
+              </Button> */}
             </div>
           </div>
 
@@ -252,16 +264,7 @@ export default function MagnetPage() {
                         </AccordionContent>
                       </AccordionItem>
 
-                      <AccordionItem value="source" className="border-none">
-                        <AccordionTrigger className="py-2 text-sm font-semibold hover:no-underline">Trackers</AccordionTrigger>
-                        <AccordionContent className="pt-1 pb-2">
-                          <div className="flex items-center space-x-2">
-                            <Checkbox id="verified" defaultChecked />
-                            <label htmlFor="verified" className="text-sm font-medium leading-none flex-1">Verified Only</label>
-                            <Zap className="w-3 h-3 text-primary" />
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
+                      
                     </Accordion>
                   </div>
                 </div>
@@ -336,7 +339,7 @@ export default function MagnetPage() {
                           <FileArchive className="text-primary w-7 h-7" />
                         </div>
                         <div className="flex-1 min-w-0 space-y-1">
-                          <h2 className="text-sm font-bold leading-tight line-clamp-2">{selectedResult.fileName}</h2>
+                          <h2 className="text-sm font-bold leading-tight ">{selectedResult.fileName}</h2>
                         </div>
                       </div>
 
@@ -383,24 +386,30 @@ export default function MagnetPage() {
                       </div>
                     </div>
 
-                    <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+                    <div className="flex-1 overflow-hidden flex flex-col min-h-0 w-full">
                       <div className="px-6 py-3 border-b bg-muted/20">
-                        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">File Contents ({selectedResult.fileList.length})</h3>
+                        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">文件内容({selectedResult.fileList.length})</h3>
                       </div>
-                      <ScrollArea className="flex-1 h-full">
-                        <div className="p-4 space-y-1 min-h-0">
+                      
+                      <ScrollArea className="flex-1 h-full ">
+                        <div className="p-4 space-y-1 w-[360px]">
                           {selectedResult.fileList.length > 0 ? (
                             selectedResult.fileList.map((file, i) => (
-                              <div key={i} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors group">
-                                <File className="text-muted-foreground group-hover:text-primary w-4 h-4 transition-colors" />
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-medium truncate">{file}</p>
-                                </div>
-                              </div>
+                              <Tooltip key={i}>
+                                <TooltipTrigger asChild>
+                                  <div className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors ">
+                                    <File className="w-4 h-4 shrink-0 text-muted-foreground" />
+                                    <span className="text-xs">{truncateFileName(file)}</span>
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="text-xs">{file}</p>
+                                </TooltipContent>
+                              </Tooltip>
                             ))
                           ) : (
                             <div className="text-center py-8 text-muted-foreground text-xs italic">
-                              File list not available.
+                              文件列表暂不可用
                             </div>
                           )}
                         </div>

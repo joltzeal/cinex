@@ -227,7 +227,7 @@ export function FileManagerClient({ initialData }: FileManagerClientProps) {
 
   return (
     <>
-      <div className="w-full flex flex-col m-6">
+      <div className="w-full flex flex-col ">
         <TreeView
           title="文件管理"
           showCheckboxes={true}

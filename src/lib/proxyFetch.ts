@@ -39,5 +39,6 @@ export async function proxyRequest(url: string, options: any = {}) {
       https: agent
     }
   });
+  
   return response;
 }

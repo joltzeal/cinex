@@ -10,7 +10,8 @@ const SITES_TO_TEST = [
   "https://www.javbus.com",
   "https://javdb.com",
   "https://www.avfan.com",
-  "https://onejav.com"
+  "https://onejav.com",
+  "https://www.sehuatang.net"
 ];
 
 // Define the expected structure of the response for each site
@@ -72,7 +73,7 @@ async function testSiteConnection(targetUrl: string, proxyUrl: string | undefine
   // 3. Perform the fetch and handle the result
   try {
     const response = await got(targetUrl, options as any);
-    console.log(response.statusCode);
+
     clearTimeout(timeoutId);
     const isOk = response.ok;
     return {
@@ -106,6 +107,8 @@ export async function POST(request: NextRequest) {
     const results = await Promise.all(
       SITES_TO_TEST.map(site => testSiteConnection(site, proxyUrl))
     );
+    console.log(results);
+    
     return NextResponse.json(results, { status: 200 });
   } catch (error) {
     console.error('Proxy test failed:', error);

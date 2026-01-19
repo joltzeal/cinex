@@ -572,7 +572,7 @@ export default function JavbusSubscribeInfoItem({
                 const mediaInfo =
                   movie.mediaLibrary as JellyfinMediaItem | null;
                 return (
-                  <div className='group flex w-25 shrink-0 cursor-pointer flex-col items-center space-y-2' onClick={handleClickSubscribeItem(movie)}>
+                  <div className='group flex w-25 shrink-0 cursor-pointer flex-col items-center space-y-2' onClick={handleClickSubscribeItem(movie)} key={movie.id}>
                     <div className='bg-muted relative h-37.5 w-full overflow-hidden rounded-md' >
                       <LazyImage
                         src={proxiedSrc}

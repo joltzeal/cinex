@@ -183,21 +183,19 @@ export async function POST(request: NextRequest) {
         filterValue,
         filter: savedFilter || filter,
         starInfo: starInfo
-      } as any
+      } as any,
     });
 
     // 处理电影数据（使用多对多关系）
     let addedCount = 0;
     for (const m of uniqueMovies) {
       try {
-        // 1. 使用 upsert 确保电影的 number 唯一
+        // 1. 使用 upsert 确保电影的 number 唯一,此处获取的是 poster，没有 cover 字段，需要自己提取
         const movie = await prisma.movie.upsert({
           where: { number: m.id },
           update: {
             poster: m.img ?? null,
             cover:m.img?getCover(m.img):null,
-            // 如果已存在，可以选择更新或不更新
-            // 这里选择不更新，保留原有数据
           },
           create: {
             number: m.id ?? '',

@@ -119,15 +119,22 @@ export async function getSubscribeMovieCount(
     }
   });
 }
+/**
+ * 获取订阅电影列表的异步函数
+ * @param params - 获取订阅电影列表的参数对象
+ * @returns 返回符合条件的电影列表
+ */
 export async function getSubscribeMovieList(
-  params: GetSubscribeMovieListParams
+  params: GetSubscribeMovieListParams  // 参数对象，包含查询条件、排序方式和分页信息
 ) {
+  // 从参数中解构出查询条件(where)和排序方式(orderBy)，默认按创建时间降序排列
   const { where, orderBy = { createdAt: 'desc' } } = params;
+  // 使用Prisma查询数据库，返回符合条件的电影列表
   return await prisma.movie.findMany({
-    where: where,
-    orderBy: orderBy,
-    skip: params.skip,
-    take: params.take
+    where: where,  // 查询条件
+    orderBy: orderBy,  // 排序方式
+    skip: params.skip,  // 跳过的记录数，用于分页
+    take: params.take  // 获取的记录数，用于分页
   });
 }
 export async function getWeeklyAddedMovieData() {
@@ -202,3 +209,4 @@ export async function getRecentlyAddedMovies() {
   })
   return recentlyAdded;
 }
+

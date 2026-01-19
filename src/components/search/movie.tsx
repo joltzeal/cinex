@@ -66,7 +66,7 @@ const useMovie = (movie: Movie) => {
     if (!movieDetail?.id) return;
     navigator.clipboard.writeText(movieDetail.id);
     setIsCopied(true);
-    toast.success('识别码已复制');
+    toast.success('番号已复制');
     setTimeout(() => setIsCopied(false), 2000);
   }, [movieDetail]);
 
