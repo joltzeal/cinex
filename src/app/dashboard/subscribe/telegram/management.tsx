@@ -567,6 +567,7 @@ const saveSettings = async (newSettings: TelegramConfig) => {
       if (response.ok) {
         const result = await response.json();
         console.log('Telegram服务控制结果:', result.message);
+        window.location.reload();
       } else {
         console.error('控制Telegram服务失败');
       }
@@ -595,10 +596,9 @@ const saveSettings = async (newSettings: TelegramConfig) => {
 
       if (response.ok && result.success) {
         toast.success(result.message || 'Bot已重启');
-        // 延迟检查状态，给Bot时间启动
         setTimeout(() => {
-          checkBotStatus();
-        }, 2000);
+          window.location.reload();
+        }, 1000);
       } else {
         toast.error(result.error || result.message || '重启Bot失败');
       }
