@@ -14,7 +14,6 @@ import { getMagnetDownloadDirectoryConfig, getMovieDownloadDirectoryConfig } fro
 import { Document, DocumentDownloadStatus, LinkType, Movie, MovieStatus } from "@prisma/client";
 import { updateMoviesDataByNumber, updateMoviesStatusByNumber } from "@/services/subscribe";
 import { findMediaItemByIdOrTitle, refreshMediaLibraryCache } from "../tasks/media-library";
-import { DocumentDownloadURLCreateInput } from "generated/prisma/models";
 import { sseManager } from "../sse-manager";
 
 export interface CreateDownloadProps {
