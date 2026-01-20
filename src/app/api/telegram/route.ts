@@ -37,7 +37,6 @@ export async function GET(request: NextRequest) {
 
       // 将连接添加到全局连接集合
       globalSSEConnections.add(writer);
-      console.log(`新的 SSE 连接已建立，当前连接数: ${globalSSEConnections.size}`);
 
       // 定期发送心跳
       const heartbeat = setInterval(() => {

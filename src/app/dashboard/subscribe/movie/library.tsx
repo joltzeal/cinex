@@ -27,7 +27,6 @@ type FilterType = 'rating' | 'tag' | 'keyword';
 
 export default function LibraryPage(props: pageProps) {
   const { subscribeMovieList } = props;
-  console.log(subscribeMovieList);
 
   const mediaServer = useMediaServer();
   const [dialogOpen, setDialogOpen] = useState(false);

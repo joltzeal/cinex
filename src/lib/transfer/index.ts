@@ -228,7 +228,6 @@ interface ManualTransferParams {
   number: string;
   transferMethod: string;
   fileTransferLogId: string;
-  subscribeDataIds?: string[];
 }
 
 /**

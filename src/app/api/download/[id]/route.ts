@@ -183,7 +183,7 @@ export async function PUT(
     if (downloadImmediately) {
       const taskId = uuidv4();
       setTimeout(() => {
-        downloadImmediatelyTask(taskId, updatedDocument, movieData);
+        downloadImmediatelyTask(taskId, updatedDocument, formData.get("movieId") as string | null,);
       }, 1000);
       
       return NextResponse.json(

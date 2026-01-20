@@ -30,7 +30,6 @@ interface TelegramConfigSectionProps {
 export function TelegramConfigSection({ settings, onSave }: TelegramConfigSectionProps) {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState<TelegramConfig>(settings);
-  console.log(formData);
   
   const [showToken, setShowToken] = useState(false);
 

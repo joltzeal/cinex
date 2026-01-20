@@ -134,7 +134,15 @@ export async function getSubscribeMovieList(
     where: where,  // 查询条件
     orderBy: orderBy,  // 排序方式
     skip: params.skip,  // 跳过的记录数，用于分页
-    take: params.take  // 获取的记录数，用于分页
+    take: params.take,  // 获取的记录数，用于分页
+    include: {
+      documents: {
+        orderBy: { createdAt: 'desc' }, // 最新资源排前面
+        include: {
+          downloadURLs: true // 把具体的链接也查出来
+        }
+      }
+    }
   });
 }
 export async function getWeeklyAddedMovieData() {
@@ -196,6 +204,20 @@ export async function getExistingMovieStatusByNumber(
 }
 
 export async function getRecentlyAddedMovies() {
+  const recentlyAdded = await prisma.movie.findMany({
+    where: {
+      status: MovieStatus.added,
+      poster: { not: null },
+      addedAt: { not: null }
+    },
+    orderBy: {
+      addedAt: 'desc'
+    },
+    take: 4
+  })
+  return recentlyAdded;
+}
+export async function getRecentlySubscribeMovie() {
   const recentlyAdded = await prisma.movie.findMany({
     where: {
       status: MovieStatus.added,

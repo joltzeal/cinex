@@ -1,4 +1,4 @@
-import { Movie, MovieStatus } from '@prisma/client';
+import { Movie, MovieStatus, Document, DocumentDownloadURL } from '@prisma/client';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
 import { useLoading } from "@/contexts/loading-context";
@@ -17,6 +17,9 @@ import {
   MessageCircleCode,
   PlayCircle,
   Star,
+  LoaderCircle,
+  Loader,
+
   UserCircle
 } from 'lucide-react';
 import {
@@ -46,13 +49,16 @@ import { Magnet, MovieDetail } from '@/types/javbus';
 import { MagnetPreviewDialog } from '../magnet/magnet-preview-dialog';
 import { useMediaServer } from '@/contexts/media-server-context';
 import { SubscribeMovieStatusMap } from '@/constants/data';
+import { subscribeToTaskToast } from '@/lib/task-sse-subscribe';
+import { extractHash } from '@/lib/magnet/magnet-helper';
 
 const useMovie = (movie: Movie) => {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
-  const { showLoader, hideLoader, updateLoadingMessage } = useLoading();
+  // const { showLoader, hideLoader, updateLoadingMessage } = useLoading();
+  const [isProcessing, setIsProcessing] = useState(false);
   const movieDetail = useMemo(() => {
     const detail = (movie.detail as any) || {};
     const magnets = (movie.magnets as any) || [];
@@ -124,30 +130,32 @@ const useMovie = (movie: Movie) => {
     }
   };
 
-  const handleDownloadMagnet = async (movie: MovieDetail, magnet: Magnet) => {
+  const handleDownloadMagnet = async (movie: Movie, magnet: Magnet) => {
+
     if (!magnet) {
       toast.error("没有磁力链接");
       return;
     }
 
-    // 重置状态
-    // setProgress([]);
-    // setTaskId(null);
-    setIsSubmitting(true);
-    console.log(movie.title);
-    console.log(magnet.link);
 
 
     const formData = new FormData();
-    formData.append('title', movie.title ?? movie.id)
+    let images;
+    if ((movie.detail as unknown as MovieDetail)?.samples) {
+      images = [movie.poster, movie.cover, ...(movie.detail as unknown as MovieDetail)?.samples.map((img) => img.src)]
+    } else {
+      images = [movie.poster, movie.cover]
+    }
+    formData.append('title', (movie.detail as unknown as MovieDetail)?.title || movie.title);
     formData.append("downloadURLs", JSON.stringify([magnet.link]));
     formData.append("downloadImmediately", 'true');
-    const movieData: any = movie
-    movieData.type = 'jav'
-    formData.append('movie', JSON.stringify(movieData))
+    formData.append('images', JSON.stringify(images))
+    // const movieData: any = movie
+    // movieData.type = 'jav'
+    formData.append('movieId', movie.id)
 
-    // 🔥 关键：显示全屏 loading
-    showLoader("正在提交下载任务...");
+    // // 🔥 关键：显示全屏 loading
+    // showLoader("正在提交下载任务...");
 
     try {
       const response = await fetch("/api/download", {
@@ -162,21 +170,27 @@ const useMovie = (movie: Movie) => {
       }
 
       if (response.status === 202 && result.taskId) {
+        subscribeToTaskToast(result.taskId, (data) => {
+          // 如果需要，这里可以根据 data 更新页面的其他部分
+          if (data.stage === 'DONE' || data.stage === 'ERROR') {
+            setIsProcessing(false);
+          }
+        });
         // 异步任务启动，更新 loader 文本并开始监听
         // setTaskId(result.taskId); // 设置 taskId
-        updateLoadingMessage("任务已启动，正在连接服务器...");
+        // updateLoadingMessage("任务已启动，正在连接服务器...");
         // listenToSse(result.taskId);
         // **不隐藏 loader**，让 SSE 处理器来控制
       } else {
         // 同步创建成功
-        hideLoader(); // 隐藏 loader
+        // hideLoader(); // 隐藏 loader
         toast.success(result.message || "文档创建成功！");
         router.refresh();
         setIsSubmitting(false);
       }
     } catch (error: any) {
       console.error('[Submit] 错误:', error);
-      hideLoader(); // 隐藏 loader
+      // hideLoader(); // 隐藏 loader
       toast.error(`发生错误: ${error.message}`);
       setIsSubmitting(false); // 出错时解锁按钮
     }
@@ -212,6 +226,35 @@ const useMovie = (movie: Movie) => {
     setIsReviewDialogOpen(false);
   };
 
+  const handleUnSubscribeMovie = async () => {
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/movie/${movieDetail.id}/subscribe`, {
+        method: "DELETE",
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast.success("已取消订阅");
+        movie.status = MovieStatus.uncheck;
+      } else {
+        toast.error("订阅失败");
+      }
+    } catch (error) {
+      console.error("取消订阅失败:", error);
+      if (error instanceof Error) {
+        if (error.name === 'NetworkError' || error.message.includes('fetch')) {
+          toast.error("网络错误，请检查网络连接");
+        } else {
+          toast.error(`取消订阅失败: ${error.message}`);
+        }
+      } else {
+        toast.error("取消订阅失败，请重试");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return {
     movieDetail,
     isSubmitting,
@@ -222,7 +265,9 @@ const useMovie = (movie: Movie) => {
     handleCopyMagnet,
     handleSubscribeMovie,
     handleDownloadMagnet,
-    handleSubmitReview
+    handleSubmitReview,
+    handleUnSubscribeMovie,
+
   };
 };
 
@@ -238,22 +283,13 @@ const MovieBanner = ({ movieDetail, isCopied, handleCopyId }: any) => {
 
   return (
     <div className='group bg-background relative h-125 w-full overflow-hidden lg:h-125'>
-      {/* 1. 背景层：图片作为背景填充 */}
       <div
         className='absolute inset-0 bg-cover bg-top transition-transform duration-700 ease-out group-hover:scale-105'
         style={{ backgroundImage: `url(${proxyImageUrl(movieDetail.img)})` }}
       />
 
-      {/* 2. 遮罩层组合 - 关键修改点 */}
-      {/* 2.1 全局轻微压暗，保证文字在亮图上可见 */}
       <div className='absolute inset-0 bg-black/10' />
 
-      {/* 2.2 底部渐变层：从透明过渡到背景色 (逐步变白/黑) */}
-      {/* - h-2/3: 渐变占据下半部分 2/3 的高度，过渡更长更柔和
-         - from-background: 底部完全是背景色
-         - via-background/80: 中间部分保持较高不透明度，消除截断感
-         - to-transparent: 顶部透明
-      */}
       <div className='from-background via-background/80 absolute bottom-0 left-0 h-3/4 w-full bg-linear-to-t to-transparent' />
 
       {/* 2.3 底部边缘修补层：再加一层很矮的实色渐变，确保底部边缘绝对“变白”，防止细微的图片露底 */}
@@ -341,9 +377,8 @@ const MovieBanner = ({ movieDetail, isCopied, handleCopyId }: any) => {
 };
 
 // --- 子组件: 磁力链接表格 ---
-const MagnetSection = ({ magnets, isSubmitting, movieDetail }: any) => {
+const MagnetSection = ({ magnets, isSubmitting, movie, onMagnetDownload }: any) => {
   const [previewingMagnet, setPreviewingMagnet] = useState<string | null>(null);
-
   if (!magnets || magnets.length === 0) return null;
 
   const handleCopyMagnet = (link: string) => {
@@ -353,54 +388,29 @@ const MagnetSection = ({ magnets, isSubmitting, movieDetail }: any) => {
       .catch(() => toast.error('复制失败'));
   };
 
-  const handleDownloadMagnet = async (movie: MovieDetail, magnet: Magnet) => {
-    if (!magnet) {
-      toast.error('没有磁力链接');
-      return;
-    }
-
-    console.log(movie.title);
-    console.log(magnet.link);
-
-    const formData = new FormData();
-    formData.append('title', movie.title ?? movie.id);
-    formData.append('downloadURLs', JSON.stringify([magnet.link]));
-    formData.append('downloadImmediately', 'true');
-    const movieData: any = movie;
-    movieData.type = 'jav';
-    formData.append('movie', JSON.stringify(movieData));
-
-    try {
-      const response = await fetch('/api/download', {
-        method: 'POST',
-        body: formData
+  const currentDownload = () => {
+    let _downloadURLs: string[] = [];
+    if (movie.documents && movie.documents.length > 0) {
+      movie.documents.forEach((document: any) => {
+        (document.downloadURLs as DocumentDownloadURL[]).forEach(url => {
+          if (url.hash) {
+            _downloadURLs.push(url.hash);
+          }
+        });
       });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || '创建失败');
-      }
-
-      if (response.status === 202 && result.taskId) {
-        // 异步任务启动
-      } else {
-        toast.success(result.message || '文档创建成功！');
-      }
-    } catch (error: any) {
-      console.error('[Submit] 错误:', error);
-      toast.error(`发生错误: ${error.message}`);
     }
-  };
+    return _downloadURLs;
+  }
+
 
   return (
     <>
-      <Card className='bg-card border-border'>
+      <Card className='bg-card border-border gap-2 pb-0'>
         <CardHeader>
-          <CardTitle>资源下载</CardTitle>
+          <CardTitle>{movie.number} 资源下载</CardTitle>
         </CardHeader>
         <CardContent className='p-0'>
-          <ScrollArea className='h-[400px]'>
+          <ScrollArea className='h-100'>
             <TooltipProvider>
               <Table className='w-full table-fixed'>
                 <TableHeader className='bg-background/95 sticky top-0 z-10 backdrop-blur-sm'>
@@ -411,13 +421,21 @@ const MagnetSection = ({ magnets, isSubmitting, movieDetail }: any) => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {/* { movie.documents && movie.documents.length > 0 && (
+                    movie.documents.map(
+                      (document: Document) => {
+                        return 'aaa'
+                      }
+                    )
+                  )} */}
+
                   {magnets?.map((magnet: Magnet) => (
                     <TableRow key={magnet.id}>
                       <TableCell className='py-2'>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <div className='flex items-center gap-2 overflow-hidden'>
-                              <div className='flex flex-shrink-0 items-center gap-1'>
+                              <div className='flex shrink-0 items-center gap-1'>
                                 {magnet.isHD && (
                                   <Badge
                                     variant='destructive'
@@ -466,15 +484,22 @@ const MagnetSection = ({ magnets, isSubmitting, movieDetail }: any) => {
                           <Eye className='h-4 w-4' />
                         </Button>
                         <Button
+                          disabled={!magnet.link || currentDownload().includes(extractHash(magnet.link)!) || isSubmitting}
                           variant='ghost'
                           size='icon'
                           title='下载'
                           onClick={() =>
-                            handleDownloadMagnet(movieDetail, magnet)
+                            onMagnetDownload(movie, magnet)
                           }
-                          disabled={isSubmitting}
                         >
-                          <Download className='h-4 w-4' />
+                          {
+                            currentDownload().includes(extractHash(magnet.link)!) ? (
+                              <LoaderCircle className='h-4 w-4 animate-spin' />
+                            ) : isSubmitting ? (
+                              <LoaderCircle className='h-4 w-4 animate-spin' />
+                            ) :<Download className='h-4 w-4' />
+                          }
+                          
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -540,7 +565,8 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
     handleDownloadMagnet,
     handleSubmitReview,
     isReviewDialogOpen,
-    setIsReviewDialogOpen
+    setIsReviewDialogOpen,
+    handleUnSubscribeMovie
   } = useMovie(movie);
   const mediaServer = useMediaServer();
   const { open, images, initialIndex, openPreview, setOpen } =
@@ -686,7 +712,15 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
                           已入库
                         </Button>
                       )}
-                    {['downloading', 'downloaded', 'subscribed'].includes(
+                    {movie.status === 'subscribed' && (
+                      <Button
+                        variant='destructive'
+                        onClick={() => handleUnSubscribeMovie()}
+                      >
+                        取消订阅
+                      </Button>
+                    )}
+                    {['downloading', 'downloaded',].includes(
                       movie.status
                     ) && (
                         <Button
@@ -763,11 +797,14 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
                 </CardContent>
               </Card>
 
+
               {/* Magnet Table Component */}
               <MagnetSection
+
                 magnets={movieDetail.magnets}
                 isSubmitting={isSubmitting}
-                movieDetail={movieDetail}
+                movie={movie}
+                onMagnetDownload={handleDownloadMagnet}
               />
             </aside>
           </div>

@@ -22,12 +22,27 @@ export class TelegramBot {
   private isRunning: boolean = false;
   private isShuttingDown: boolean = false;
   private downloadBaseDir: string | null = null;
+  private messageHandler: any = null;
+  private startTime: number | null = null;
 
   private albumMessages: Record<string, Api.Message[]> = {};
   private processedMessages: Set<string> = new Set();
 
   public getStatus() {
-    return { isRunning: this.isRunning };
+    return {
+      running: this.isRunning,
+      configured: true,
+      uptime: this.getUptime()
+    };
+  }
+
+  private getUptime(): string {
+    if (!this.startTime) return '0d 0h 0m';
+    const diff = Date.now() - this.startTime;
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    return `${days}d ${hours}h ${minutes}m`;
   }
 
   public async start(): Promise<boolean> {
@@ -90,8 +105,9 @@ export class TelegramBot {
       //   await db.saveTelegramSession(newSession);
       // }
 
+      this.messageHandler = this.handleForwardedMessage.bind(this);
       this.client.addEventHandler(
-        this.handleForwardedMessage.bind(this),
+        this.messageHandler,
         new NewMessage({
           incoming: true,
           func: (event) => !!event.message.fwdFrom
@@ -99,6 +115,7 @@ export class TelegramBot {
       );
 
       this.isRunning = true;
+      this.startTime = Date.now();
       logger.info('✅ Telegram Bot 启动成功并开始监听消息.');
       return true;
     } catch (error) {
@@ -115,10 +132,38 @@ export class TelegramBot {
     }
     logger.info('🛑 Stopping Telegram Bot...');
     this.isShuttingDown = true;
-    await this.client.disconnect();
-    this.client = null;
-    this.isRunning = false;
-    logger.info('✅ Bot has been stopped.');
+
+    try {
+      // Remove event handler if it exists
+      if (this.messageHandler) {
+        this.client.removeEventHandler(
+          this.messageHandler,
+          new NewMessage({
+            incoming: true,
+            func: (event) => !!event.message.fwdFrom
+          })
+        );
+        this.messageHandler = null;
+      }
+
+      // Disconnect with timeout
+      await Promise.race([
+        this.client.disconnect(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Disconnect timeout')), 5000)
+        )
+      ]).catch((error) => {
+        logger.warn(`Disconnect warning: ${error.message}`);
+      });
+    } catch (error) {
+      logger.error(`Error during disconnect: ${error}`);
+    } finally {
+      this.client = null;
+      this.isRunning = false;
+      this.isShuttingDown = false;
+      this.startTime = null;
+      logger.info('✅ Bot has been stopped.');
+    }
   }
 
   public async restart(): Promise<boolean> {
@@ -284,6 +329,13 @@ export class TelegramBot {
 
   private async processSingleMessage(message: Api.Message, forward: any) {
     const channelName = (forward.chat as Api.Chat).title || 'Unknown Channel';
+
+    await broadcastToSSE({
+      type: 'bot_log',
+      level: 'info',
+      message: `开始处理单条消息 #${message.id} 来自 ${channelName}`
+    });
+
     const messageDir = await fs.createFolderStructure(
       this.downloadBaseDir!,
       channelName,
@@ -293,6 +345,13 @@ export class TelegramBot {
     const { tags, title } = extractTagsAndTitle(message.text);
     const cleanText = cleanTextForDb(message.text);
     const forwardUrl = generateForwardUrl(forward as any);
+
+    await broadcastToSSE({
+      type: 'bot_log',
+      level: 'info',
+      message: `保存消息元数据到 ${messageDir}`
+    });
+
     // 保存消息元数据
     await fs.saveMessageMetadata(messageDir, {
       messageId: message.id.toString(),
@@ -326,6 +385,12 @@ export class TelegramBot {
       // 文件保存路径 绝对路径
       const filePath = path.join(messageDir, fileName);
 
+      await broadcastToSSE({
+        type: 'bot_log',
+        level: 'info',
+        message: `开始下载媒体文件: ${fileName}`
+      });
+
       // ... (Derive fileName similar to album logic) ...
       const buffer = await this.client.downloadMedia(message.media, {});
       if (buffer && Buffer.isBuffer(buffer)) {
@@ -338,6 +403,7 @@ export class TelegramBot {
             fileName
           )
         );
+
         await broadcastToSSE({
           type: 'download_complete',
           messageId: message.id.toString(),
@@ -347,6 +413,12 @@ export class TelegramBot {
         });
       }
     }
+
+    await broadcastToSSE({
+      type: 'bot_log',
+      level: 'info',
+      message: `保存消息记录到数据库`
+    });
 
     await db.saveTelegramMessage({
       messageId: message.id.toString(),
@@ -362,5 +434,11 @@ export class TelegramBot {
     });
 
     logger.info(`✅ 单个消息处理完成并保存到: ${messageDir}`);
+
+    await broadcastToSSE({
+      type: 'bot_log',
+      level: 'info',
+      message: `✅ 消息 #${message.id} 处理完成`
+    });
   }
 }

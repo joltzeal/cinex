@@ -1,5 +1,5 @@
 import { FilterType, Movie, MovieDetail } from '@/types/javbus';
-import { getMovieDetail, getMovieMagnets, getMoviesByPage } from '@/lib/javbus/javbus-parser';
+import { getCover, getMovieDetail, getMovieMagnets, getMoviesByPage } from '@/lib/javbus/javbus-parser';
 import { sleep } from '../utils';
 import { getPushService } from './utils';
 import { prisma } from '@/lib/prisma';

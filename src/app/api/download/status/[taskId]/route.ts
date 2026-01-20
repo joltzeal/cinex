@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-// import { sseManager } from "@/lib/sse-manager";
+import { sseManager } from "@/lib/sse-manager";
 
 export async function GET(
   request: NextRequest,
@@ -22,18 +22,18 @@ export async function GET(
       console.log(`[SSE API] Connection opened for task: ${taskId}. Registering client.`);
 
       // 将控制器添加到管理器中，以便其他地方可以推送消息
-      // sseManager.addClient(taskId, controller);
+      sseManager.addClient(taskId, controller);
 
       // 当客户端断开连接时（例如关闭浏览器标签页），从管理器中移除
       request.signal.addEventListener("abort", () => {
         console.log(`[SSE API] Client disconnected for task: ${taskId}. Cleaning up.`);
-        // sseManager.removeClient(taskId);
+        sseManager.removeClient(taskId);
       });
     },
     cancel() {
       // 当流被任何其他方式取消时
       console.log(`[SSE API] Stream cancelled for task: ${taskId}`);
-      // sseManager.removeClient(taskId);
+      sseManager.removeClient(taskId);
     }
   });
 

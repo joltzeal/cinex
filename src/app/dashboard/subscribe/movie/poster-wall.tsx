@@ -65,6 +65,7 @@ export default function SubscribePosterWallPage(props: pageProps) {
 
   const onClickMovie = (item: Movie) => {
     setMovieData(item);
+    
     setDialogOpen(true);
   }
 

@@ -26,9 +26,6 @@ import {
   Share,
   Download,
   Trash2,
-  Volume2,
-  Maximize,
-  Monitor,
   MoreHorizontal
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -63,67 +60,56 @@ import { TelegramMessage } from "@prisma/client";
 import { toast } from "sonner";
 import { RealtimeMessage } from "@/types/telegram";
 
-// --- 类型定义 ---
-interface MediaItem {
-  id: string;
-  source: string;
-  sourceColor: string;
-  type: "Video" | "Album" | "Document" | "Image";
-  size: string;
-  status: "downloading" | "completed" | "queued" | "failed";
-  progress?: number;
-  previewType: "video" | "album" | "doc" | "error";
-  // 详情数据 (Mock)
-  resolution?: string;
-  format?: string;
-  duration?: string;
-  path?: string;
-  messageText?: string;
-}
+const getMediaType = (msg: TelegramMessage): "Video" | "Album" | "Document" | "Image" => {
+  if (msg.mediaType === 'album') return 'Album';
 
-// --- 模拟数据 ---
+  // 对于 MessageMediaDocument，检查文件扩展名
+  if (msg.filePath && msg.filePath.length > 0) {
+    const ext = msg.filePath[0].split('.').pop()?.toLowerCase();
+    if (ext && ['mp4', 'avi', 'mov', 'mkv', 'webm'].includes(ext)) return 'Video';
+    if (ext && ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return 'Image';
+  }
 
-// 将数据库消息转换为MediaItem格式
-const transformMessageToMediaItem = (msg: any): MediaItem => {
-  const getMediaType = (mediaType: string | null, fileType: string | null): "Video" | "Album" | "Document" | "Image" => {
-    if (mediaType === 'album') return 'Album';
-    if (fileType === 'video') return 'Video';
-    if (fileType === 'image') return 'Image';
-    return 'Document';
-  };
+  return 'Document';
+};
 
-  const getPreviewType = (type: "Video" | "Album" | "Document" | "Image"): "video" | "album" | "doc" | "error" => {
-    if (type === 'Video') return 'video';
-    if (type === 'Album') return 'album';
-    if (type === 'Document') return 'doc';
-    return 'doc';
-  };
+const hasImage = (filePaths: string[]): boolean => {
+  return filePaths.some(path => {
+    const ext = path.split('.').pop()?.toLowerCase();
+    return ext && ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+  });
+};
 
-  const getFileSize = (filePath: string[]): string => {
-    return 'Unknown';
-  };
-
-  const type = getMediaType(msg.mediaType, msg.fileType);
-
-  return {
-    id: `#${msg.messageId}`,
-    source: msg.chatTitle || '@unknown',
-    sourceColor: 'bg-blue-400',
-    type,
-    size: getFileSize(msg.filePath),
-    status: msg.processed ? 'completed' : 'queued',
-    progress: msg.processed ? 100 : 0,
-    previewType: getPreviewType(type),
-    format: msg.fileName?.split('.').pop()?.toUpperCase() || 'Unknown',
-    path: msg.filePath?.[0] || '/media/downloads/pending...',
-    messageText: msg.text || msg.textPreview || 'No message content available.',
-  };
+const getFirstImagePath = (filePaths: string[]): string | null => {
+  const imagePath = filePaths.find(path => {
+    const ext = path.split('.').pop()?.toLowerCase();
+    return ext && ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+  });
+  return imagePath || null;
 };
 
 // --- 子组件: 媒体预览 ---
 
-const MediaPreview = ({ type }: { type: string }) => {
-  if (type === "video") {
+const MediaPreview = ({ msg }: { msg: TelegramMessage }) => {
+  const filePaths = msg.filePath || [];
+  const firstImagePath = getFirstImagePath(filePaths);
+  const type = getMediaType(msg);
+
+  // 如果有图片，显示图片预览
+  if (firstImagePath) {
+    return (
+      <div className="relative w-24 h-16 rounded-md overflow-hidden bg-muted border border-border shadow-sm">
+        <img
+          src={`/api/media/${firstImagePath.replace(/^\//, '')}`}
+          alt="Preview"
+          className="w-full h-full object-cover"
+        />
+      </div>
+    );
+  }
+
+  // 视频显示 Play 图标
+  if (type === "Video") {
     return (
       <div className="relative w-24 h-16 rounded-md overflow-hidden bg-muted border border-border group cursor-pointer shadow-sm">
         <div className="absolute inset-0 bg-accent/50 group-hover:bg-accent/70 transition-colors" />
@@ -135,34 +121,27 @@ const MediaPreview = ({ type }: { type: string }) => {
       </div>
     );
   }
-  if (type === "album") {
+
+  // 相册显示网格
+  if (type === "Album") {
     return (
       <div className="w-24 h-16 rounded-md overflow-hidden bg-muted border border-border grid grid-cols-2 grid-rows-2 gap-[1px]">
         <div className="bg-accent/40" />
         <div className="bg-accent/60" />
         <div className="bg-accent/50" />
         <div className="bg-card flex items-center justify-center text-xs font-mono font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer">
-          +2
+          +{msg.mediaCount ? msg.mediaCount - 1 : 0}
         </div>
       </div>
     );
   }
-  if (type === "doc") {
-    return (
-      <div className="w-24 h-16 rounded-md border border-border bg-card flex items-center justify-center">
-        <FileText className="text-muted-foreground" size={24} />
-      </div>
-    );
-  }
-  if (type === "error") {
-    return (
-      <div className="w-24 h-16 rounded-md overflow-hidden border border-border bg-muted relative flex items-center justify-center">
-        <div className="absolute inset-0 bg-destructive/5" />
-        <AlertCircle className="text-destructive drop-shadow-sm" size={20} />
-      </div>
-    );
-  }
-  return null;
+
+  // 文档显示文件图标
+  return (
+    <div className="w-24 h-16 rounded-md border border-border bg-card flex items-center justify-center">
+      <FileText className="text-muted-foreground" size={24} />
+    </div>
+  );
 };
 
 const TypeBadge = ({ type }: { type: string }) => {
@@ -191,66 +170,80 @@ const MediaDetailModal = ({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  item: MediaItem | null
+  item: TelegramMessage | null
 }) => {
+  const [currentFileIndex, setCurrentFileIndex] = React.useState(0);
+
   if (!item) return null;
+
+  const type = getMediaType(item);
+  const filePaths = item.filePath || [];
+  const currentFilePath = filePaths[currentFileIndex];
+  const isVideo = currentFilePath?.match(/\.(mp4|avi|mov|mkv|webm)$/i);
+  const isImage = currentFilePath?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className=" min-w-[95vw] h-[85vh] p-0 gap-0 overflow-hidden flex flex-col lg:flex-row  border-border sm:rounded-xl ">
-        {/* Visually hidden title for accessibility */}
+      <DialogContent className="min-w-[95vw] h-[85vh] p-0 gap-0 overflow-hidden flex flex-col lg:flex-row border-border sm:rounded-xl">
         <DialogHeader className="sr-only">
-          <DialogTitle>Media Details - {item.id}</DialogTitle>
+          <DialogTitle>Media Details - #{item.messageId}</DialogTitle>
         </DialogHeader>
 
-        {/* Left: Media Player / Preview (Always Dark Theme style for Cinema feel) */}
+        {/* Left: Media Player / Preview */}
         <div className="flex-1 bg-black relative flex items-center justify-center group overflow-hidden min-h-[300px]">
-          {/* Backdrop Blur Effect */}
           <div className="absolute inset-0 opacity-20 bg-gradient-to-br from-gray-800 to-black pointer-events-none" />
 
-          {/* Top Metadata Overlay */}
-          <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-start z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <div className="flex gap-2">
-              {item.resolution && <Badge variant="secondary" className="bg-black/50 text-white border-white/10 backdrop-blur-md">{item.resolution}</Badge>}
-              <Badge variant="secondary" className="bg-black/50 text-white border-white/10 backdrop-blur-md">60fps</Badge>
-            </div>
-          </div>
-
-          {/* Main Media Content Placeholder */}
-          <div className="relative z-10 p-8 flex flex-col items-center justify-center w-full h-full">
-            {item.type === "Video" ? (
-              <div className="w-20 h-20 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform duration-300 cursor-pointer">
-                <Play className="fill-white text-white ml-1" size={36} />
-              </div>
+          {/* Main Media Content */}
+          <div className="relative z-10 w-full h-full flex items-center justify-center">
+            {isVideo && currentFilePath ? (
+              <video
+                key={currentFilePath}
+                controls
+                className="max-w-full max-h-full"
+                src={`/api/media/${currentFilePath.replace(/^\//, '')}`}
+              >
+                Your browser does not support the video tag.
+              </video>
+            ) : isImage && currentFilePath ? (
+              <img
+                key={currentFilePath}
+                src={`/api/media/${currentFilePath.replace(/^\//, '')}`}
+                alt="Media preview"
+                className="max-w-full max-h-full object-contain"
+              />
             ) : (
               <div className="text-white/20">
-                {item.type === "Document" ? <FileText size={96} /> : <ImageIcon size={96} />}
+                <FileText size={96} />
               </div>
             )}
           </div>
 
-          {/* Bottom Controls Overlay */}
-          <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/60 to-transparent z-20 translate-y-2 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300">
-            {/* Timeline */}
-            <div className="w-full h-1.5 bg-white/20 rounded-full mb-4 cursor-pointer relative group/timeline">
-              <div className="absolute top-0 left-0 h-full w-[35%] bg-primary rounded-full">
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow scale-0 group-hover/timeline:scale-100 transition-transform" />
-              </div>
+          {/* File Navigation for Albums */}
+          {filePaths.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setCurrentFileIndex(Math.max(0, currentFileIndex - 1))}
+                disabled={currentFileIndex === 0}
+                className="bg-black/50 backdrop-blur-md border-white/10"
+              >
+                上一个
+              </Button>
+              <span className="text-white text-sm bg-black/50 backdrop-blur-md px-3 py-1 rounded border border-white/10">
+                {currentFileIndex + 1} / {filePaths.length}
+              </span>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setCurrentFileIndex(Math.min(filePaths.length - 1, currentFileIndex + 1))}
+                disabled={currentFileIndex === filePaths.length - 1}
+                className="bg-black/50 backdrop-blur-md border-white/10"
+              >
+                下一个
+              </Button>
             </div>
-
-            {/* Controls */}
-            <div className="flex items-center justify-between text-white">
-              <div className="flex items-center gap-4">
-                <button className="hover:text-primary transition-colors"><Play size={24} /></button>
-                <button className="hover:text-primary transition-colors"><Volume2 size={24} /></button>
-                <span className="text-xs font-mono text-white/80">04:12 / {item.duration || "12:45"}</span>
-              </div>
-              <div className="flex items-center gap-4">
-                <button className="hover:text-primary transition-colors"><Monitor size={20} /></button>
-                <button className="hover:text-primary transition-colors"><Maximize size={20} /></button>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Right: Sidebar Details */}
@@ -259,14 +252,13 @@ const MediaDetailModal = ({
           <div className="p-6 border-b border-border flex items-center justify-between bg-muted/30">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-sm">
-                {item.source.charAt(1).toUpperCase()}
+                {(item.chatTitle || 'U').charAt(0).toUpperCase()}
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <h4 className="font-semibold text-sm">{item.source}</h4>
+                  <h4 className="font-semibold text-sm">{item.chatTitle || '@unknown'}</h4>
                   <BadgeCheck className="text-blue-500 w-4 h-4" />
                 </div>
-                <p className="text-muted-foreground text-xs">1.2M subscribers</p>
               </div>
             </div>
             <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="lg:hidden">
@@ -281,43 +273,39 @@ const MediaDetailModal = ({
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-2 block uppercase tracking-wide">Message Text</label>
                 <div className="text-sm leading-relaxed bg-muted/50 p-3 rounded-lg border border-border">
-                  {item.messageText || "No message content available."}
+                  {item.text || "No message content available."}
                 </div>
               </div>
 
               {/* Stats Grid */}
               <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Original Link</label>
-                  <a href="#" className="text-sm text-primary hover:underline truncate flex items-center gap-1">
-                    t.me/{item.source.slice(1)}/{item.id.slice(1)} <ExternalLink size={12} />
-                  </a>
-                </div>
+                {item.forwardUrl && (
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Original Link</label>
+                    <a href={item.forwardUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline truncate flex items-center gap-1">
+                      {item.forwardUrl} <ExternalLink size={12} />
+                    </a>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Resolution</label>
-                    <p className="text-sm font-mono">{item.resolution || "N/A"}</p>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Type</label>
+                    <p className="text-sm font-mono">{type}</p>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Format</label>
-                    <p className="text-sm font-mono">{item.format || "Unknown"}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Size</label>
-                    <p className="text-sm font-mono">{item.size}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Duration</label>
-                    <p className="text-sm font-mono">{item.duration || "N/A"}</p>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Files</label>
+                    <p className="text-sm font-mono">{item.mediaCount || 0}</p>
                   </div>
                 </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Local Path</label>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono bg-muted/50 px-2 py-1.5 rounded border border-border break-all">
-                    <Folder size={14} className="shrink-0" />
-                    {item.path || "/media/downloads/pending..."}
+                {currentFilePath && (
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Current File Path</label>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono bg-muted/50 px-2 py-1.5 rounded border border-border break-all">
+                      <Folder size={14} className="shrink-0" />
+                      {currentFilePath}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </ScrollArea>
@@ -352,7 +340,7 @@ interface TelegramManagementProps {
 // --- 主页面组件 ---
 
 export default function TelegramManagement({ initialSettings }: TelegramManagementProps) {
-  const [botStatus, setBotStatus] = useState({ running: false, configured: false });
+  const [botStatus, setBotStatus] = useState({ running: false, configured: false, uptime: '0d 0h 0m' });
   const [messages, setMessages] = useState<TelegramMessage[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
@@ -360,16 +348,18 @@ export default function TelegramManagement({ initialSettings }: TelegramManageme
   const [isLoading, setIsLoading] = useState(false);
   const [realtimeMessages, setRealtimeMessages] = useState<RealtimeMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
-  const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
+  const [selectedMedia, setSelectedMedia] = useState<TelegramMessage | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [settings, setSettings] = useState<TelegramConfig>(initialSettings);
-  const [botUptime, setBotUptime] = useState<string>('0d 0h 0m');
   const [totalMessages, setTotalMessages] = useState(0);
 
   // 初始化：加载数据和建立SSE连接
   React.useEffect(() => {
     checkBotStatus();
     fetchMessages();
+
+    // 定期更新 bot 状态（包括 uptime）
+    const statusInterval = setInterval(checkBotStatus, 60000); // 每分钟更新一次
 
     // 建立SSE连接
     const eventSource = new EventSource('/api/telegram');
@@ -399,11 +389,13 @@ export default function TelegramManagement({ initialSettings }: TelegramManageme
     };
 
     return () => {
+      clearInterval(statusInterval);
       eventSource.close();
     };
   }, []);
-  const handleRowClick = (item: MediaItem) => {
-    setSelectedMedia(item);
+
+  const handleRowClick = (msg: TelegramMessage) => {
+    setSelectedMedia(msg);
     setIsModalOpen(true);
   };
 
@@ -413,13 +405,12 @@ export default function TelegramManagement({ initialSettings }: TelegramManageme
       if (response.ok) {
         const status = await response.json();
         setBotStatus(status);
-        console.log('Bot状态:', status);
       } else {
         console.error('获取Bot状态失败:', response.status, response.statusText);
       }
     } catch (error) {
       console.error('获取Bot状态失败:', error);
-      setBotStatus({ running: false, configured: false });
+      setBotStatus({ running: false, configured: false, uptime: '0d 0h 0m' });
     }
   };
 
@@ -466,7 +457,7 @@ export default function TelegramManagement({ initialSettings }: TelegramManageme
   const getRealtimeMessageContent = (msg: RealtimeMessage) => {
     switch (msg.type) {
       case 'connection':
-        return { text: '🔗 SSE 连接已建立', color: 'text-green-600', show: true };
+        return { text: '🔗 已连接', color: 'text-green-600', show: true };
       case 'new_message':
         const mediaText = msg.hasMedia
           ? ` (包含 ${msg.mediaCount || 1} 个媒体${msg.mediaType === 'album' ? '，相册' : ''})`
@@ -528,8 +519,7 @@ export default function TelegramManagement({ initialSettings }: TelegramManageme
   });
 const saveSettings = async (newSettings: TelegramConfig) => {
     setIsLoading(true);
-    console.log(newSettings);
-    
+
     try {
       const response = await fetch('/api/settings', {
         method: 'POST',
@@ -539,7 +529,6 @@ const saveSettings = async (newSettings: TelegramConfig) => {
           value: newSettings,
         }),
       });
-      console.log(response);
 
       if (!response.ok) throw new Error('保存设置失败1');
 
@@ -550,9 +539,11 @@ const saveSettings = async (newSettings: TelegramConfig) => {
         // 如果是启用/禁用切换，需要控制Telegram服务
         if (settings.enabled !== newSettings.enabled) {
           await controlTelegramService(newSettings.enabled);
+          // 显示 bot 状态变化的 toast，而不是设置保存
+          toast.success(newSettings.enabled ? 'Bot 已开启' : 'Bot 已关闭');
+        } else {
+          toast.success('设置已成功保存！');
         }
-
-        toast.success('设置已成功保存！');
         return true;
       }
       throw new Error('保存失败');
@@ -618,17 +609,49 @@ const saveSettings = async (newSettings: TelegramConfig) => {
       setIsLoading(false);
     }
   };
+
+  const handleDeleteMessage = async (msg: TelegramMessage) => {
+    if (!confirm(`确定要删除消息 #${msg.messageId} 吗？这将同时删除数据库记录和本地文件。`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/telegram/messages/${msg.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deleteLocalFiles: true }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success(result.message);
+        fetchMessages(currentPage, searchTerm);
+      } else {
+        toast.error(result.message || '删除失败');
+      }
+    } catch (error) {
+      console.error('删除消息失败:', error);
+      toast.error('删除消息失败');
+    }
+  };
   return (
 
-    <PageContainer pageTitle="Mission Control" pageDescription="System status and active media queue monitoring" pageHeaderAction={
+    <PageContainer pageTitle="Telegram 监控" pageDescription="System status and active media queue monitoring" pageHeaderAction={
       <div className="flex items-center gap-3">
         <Button
-          variant="destructive"
-          className="bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/20 shadow-none"
+          variant={settings.enabled ? "destructive" : "default"}
+          className={settings.enabled
+            ? "bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/20 shadow-none"
+            : "bg-green-500/10 text-green-600 hover:bg-green-500/20 border border-green-500/20 shadow-none"}
           onClick={() => handleToggleEnabled(!settings.enabled)}
           disabled={isLoading}
         >
-          <PauseCircle className="mr-2" size={18} />
+          {settings.enabled ? (
+            <PauseCircle className="mr-2" size={18} />
+          ) : (
+            <Play className="mr-2" size={18} />
+          )}
           {settings.enabled ? '暂停' : '开启'}
         </Button>
         <Button onClick={handleRestartBot} disabled={isLoading}>
@@ -719,7 +742,7 @@ const saveSettings = async (newSettings: TelegramConfig) => {
                   <Clock className="text-muted-foreground" size={18} />
                 </div>
                 <div className="flex items-center gap-3 mt-2">
-                  <span className="text-2xl font-bold tracking-tight">{botUptime}</span>
+                  <span className="text-2xl font-bold tracking-tight">{botStatus.uptime}</span>
                 </div>
                 <p className="text-xs mt-1 text-muted-foreground">Since last restart</p>
               </CardContent>
@@ -815,61 +838,66 @@ const saveSettings = async (newSettings: TelegramConfig) => {
                     </TableRow>
                   ) : (
                     messages.map((msg) => {
-                      const item = transformMessageToMediaItem(msg);
+                      const type = getMediaType(msg);
+                      const status = msg.processed ? 'completed' : 'queued';
                       return (
                     <TableRow
-                      key={item.id}
+                      key={msg.id}
                       className="border-border hover:bg-muted/50 group transition-colors cursor-pointer"
-                      onClick={() => handleRowClick(item)}
+                      onClick={() => handleRowClick(msg)}
                     >
-                      <TableCell className="font-mono text-muted-foreground text-sm">{item.id}</TableCell>
+                      <TableCell className="font-mono text-muted-foreground text-sm">#{msg.messageId}</TableCell>
                       <TableCell className="py-3">
-                        <MediaPreview type={item.previewType} />
+                        <MediaPreview msg={msg} />
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${item.sourceColor}`} />
-                          <span className="text-sm font-medium">{item.source}</span>
+                          <div className="w-2 h-2 rounded-full bg-blue-400" />
+                          <span className="text-sm font-medium">{msg.chatTitle || '@unknown'}</span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <TypeBadge type={item.type} />
+                        <TypeBadge type={type} />
                       </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">{item.size}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{msg.mediaCount || 0} 文件</TableCell>
                       <TableCell>
-                        {item.status === "downloading" ? (
-                          <div className="w-full max-w-[200px]">
-                            <div className="flex justify-between text-xs mb-1.5">
-                              <span className="text-primary font-medium">Downloading...</span>
-                              <span className="text-muted-foreground">{item.progress}%</span>
-                            </div>
-                            <Progress value={item.progress} className="h-1.5" />
-                          </div>
-                        ) : item.status === "completed" ? (
+                        {status === "completed" ? (
                           <div className="inline-flex items-center gap-1.5 text-green-600 dark:text-green-500 text-xs font-medium px-2 py-1 bg-green-500/10 rounded border border-green-500/20">
-                            <CheckCircle2 size={14} /> Saved locally
+                            <CheckCircle2 size={14} /> 已保存
                           </div>
-                        ) : item.status === "queued" ? (
+                        ) : (
                           <div className="w-full max-w-[200px]">
                             <div className="flex justify-between text-xs mb-1.5">
-                              <span className="text-muted-foreground font-medium">Queued</span>
+                              <span className="text-muted-foreground font-medium">等待中</span>
                               <span className="text-muted-foreground">0%</span>
                             </div>
                             <Progress value={0} className="h-1.5" />
                           </div>
-                        ) : (
-                          <div className="inline-flex items-center gap-1.5 text-destructive text-xs font-medium px-2 py-1 bg-destructive/10 rounded border border-destructive/20">
-                            <AlertCircle size={14} /> Failed (Timeout)
-                          </div>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                            {item.status === "downloading" && <PauseCircle size={18} />}
-                            {item.status === "completed" && <FolderOpen size={18} />}
-                            {item.status === "queued" && <Play size={18} />}
-                            {item.status === "failed" && <RotateCcw size={18} />}
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRowClick(msg);
+                            }}
+                          >
+                            {status === "completed" ? <FolderOpen size={18} /> : <Play size={18} />}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteMessage(msg);
+                            }}
+                          >
+                            <Trash2 size={18} />
                           </Button>
                         </div>
                       </TableCell>

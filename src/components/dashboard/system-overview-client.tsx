@@ -57,7 +57,7 @@ const stats = [
 
 export function SystemOverviewClient({ data }: { data: SystemOverviewData }) {
   return (
-    <Card className="gap-0 py-3 pb-0">
+    <Card className="gap-0 py-3 pb-0 h-full">
       <CardHeader className="flex flex-row items-center justify-between border-b [.border-b]:pb-3">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <Activity className="h-4 w-4 text-muted-foreground" />
@@ -68,8 +68,8 @@ export function SystemOverviewClient({ data }: { data: SystemOverviewData }) {
         </Button>
       </CardHeader>
 
-      <CardContent className="p-0">
-        <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x">
+      <CardContent className="p-0 h-full">
+        <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x h-full">
           {stats.map((stat, index) => (
             <div
               key={index}

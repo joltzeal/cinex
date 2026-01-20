@@ -75,33 +75,49 @@ model Verification {
   @@map("verification")
 }
 
-
+enum LinkType {
+  magnet
+  http
+  ftp
+  p2p
+}
 model Document {
   id           String                @id @default(uuid()) @db.Uuid
   title        String
   description  String?
   images       String[]
+
   createdAt    DateTime              @default(now())
   updatedAt    DateTime              @updatedAt
   downloadURLs DocumentDownloadURL[]
 
+  movieId      String?   // 可选：如果是 Movie 创建的，则关联 Movie ID
+  movie        Movie?    @relation(fields: [movieId], references: [id], onDelete: SetNull)
+
+  @@index([movieId])
   //@@map("documents")
 }
 
 model DocumentDownloadURL {
   id               String                 @id @default(uuid()) @db.Uuid
   url              String
+
   documentId       String                 @db.Uuid
+  document         Document               @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  
+  status           DocumentDownloadStatus @default(undownload)
+  hash             String?
+  type             LinkType?      @default(magnet)
+
+  detail           Json?
+  number           String?                // 如果是 type，则需要一个番号
+  
+  
+  
+  downloadAt       DateTime?
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
-  status           DocumentDownloadStatus @default(undownload)
-  detail           Json?
-  subscribeDataIds Json?
-  hash             String?
-  type             String?
-  downloadAt       DateTime?
-  number           String?                // 如果是 type，则需要一个番号
-  document         Document               @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@index([documentId])
   //@@map("download_urls")
@@ -145,6 +161,7 @@ model Movie {
   detail       Json?
   magnets      Json?
   mediaLibrary Json?
+  documents    Document[]
   addedAt      DateTime?             
   downloadAt   DateTime?
   subscribeAt  DateTime?

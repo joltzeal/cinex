@@ -1,5 +1,5 @@
 import { corsJsonResponse, handleOptions } from "@/lib/cors";
-import { downloadImmediatelyTask, downloadMain } from "@/lib/download";
+import { downloadImmediatelyTask,createDownload } from "@/lib/download";
 import { parsePost } from "@/lib/folo";
 import { ensureMagnetLink, extractMagnetLinks } from "@/lib/magnet/magnet-helper";
 import { getSetting, SettingKey } from "@/services/settings";
@@ -79,27 +79,6 @@ export async function POST(request: NextRequest) {
         (downloadImmediatelyConfig as any).downloadMagnetImmediately
       );
     }
-
-    const newDocumentInsert = await downloadMain({
-      urls: validUrls,
-      title: null,
-      description: null,
-      movie: null,
-      downloadImmediately: downloadImmediatelySetting,
-      images: [],
-    })
-
-    if (!downloadImmediatelySetting) {
-      return corsJsonResponse({ message: "文档创建成功！", document: newDocumentInsert }, 201);
-    }
-    const taskId = uuidv4();
-    setTimeout(() => {
-      downloadImmediatelyTask(taskId, newDocumentInsert, null);
-    }, 2000); // 增加延迟时间，确保 SSE 连接建立
-    return corsJsonResponse({
-      success: true,
-      message: "下载任务已启动",
-    });
 
   } catch (error) {
     console.error('外部下载请求处理失败:', error);

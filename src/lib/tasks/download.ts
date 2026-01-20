@@ -8,12 +8,11 @@ import { getMovieDownloadDirectoryConfig, getSetting, SettingKey } from '@/servi
 import { findVideoFiles } from '@/lib/parse/file';
 import path from 'path';
 import { logger } from '@/lib/logger';
-import { DocumentDownloadStatus, MovieStatus, TransferMethod, TransferStatus } from '@prisma/client';
+import { DocumentDownloadStatus, DocumentDownloadURL, MovieStatus, TransferMethod, TransferStatus } from '@prisma/client';
 import { updateMoviesStatusByNumber } from '@/services/subscribe';
 
 export async function taskDownloadStatusSync() {
     const taskName = '下载状态同步';
-    // logger.info(`开始执行 ${taskName}`);
 
     try {
         // 获取活跃的下载器客户端
@@ -37,7 +36,7 @@ export async function taskDownloadStatusSync() {
         }
         const downloadDirectoryConfig = await getMovieDownloadDirectoryConfig();
         // 获取数据库中所有需要检查的记录（包括下载中、暂停、检查中等状态）
-        const allDownloadUrls = await prisma.documentDownloadURL.findMany({
+        const allDownloadUrls: DocumentDownloadURL[] = await prisma.documentDownloadURL.findMany({
             where: {
                 status: {
                     in: ['downloading', 'paused', 'checking', 'error']
@@ -57,6 +56,7 @@ export async function taskDownloadStatusSync() {
 
         // 遍历数据库中的记录，更新状态
         for (const downloadUrl of allDownloadUrls) {
+            let movie = null
             const hash = downloadUrl.hash || extractHash(downloadUrl.url);
             if (!hash) {
                 logger.warn(`无法从URL提取哈希: ${downloadUrl.url}`);
@@ -64,16 +64,34 @@ export async function taskDownloadStatusSync() {
             }
 
             const torrent = torrentStatusMap.get(hash.toLowerCase());
+            const urlRecord = await prisma.documentDownloadURL.findFirst({
+                where: {
+                    hash: downloadUrl.hash,
+                },
+                include: {
+                    document: {
+                        include: {
+                            movie: true // 级联查询出关联的 Movie
+                        }
+                    }
+                }
+            });
 
+            if (urlRecord?.document?.movie) {
+                movie = urlRecord.document.movie;
+                // console.log("找到了电影:", movie.title);
+                // console.log("匹配的链接是:", urlRecord.url);
+            }
             if (!torrent) {
                 logger.info(`种子不在下载器中，标记为未下载: ${hash}`);
                 await prisma.documentDownloadURL.update({
                     where: { id: downloadUrl.id },
                     data: { status: MovieStatus.undownload }
                 });
-                if (downloadUrl.type === 'movie' && downloadUrl.number) {
-                    await updateMoviesStatusByNumber({ number: downloadUrl.number, status: MovieStatus.subscribed });
-                }
+                // if (downloadUrl.type === 'movie' && downloadUrl.number) {
+                //     await updateMoviesStatusByNumber({ number: downloadUrl.number, status: MovieStatus.undownload });
+                // }
+                if (movie){await updateMoviesStatusByNumber({ number: movie.number, status: MovieStatus.undownload });}
                 undownloadedCount++;
                 updatedCount++;
             } else {
@@ -115,13 +133,14 @@ export async function taskDownloadStatusSync() {
                 logger.info(downloadUrl.number)
 
                 // 更新订阅中的影片状态
-                if (subscribeDataStatus && downloadUrl.type === 'movie' && downloadUrl.number) {
-                    await updateMoviesStatusByNumber({ number: downloadUrl.number, status: subscribeDataStatus });
-                }
+                // if (subscribeDataStatus && downloadUrl.type === 'movie' && downloadUrl.number) {
+                //     await updateMoviesStatusByNumber({ number: downloadUrl.number, status: subscribeDataStatus });
+                // }
+                if (movie && subscribeDataStatus){await updateMoviesStatusByNumber({ number: movie.number, status: subscribeDataStatus });}
 
 
 
-                if (documentDownloadStatus === DocumentDownloadStatus.downloaded && downloadUrl.type === 'movie') {
+                if (documentDownloadStatus === DocumentDownloadStatus.downloaded && movie) {
                     const sourcePath = torrent.contentPath || torrent.rootPath;
                     const relativePath = path.normalize(sourcePath.replace(/^\/downloads/, ''));
                     const finalSavePath = path.join(process.cwd(), 'media', relativePath);
@@ -138,7 +157,7 @@ export async function taskDownloadStatusSync() {
                                 transferMethod: downloadDirectoryConfig!.organizeMethod.toUpperCase() as TransferMethod,
                             },
                         });
-                        await manualTransfer({ file: { id: videoFile, name: fileInfo.fileName }, number: fileInfo.number, transferMethod: downloadDirectoryConfig!.organizeMethod.toUpperCase() as TransferMethod, fileTransferLogId: fileTransfer.id, subscribeDataIds: downloadUrl.subscribeDataIds as string[] });
+                        await manualTransfer({ file: { id: videoFile, name: fileInfo.fileName }, number: fileInfo.number, transferMethod: downloadDirectoryConfig!.organizeMethod.toUpperCase() as TransferMethod, fileTransferLogId: fileTransfer.id});
                     }
                 }
                 updatedCount++;

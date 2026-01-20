@@ -5,6 +5,11 @@ import { MovieDetail } from "./javbus";
 
 // 统一的 Torrent 状态
 export type TorrentStatus = 'downloading' | 'seeding' | 'paused' | 'checking' | 'error' | 'stalled' | 'completed';
+export interface SseMessage {
+  stage: 'CONNECTED' | 'AI_START' | 'AI_COMPLETE' | 'DOWNLOAD_SUBMIT' | 'PROGRESS' | 'DONE' | 'ERROR';
+  message: string;
+  data?: any; // 可选的附加数据
+}
 
 // 下载器统计信息
 export interface DownloaderStats {
@@ -48,11 +53,4 @@ export interface DownloadUrlData {
   url: string;
   detail: PreviewResponse | null;
 }
-export interface DownloadMainProps {
-  urls: string[];
-  title?: string | null;
-  description?: string | null;
-  images?: File[];
-  downloadImmediately?: boolean;
-  movie?: MovieDetail | null; // 此处为movie detail json string
-}
+

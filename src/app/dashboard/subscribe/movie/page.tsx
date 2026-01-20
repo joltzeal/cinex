@@ -30,12 +30,15 @@ export default async function Page(props: pageProps) {
       status: MovieStatus.subscribed
     }
   });
+
+
+
   const donwloadingMovieList = await getSubscribeMovieList({
     where: {
       status: MovieStatus.downloading
     }
   });
-
+  
   const downloadMovieList = await getSubscribeMovieList({
     where: {
       status: MovieStatus.downloaded
@@ -61,7 +64,7 @@ export default async function Page(props: pageProps) {
       date: 'desc'
     }
   });
-  
+
 
   return (
     <PageContainer scrollable={true}>

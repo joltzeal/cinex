@@ -35,9 +35,13 @@ export const columns: ColumnDef<DocumentWithURLs>[] = [
     header: "预览图",
     cell: ({ row }) => {
       const images = row.original.images;
-      // 直接将整个 images 数组传递给组件
-      return <div className="w-16 h-16"><FullScreenImagePreview images={images} alt={row.original.title} /></div>;
-      // return '预览图';
+      const proxyImages = images.map((image) => {
+        if (image.startsWith("https://www.javbus")) {
+          return `/api/subscribe/javbus/proxy?url=${encodeURIComponent(image)}`
+        }
+        return image;
+      });
+      return <div className="w-16 h-16"><FullScreenImagePreview images={proxyImages} alt={row.original.title} /></div>;
     },
   },
   {

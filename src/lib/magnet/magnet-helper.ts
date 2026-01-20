@@ -41,7 +41,9 @@ export function isMagnetLink(url: string): boolean {
  * @param url 磁力链接或40位哈希值
  * @returns 40位十六进制哈希值，如果无法提取则返回null
  */
-export function extractHash(url: string): string | null {
+export function extractHash(url: string | null): string | null {
+  if (!url) return null;
+
   // 如果是磁力链接
   if (isMagnetLink(url)) {
     return extractHashFromMagnet(url);

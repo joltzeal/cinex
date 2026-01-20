@@ -1,6 +1,5 @@
-import { findVideoFiles } from '@/lib/parse/file';
 import { prisma } from '@/lib/prisma';
-import { getMovieDetail, getMovieMagnets } from '@/lib/javbus/javbus-parser';
+import { getMovieDetail, getMovieMagnets, getPoster } from '@/lib/javbus/javbus-parser';
 import { MovieDetail, Magnet } from '@/types/javbus';
 import { NextRequest, NextResponse } from 'next/server';
 import { MovieStatus, Prisma } from '@prisma/client';
@@ -38,6 +37,7 @@ export async function GET(
 
     const isAdded = findMediaItemByIdOrTitle(id);
 
+    console.log(id);
     
 
     if (movie && movie.detail && movie.magnets) {
@@ -62,6 +62,7 @@ export async function GET(
             detail: movieDetail as unknown as Prisma.InputJsonValue,
             magnets: magnets as unknown as Prisma.InputJsonValue,
             cover: movieDetail.img,
+            poster:movieDetail.img?getPoster(movieDetail.img):null,
             date: movieDetail.date,
             status: isAdded ? MovieStatus.added : MovieStatus.uncheck,
             mediaLibrary: isAdded
@@ -71,6 +72,8 @@ export async function GET(
         });
         return NextResponse.json({ data: createdMovie }, { status: 200 });
       } else if (!movie.detail || !movie.magnets) {
+        console.log('not detail and not magnets');
+        
         const updatedMovie = await prisma.movie.update({
           where: { number: movieDetail.id },
           data: {
