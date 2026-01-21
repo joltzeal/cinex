@@ -188,19 +188,29 @@ export async function GET(req: NextRequest) {
   if (website === 'onejav') {
     const cacheKey = `onejav:${period}`;
     return getCachedData(cacheKey, async () => {
-      const response = await proxyRequest(
-        `https://onejav.com/popular/${period}?page=1&jav=1`,
-        {
-          method: 'GET',
-          headers: { 'User-Agent': USER_AGENT }
-        }
+      const pages = await Promise.all(
+        [1, 2].map(page =>
+          proxyRequest(
+            `https://onejav.com/popular/${period}?page=${page}&jav=1`,
+            {
+              method: 'GET',
+              headers: { 'User-Agent': USER_AGENT }
+            }
+          )
+        )
       );
-      const body = response.body;
-      if (!body) {
+
+      const combinedBody = pages
+        .map(response => response.body?.toString() || '')
+        .filter(body => body)
+        .join('');
+
+      if (!combinedBody) {
         throw new Error('Failed to fetch');
       }
+
       return await addMovieStatus(
-        parseOnejavVideoList(body.toString(), 'https://onejav.com')
+        parseOnejavVideoList(combinedBody, 'https://onejav.com')
       );
     });
   }
@@ -230,7 +240,6 @@ export async function GET(req: NextRequest) {
       return await addMovieStatus(parseAvfanVideoList(body.toString()));
     });
   }
-
   // --- JavDB Branch ---
   else if (website === 'javdb') {
     const cacheKey = `javdb:${period}`;
@@ -278,6 +287,34 @@ export async function GET(req: NextRequest) {
         console.error('Request error:', error.message);
         throw new Error(`Failed to fetch: ${error.message}`);
       }
+    });
+  } else if (website === '141jav') {
+    const cacheKey = `141jav:${period}`;
+    return getCachedData(cacheKey, async () => {
+      const pages = await Promise.all(
+        [1, 2, 3].map(page =>
+          proxyRequest(
+            `https://www.141jav.com/popular/${period}?page=${page}`,
+            {
+              method: 'GET',
+              headers: { 'User-Agent': USER_AGENT }
+            }
+          )
+        )
+      );
+
+      const combinedBody = pages
+        .map(response => response.body?.toString() || '')
+        .filter(body => body)
+        .join('');
+
+      if (!combinedBody) {
+        throw new Error('Failed to fetch');
+      }
+
+      return await addMovieStatus(
+        parseOnejavVideoList(combinedBody, 'https://www.141jav.com')
+      );
     });
   }
 

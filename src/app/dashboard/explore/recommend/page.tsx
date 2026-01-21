@@ -12,7 +12,8 @@ import {
   Star,
   Users,
   AlertCircle,
-  Tag
+  Tag,
+  Link
 } from 'lucide-react';
 import PageContainer from '@/components/layout/page-container';
 import { VideoInfo } from '@/types/javdb';
@@ -35,6 +36,7 @@ interface RankingSectionProps {
   url: string;
   columns: number;
   aspectRatio: string;
+  officialUrl:string;
 }
 
 /**
@@ -182,7 +184,7 @@ function PosterSkeleton({
  * 核心组件：海报行
  * 负责获取数据、切换模式（行/宫格）、滚动等
  */
-function PosterRow({ title, url, columns, aspectRatio }: RankingSectionProps) {
+function PosterRow({ title, url, columns, aspectRatio,officialUrl }: RankingSectionProps) {
   const [videos, setVideos] = useState<VideoInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -260,12 +262,15 @@ function PosterRow({ title, url, columns, aspectRatio }: RankingSectionProps) {
   return (
     <section className='w-full'>
       <div className='mb-4 flex items-center justify-between'>
-        <h2
+        <div className='flex items-center'>
+<h2
           className='hover:text-primary cursor-pointer text-2xl font-bold transition-colors'
           onClick={() => videos.length > 0 && setIsExpanded(!isExpanded)} // 只有在有数据时才响应点击
         >
           {title}
-        </h2>
+        </h2> <Button variant="link" className='cursor-pointer' onClick={()=>{window.open(officialUrl, '_blank');}}><Link className=''></Link></Button> 
+        </div>
+        
         {/* 只有在没有错误且有视频时，才显示切换和滚动按钮 */}
         {!error && videos.length > 0 && (
           <div className='flex items-center gap-2'>
@@ -358,48 +363,70 @@ function PosterRow({ title, url, columns, aspectRatio }: RankingSectionProps) {
 
 export default function RecommendPage() {
   const rankingSections: RankingSectionProps[] = [
+    
     {
       title: 'JavDB日榜',
       url: '/api/movie/rankings?website=javdb&period=daily',
       columns: 5,
-      aspectRatio: '1.48/1'
+      aspectRatio: '1.48/1',
+      officialUrl:'https://javdb.com/rankings/movies?p=daily&t=censored'
     },
     {
       title: 'JavDB周榜',
       url: '/api/movie/rankings?website=javdb&period=weekly',
       columns: 5,
-      aspectRatio: '1.48/1'
+      aspectRatio: '1.48/1',
+      officialUrl:"https://javdb.com/rankings/movies?p=weekly&t=censored"
     },
     {
       title: 'JavDB月榜',
       url: '/api/movie/rankings?website=javdb&period=monthly',
       columns: 5,
-      aspectRatio: '1.48/1'
+      aspectRatio: '1.48/1',
+      officialUrl:"https://javdb.com/rankings/movies?p=monthly&t=censored"
     },
     {
       title: 'AVFAN周榜',
       url: '/api/movie/rankings?website=avfan&period=weekly',
       columns: 5,
-      aspectRatio: '1.48/1'
+      aspectRatio: '1.48/1',
+      officialUrl:"https://avfan.com/zh-CN/rankings/last_7days"
     },
     {
       title: 'AVFAN月榜',
       url: '/api/movie/rankings?website=avfan&period=monthly',
       columns: 5,
-      aspectRatio: '1.48/1'
+      aspectRatio: '1.48/1',
+      officialUrl:"https://avfan.com/zh-CN/rankings/last_30days"
     },
     {
       title: 'OneJav周榜',
       url: '/api/movie/rankings?website=onejav&period=7',
       columns: 5,
-      aspectRatio: '1.48/1'
+      aspectRatio: '1.48/1',
+      officialUrl:"https://onejav.com/popular/7"
     },
     {
       title: 'OneJav月榜',
       url: '/api/movie/rankings?website=onejav&period=30',
       columns: 5,
-      aspectRatio: '1.48/1'
-    }
+      aspectRatio: '1.48/1',
+      officialUrl:"https://onejav.com/popular/30"
+    },
+    {
+      title: '141JAV周榜',
+      url: '/api/movie/rankings?website=141jav&period=7',
+      columns: 5,
+      aspectRatio: '1.48/1',
+      officialUrl:"https://www.141jav.com/popular/7"
+    },
+    {
+      title: '141JAV月榜',
+      url: '/api/movie/rankings?website=141jav&period=30',
+      columns: 5,
+      aspectRatio: '1.48/1',
+      officialUrl:"https://www.141jav.com/popular/30"
+    },
   ];
 
   return (
@@ -414,6 +441,7 @@ export default function RecommendPage() {
               url={section.url}
               columns={section.columns}
               aspectRatio={section.aspectRatio}
+              officialUrl={section.officialUrl}
             />
           ))}
         </div>
