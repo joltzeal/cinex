@@ -82,7 +82,6 @@ export default async function Page(props: pageProps) {
     pageLimit
   )) as any[];
 
-  const mediaServer = await getSetting(SettingKey.MediaServerConfig);
 
   return (
     <PageContainer scrollable={true}>

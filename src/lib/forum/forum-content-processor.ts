@@ -47,7 +47,6 @@ function getProxyUrl(imageUrl: string, forumId: string): string {
  * @returns 处理后的 HTML 内容
  */
 export function processForumContent(htmlContent: string | null, forumId: string): string | null {
-  console.log('processForumContent', forumId);
   if (!htmlContent) return null;
 
   try {
@@ -57,7 +56,6 @@ export function processForumContent(htmlContent: string | null, forumId: string)
 
     // 处理所有图片标签
     $('img').each((_, element) => {
-      // console.log('img',element);
       
       const img = $(element);
       const src = img.attr('src');
@@ -72,14 +70,11 @@ export function processForumContent(htmlContent: string | null, forumId: string)
       
 
       if (src && needsProxy(src, forumId)) {
-        console.log(needsProxy(src, forumId));
         
         // 替换为代理 URL
         const proxyUrl = getProxyUrl(src, forumId);
-        console.log('proxyUrl', proxyUrl);
         
         img.attr('src', proxyUrl);
-        console.log(img);
         
         // 添加原始 URL 作为 data 属性，方便调试
         img.attr('data-original-src', src);
@@ -103,7 +98,6 @@ export function processForumContent(htmlContent: string | null, forumId: string)
       }
     });
 
-    // console.log('$.html()', $.html());
     
 
     // 处理背景图片（内联样式）

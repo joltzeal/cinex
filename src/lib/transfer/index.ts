@@ -268,7 +268,6 @@ export async function manualTransfer(
       throw new Error('未找到匹配的影片信息');
     }
 
-    console.log(movieSearchList);
 
 
     // 6. 判断影片是否存在于数据库中

@@ -60,7 +60,6 @@ export function ProxySettingsComponent({ initialData }: ProxySettingsProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [testResults, setTestResults] = useState<TestResult[] | null>(null);
 
-  console.log(initialData);
   
 
   const form = useForm<FormValues>({
@@ -200,7 +199,7 @@ export function ProxySettingsComponent({ initialData }: ProxySettingsProps) {
               {/* Right Side: Test Results */}
               <div className="space-y-4">
                 <h3 className="text-sm font-medium">连接测试结果</h3>
-                <div className="rounded-md border p-4 min-h-[140px]">
+                <div className="rounded-md border p-4 min-h-35">
                   {testResults ? (
                     <ul className="space-y-3">
                       {testResults.map(({ site, status, details }) => (

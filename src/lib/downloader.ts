@@ -143,7 +143,6 @@ export async function toggleDownloaderEnabled(name: DownloaderName, enabled: boo
     // 获取现有的下载器设置
     const existingSetting = await getSetting(SettingKey.DownloaderSettings);
 
-    console.log('existingSetting', existingSetting);
 
     const existingSettingsData = existingSetting as DownloaderSettingsData | undefined || {};
     

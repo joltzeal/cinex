@@ -75,11 +75,9 @@ export async function GET(request: NextRequest) {
     // got 的 headers 是一个 Headers 对象，可以直接访问
     const contentType =
       imageResponse.headers['content-type'] || 'application/octet-stream';
-    // console.log("Content-Type from origin:", contentType);
 
     // imageResponse.body 现在已经是 Buffer 类型了，因为设置了 responseType: 'buffer'
     const imageBuffer = imageResponse.body;
-    // console.log("Image Buffer Length:", imageBuffer.length);
 
     return new Response(imageBuffer as unknown as BodyInit, {
       status: 200,

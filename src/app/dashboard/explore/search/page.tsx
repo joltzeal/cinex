@@ -5,7 +5,8 @@ import {
   Search, Zap, Film, Music, FileArchive,
   File, ArrowRight, Download, Link as LinkIcon,
   Copy, ChevronDown, LayoutGrid, Loader2,
-  Eye
+  Eye,
+  Plus
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,6 +29,7 @@ import { TorrentSearchResult } from '@/lib/scrapers/interface'
 import { useLoading } from '@/contexts/loading-context'
 import { toast } from "sonner"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { subscribeToTaskToast } from "@/lib/task-sse-subscribe"
 
 interface SourceData {
   count: number
@@ -77,6 +79,69 @@ export default function MagnetPage() {
   const [maxSize, setMaxSize] = useState(100)
   const [previewOpen, setPreviewOpen] = useState(false)
   const { showLoader, hideLoader } = useLoading()
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleDownload = async ({link,downloadImmediately}:{ link:string,downloadImmediately:boolean}) => {
+    console.log(link,downloadImmediately)
+
+    if (!link) {
+      toast.error("没有磁力链接");
+      return;
+    }
+
+
+
+    const formData = new FormData();
+    let images;
+
+    formData.append("downloadURLs", JSON.stringify([link]));
+    formData.append("downloadImmediately", downloadImmediately.toString());
+
+    // // 🔥 关键：显示全屏 loading
+    // showLoader("正在提交下载任务...");
+
+    try {
+      const response = await fetch("/api/download", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "创建失败");
+      }
+
+      if (response.status === 202 && result.taskId) {
+        subscribeToTaskToast(result.taskId, (data) => {
+          // 如果需要，这里可以根据 data 更新页面的其他部分
+          if (data.stage === 'DONE' || data.stage === 'ERROR') {
+            setIsProcessing(false);
+          }
+        });
+        // 异步任务启动，更新 loader 文本并开始监听
+        // setTaskId(result.taskId); // 设置 taskId
+        // updateLoadingMessage("任务已启动，正在连接服务器...");
+        // listenToSse(result.taskId);
+        // **不隐藏 loader**，让 SSE 处理器来控制
+      } else {
+        // 同步创建成功
+        // hideLoader(); // 隐藏 loader
+        toast.success(result.message || "文档创建成功！");
+        setIsSubmitting(false);
+      }
+    } catch (error: any) {
+      console.error('[Submit] 错误:', error);
+      // hideLoader(); // 隐藏 loader
+      toast.error(`发生错误: ${error.message}`);
+      setIsSubmitting(false); // 出错时解锁按钮
+    }
+  }
+
+  const handleAddDownload = async () => {
+
+  }
 
   const filteredResults = useMemo(() => {
     if (!searchResults?.data[activeSource]) return []
@@ -264,7 +329,7 @@ export default function MagnetPage() {
                         </AccordionContent>
                       </AccordionItem>
 
-                      
+
                     </Accordion>
                   </div>
                 </div>
@@ -339,7 +404,7 @@ export default function MagnetPage() {
                           <FileArchive className="text-primary w-7 h-7" />
                         </div>
                         <div className="flex-1 min-w-0 space-y-1">
-                          <h2 className="text-sm font-bold leading-tight ">{selectedResult.fileName}</h2>
+                          <h2 className="text-sm font-bold leading-tight line-clamp-3">{selectedResult.fileName}</h2>
                         </div>
                       </div>
 
@@ -374,12 +439,16 @@ export default function MagnetPage() {
                         <Copy className="w-4 h-4" />
                         Copy Magnet Link
                       </Button>
-                      <div className="grid grid-cols-2 gap-2 mt-2">
+                      <div className="grid grid-cols-3 gap-2 mt-2">
                         <Button variant='outline' className=" gap-2 font-bold " onClick={() => setPreviewOpen(true)}>
                           <Eye className="w-4 h-4" />
                           磁力预览
                         </Button>
-                        <Button variant='outline' className=" gap-2 font-bold " onClick={() => copyMagnet(selectedResult.magnet)}>
+                        <Button variant='outline' className=" gap-2 font-bold " onClick={() => handleDownload({link:selectedResult.magnet,downloadImmediately:false})}>
+                          <Plus className="w-4 h-4" />
+                          添加任务
+                        </Button>
+                        <Button variant='outline' className=" gap-2 font-bold " onClick={() => handleDownload({link:selectedResult.magnet,downloadImmediately:true})}>
                           <Download className="w-4 h-4" />
                           立即下载
                         </Button>
@@ -390,7 +459,7 @@ export default function MagnetPage() {
                       <div className="px-6 py-3 border-b bg-muted/20">
                         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">文件内容({selectedResult.fileList.length})</h3>
                       </div>
-                      
+
                       <ScrollArea className="flex-1 h-full ">
                         <div className="p-4 space-y-1 w-[360px]">
                           {selectedResult.fileList.length > 0 ? (

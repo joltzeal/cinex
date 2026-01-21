@@ -143,6 +143,7 @@ model Subscribe {
   filterType  String
   filterValue String
   movies      SubscribeMovie[]  // 通过中间表关联 Movie
+  autoSubscribe Boolean @default(true)
 }
 
 model Movie {

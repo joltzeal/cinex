@@ -125,7 +125,7 @@ const MediaPreview = ({ msg }: { msg: TelegramMessage }) => {
   // 相册显示网格
   if (type === "Album") {
     return (
-      <div className="w-24 h-16 rounded-md overflow-hidden bg-muted border border-border grid grid-cols-2 grid-rows-2 gap-[1px]">
+      <div className="w-24 h-16 rounded-md overflow-hidden bg-muted border border-border grid grid-cols-2 grid-rows-2 gap-px">
         <div className="bg-accent/40" />
         <div className="bg-accent/60" />
         <div className="bg-accent/50" />
@@ -190,8 +190,8 @@ const MediaDetailModal = ({
         </DialogHeader>
 
         {/* Left: Media Player / Preview */}
-        <div className="flex-1 bg-black relative flex items-center justify-center group overflow-hidden min-h-[300px]">
-          <div className="absolute inset-0 opacity-20 bg-gradient-to-br from-gray-800 to-black pointer-events-none" />
+        <div className="flex-1 bg-black relative flex items-center justify-center group overflow-hidden min-h-75">
+          <div className="absolute inset-0 opacity-20 bg-linear-to-br from-gray-800 to-black pointer-events-none" />
 
           {/* Main Media Content */}
           <div className="relative z-10 w-full h-full flex items-center justify-center">
@@ -247,11 +247,11 @@ const MediaDetailModal = ({
         </div>
 
         {/* Right: Sidebar Details */}
-        <div className="w-full lg:w-[400px] flex flex-col bg-card border-l border-border h-full max-h-[50vh] lg:max-h-full">
+        <div className="w-full lg:w-100 flex flex-col bg-card border-l border-border h-full max-h-[50vh] lg:max-h-full">
           {/* Header */}
           <div className="p-6 border-b border-border flex items-center justify-between bg-muted/30">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-sm">
                 {(item.chatTitle || 'U').charAt(0).toUpperCase()}
               </div>
               <div>
@@ -685,8 +685,8 @@ const saveSettings = async (newSettings: TelegramConfig) => {
                   const timestamp = new Date(msg.timestamp).toLocaleTimeString('en-US', { hour12: false });
                   return (
                     <div key={i} className={`flex gap-3 ${i === visibleRealtimeMessages.length - 1 ? "animate-pulse" : ""}`}>
-                      <span className="opacity-50 min-w-[60px]">{timestamp}</span>
-                      <span className={`font-bold min-w-[60px] ${content.color}`}>[{msg.type.toUpperCase()}]</span>
+                      <span className="opacity-50 min-w-15">{timestamp}</span>
+                      <span className={`font-bold min-w-15 ${content.color}`}>[{msg.type.toUpperCase()}]</span>
                       <span className="opacity-80">{content.text}</span>
                     </div>
                   );
@@ -704,7 +704,7 @@ const saveSettings = async (newSettings: TelegramConfig) => {
       <div className="flex flex-col h-full bg-background text-foreground overflow-hidden gap-4">
 
         {/* 1. Header Section */}
-        <header className="flex-shrink-0  z-10 border-b border-transparent">
+        <header className="shrink-0  z-10 border-b border-transparent">
           
 
           {/* Bento Stats Grid */}
@@ -814,8 +814,8 @@ const saveSettings = async (newSettings: TelegramConfig) => {
               <Table>
                 <TableHeader className="bg-muted/50 sticky top-0 z-10 shadow-sm">
                   <TableRow className="hover:bg-transparent border-border">
-                    <TableHead className="w-[100px] font-medium text-xs uppercase tracking-wider">ID</TableHead>
-                    <TableHead className="w-[120px] font-medium text-xs uppercase tracking-wider">Preview</TableHead>
+                    <TableHead className="w-25 font-medium text-xs uppercase tracking-wider">ID</TableHead>
+                    <TableHead className="w-30 font-medium text-xs uppercase tracking-wider">Preview</TableHead>
                     <TableHead className="font-medium text-xs uppercase tracking-wider">Source</TableHead>
                     <TableHead className="font-medium text-xs uppercase tracking-wider">Type</TableHead>
                     <TableHead className="font-medium text-xs uppercase tracking-wider">Size</TableHead>
@@ -866,7 +866,7 @@ const saveSettings = async (newSettings: TelegramConfig) => {
                             <CheckCircle2 size={14} /> 已保存
                           </div>
                         ) : (
-                          <div className="w-full max-w-[200px]">
+                          <div className="w-full max-w-50">
                             <div className="flex justify-between text-xs mb-1.5">
                               <span className="text-muted-foreground font-medium">等待中</span>
                               <span className="text-muted-foreground">0%</span>

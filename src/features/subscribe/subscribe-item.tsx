@@ -176,26 +176,26 @@ export default function JavbusSubscribeInfoItem({
       setIsFetching(false);
     }
   };
-  const handleSubscribe = async () => {
-    setIsSubscribing(true);
-    setShowSubscribeDialog(false);
-    try {
-      const response = await fetch(`/api/subscribe/${info.id}`, {
-        method: 'POST'
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || '订阅失败');
-      }
-      toast.success('订阅成功');
-      router.refresh();
-    } catch (error) {
-      console.error('订阅失败:', error);
-      toast.error(error instanceof Error ? error.message : '订阅失败');
-    } finally {
-      setIsSubscribing(false);
-    }
-  };
+  // const handleSubscribe = async () => {
+  //   setIsSubscribing(true);
+  //   setShowSubscribeDialog(false);
+  //   try {
+  //     const response = await fetch(`/api/subscribe/${info.id}`, {
+  //       method: 'POST'
+  //     });
+  //     if (!response.ok) {
+  //       const error = await response.json();
+  //       throw new Error(error.message || '订阅失败');
+  //     }
+  //     toast.success('订阅成功');
+  //     router.refresh();
+  //   } catch (error) {
+  //     console.error('订阅失败:', error);
+  //     toast.error(error instanceof Error ? error.message : '订阅失败');
+  //   } finally {
+  //     setIsSubscribing(false);
+  //   }
+  // };
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -385,10 +385,6 @@ export default function JavbusSubscribeInfoItem({
 
       const result = await response.json();
 
-
-      console.log(result);
-      
-
       if (!result || !result.data) {
         throw new Error('未找到影片数据。');
       }
@@ -422,7 +418,11 @@ export default function JavbusSubscribeInfoItem({
           <div className='flex shrink-0 items-center space-x-1 sm:space-x-2'>
             <div className='flex flex-col items-end space-y-1'>
               <div className='flex items-center space-x-1'>
+                {info.autoSubscribe === true ?(
+                    <Badge variant='outline'>自动订阅</Badge>
+                ):<Badge variant='destructive'>不订阅</Badge>}
                 <Badge variant='default'>{info.movies.length} 部影片</Badge>
+                
                 {info.movies.filter(
                   (movie: any) => movie.movie.status === MovieStatus.downloading
                 ).length > 0 && (

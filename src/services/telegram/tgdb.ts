@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { TelegramMessageData } from '@/types/telegram';
 import { SettingKey } from '../settings';
+import { ProxyInterface } from 'telegram/network/connection/TCPMTProxy';
 
 export async function getTelegramConfig(): Promise<TelegramConfig | null> {
   const setting = await prisma.setting.findUnique({
@@ -56,6 +57,32 @@ export async function getDownloadDirectory(): Promise<string | null> {
   } catch (error) {
     console.error('❌ Failed to get download directory config:', error);
     return null;
+  }
+}
+
+export async function getPorxy()  {
+  try {
+    const setting = await prisma.setting.findUnique({
+      where: { key: SettingKey.ProxyConfig }
+    });
+
+    if (!setting || !setting.value) {
+      console.log('❌ Download directory configuration not found.');
+      return undefined;
+    }
+    const proxy = setting.value as ProxyConfig;
+    const proxyUrl = new URL(proxy.proxyUrl);
+    return {
+      ip: proxyUrl.hostname,
+      port: parseInt(proxyUrl.port, 10),
+      socksType: 5,
+      timeout: 10
+    } as ProxyInterface;
+
+
+  } catch (error) {
+    console.error('❌ Failed to get download directory config:', error);
+    return undefined;
   }
 }
 

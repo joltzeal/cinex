@@ -191,7 +191,7 @@ export default function LibraryPage(props: pageProps) {
         <div className='flex flex-col gap-4 lg:flex-row lg:items-end'>
 
           {/* 筛选类型 */}
-          <div className='w-full lg:w-[160px] space-y-2'>
+          <div className='w-full lg:w-40 space-y-2'>
             <label className='text-xs font-medium text-muted-foreground flex items-center gap-1'>
               <Filter className="w-3 h-3" /> 筛选维度
             </label>
@@ -245,7 +245,7 @@ export default function LibraryPage(props: pageProps) {
                       placeholder={allTags.length > 0 ? '选择分类标签' : '暂无可用标签'}
                     />
                   </SelectTrigger>
-                  <SelectContent className="max-h-[300px]">
+                  <SelectContent className="max-h-75">
                     {allTags.map((tag) => (
                       <SelectItem key={tag} value={tag}>
                         {tag}
@@ -273,7 +273,7 @@ export default function LibraryPage(props: pageProps) {
 
           {/* 按钮组 */}
           <div className='flex items-center gap-2 pt-1'>
-            <Button onClick={handleSearch} className='min-w-[80px]'>
+            <Button onClick={handleSearch} className='min-w-20'>
               搜索
             </Button>
             {hasSearched && (
@@ -310,11 +310,6 @@ export default function LibraryPage(props: pageProps) {
               const proxiedSrc = item.cover
                 ? `/api/subscribe/javbus/proxy?url=${encodeURIComponent(item.cover)}`
                 : "";
-              // if (!item.detail) {
-              //   return null;
-              // }
-              // console.log(detail);
-
               // 解析 detail 数据
               const detail = item.detail as {
                 stars?: Property[];
@@ -398,7 +393,7 @@ export default function LibraryPage(props: pageProps) {
                       </div>
 
                       {/* 3. 右侧删除按钮 */}
-                      <div className="flex-shrink-0">
+                      <div className="shrink-0">
 
                         <button
                           onClick={(e) => handlePlay(e, item)}

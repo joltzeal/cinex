@@ -50,7 +50,6 @@ export default function SettingsPageClient(props: SettingsPageClientProps) {
 
   const [config, setConfig] = useState<Record<string, any> | undefined>(undefined);
 
-  console.log(config);
   
 
   useEffect(() => {

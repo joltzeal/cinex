@@ -209,7 +209,6 @@ export async function GET(req: NextRequest) {
   else if (website === 'avfan') {
     const cacheKey = `avfan:${period}`;
     return getCachedData(cacheKey, async () => {
-      console.log(`https://avfan.com/zh-CN/rankings/fanza_ranking?t=${period}`);
       const response = await proxyRequest(
         
         `https://avfan.com/zh-CN/rankings/fanza_ranking?t=${period}`,
@@ -224,7 +223,6 @@ export async function GET(req: NextRequest) {
       
       
       const body = response.body;
-      // console.log(body);
       
       if (!body) {
         throw new Error('Failed to fetch');

@@ -80,19 +80,16 @@ export function PostContext({ post,forum }: { post: ForumPost,forum: string }) {
     
     // 构建 Google Lens 的搜索 URL
     const searchUrl = `https://lens.google.com/uploadbyurl?url=${encodedUrl}`;
-    console.log(searchUrl);
     
     // 在新标签页中打开链接
     window.open(searchUrl, '_blank', 'noopener,noreferrer');
   };
   const handleSaveImage = () => {
-    console.log(clickedImageUrl);
   };
   const handleDownload = async () => {
     try {
       const magnetLinks = [selectedMagnetLink||''];
       // const magnetLinks = extractMagnetLinks(content);
-      console.log(magnetLinks);
       if (magnetLinks.length === 0) {
         toast.error("没有磁力链接");
         return;
@@ -120,7 +117,6 @@ export function PostContext({ post,forum }: { post: ForumPost,forum: string }) {
   };
 
   const handleViewSourcePost = () => {
-    console.log(forum);
     
     // const forum = await 
     window.open(getForumUrl(forum as string, post.postId, post.url||''), '_blank', 'noopener,noreferrer');

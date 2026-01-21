@@ -99,7 +99,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Invalid proxyUrl provided.' }, { status: 400 });
   }
 
-  // console.log(proxyUrl);
 
 
   try {
@@ -107,7 +106,6 @@ export async function POST(request: NextRequest) {
     const results = await Promise.all(
       SITES_TO_TEST.map(site => testSiteConnection(site, proxyUrl))
     );
-    console.log(results);
     
     return NextResponse.json(results, { status: 200 });
   } catch (error) {

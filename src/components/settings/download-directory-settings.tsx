@@ -96,7 +96,6 @@ export function DirectorySettingsComponent({ initialData }: DirectorySettingsPro
       return acc;
     }, {} as Record<string, DirectoryConfigData>);
 
-    console.log('正在保存的数据结构:', dataToSave);
 
     try {
       // 模拟API调用
@@ -144,13 +143,13 @@ export function DirectorySettingsComponent({ initialData }: DirectorySettingsPro
                       <GripVertical className="h-5 w-5 text-gray-400" />
                       <h3 className="text-lg font-semibold truncate">{config.alias || '新配置'}</h3>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => handleRemoveConfig(config.id)} className="flex-shrink-0">
+                  <Button variant="ghost" size="icon" onClick={() => handleRemoveConfig(config.id)} className="shrink-0">
                       <X className="h-4 w-4" />
                   </Button>
               </div>
 
               {/* 卡片内容 */}
-              <div className="space-y-3 flex-grow">
+              <div className="space-y-3 grow">
                 <div className="space-y-1.5">
                   <Label htmlFor={`alias-${config.id}`}>别名</Label>
                   <Input id={`alias-${config.id}`} value={config.alias} onChange={(e) => handleUpdateConfig(config.id, 'alias', e.target.value)} placeholder="例如：电影" />

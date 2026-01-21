@@ -62,7 +62,6 @@ function ManualRecognitionDialog({ fileTreeData }: ManualRecognitionDialogProps)
     
     setIsSubmitting(true);
     try {
-      console.log('提交手动识别:', { file: selectedFile, standardName, transferMethod });
       const response = await fetch('/api/file/transfer', {
         method: 'POST',
         headers: {
@@ -71,7 +70,6 @@ function ManualRecognitionDialog({ fileTreeData }: ManualRecognitionDialogProps)
         body: JSON.stringify({ file: selectedFile, name: standardName, transferMethod }),
       });
       const result = await response.json();
-      console.log(result);
       
       if (result.success) {
         toast.success('提交手动识别成功!');
@@ -102,7 +100,7 @@ function ManualRecognitionDialog({ fileTreeData }: ManualRecognitionDialogProps)
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild><Button variant="outline"><PlusCircle className="mr-2 h-4 w-4" />手动识别</Button></DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-106.25">
         <DialogHeader>
           <DialogTitle>手动识别</DialogTitle>
           <DialogDescription>选择一个文件并输入番号，将尝试进行匹配和整理。</DialogDescription>
@@ -179,7 +177,7 @@ export function DataTableClientComponent({ recordsData, fileTreeData }: DataTabl
       <div className="flex items-center justify-between">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="搜索整理记录..." value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} className="pl-10 w-full sm:w-[300px]" />
+          <Input placeholder="搜索整理记录..." value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} className="pl-10 w-full sm:w-75" />
         </div>
         <div className="flex items-center gap-2">
           <ManualRecognitionDialog fileTreeData={fileTreeData} />

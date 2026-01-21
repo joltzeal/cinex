@@ -621,7 +621,6 @@ export async function fetchSehuatangPost(threadId: string, page: number, forumSu
     url.search = new URLSearchParams(params).toString();
     const safeid = await getSehuatangSafeid();
     logger.info(`获取 98 堂 分区 ${threadId} 的帖子列表，safeid: ${safeid}`);
-    console.log(`https://www.sehuatang.net/forum.php?mod=forumdisplay&fid=${threadId}&orderby=dateline&filter=author&page=${page}`);
 
     if (!safeid) {
         logger.error('无法获取 98 堂 safeid，无法获取帖子列表');
@@ -656,7 +655,6 @@ export async function fetchSehuatangPost(threadId: string, page: number, forumSu
             },
             throwHttpErrors: false
         });
-        // console.log(response.body);
         if (!response.ok) {
             logger.error(`无法获取 98 堂 分区 ${threadId} 的帖子列表，状态: ${response.statusCode}`);
             return [];

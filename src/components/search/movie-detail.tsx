@@ -78,7 +78,6 @@ export default function MovieDetailDisplay({ movie }: MovieDetailDisplayProps) {
     comment: string;
     tags: string[];
   }) => {
-    console.log(data);
     try {
       const response = await fetch(`/api/movie/${movieDetail.id}/reviews`, {
         method: 'POST',
@@ -241,9 +240,6 @@ export default function MovieDetailDisplay({ movie }: MovieDetailDisplayProps) {
     setProgress([]);
     setTaskId(null);
     setIsSubmitting(true);
-    console.log(movie.title);
-    console.log(magnet.link);
-
     const formData = new FormData();
     formData.append('title', movie.title ?? movie.id);
     formData.append('downloadURLs', JSON.stringify([magnet.link]));
@@ -307,21 +303,21 @@ export default function MovieDetailDisplay({ movie }: MovieDetailDisplayProps) {
             alt='Banner'
             className='absolute inset-0 h-full w-full object-cover'
           />
-          <div className='from-background via-background/80 absolute inset-0 bg-gradient-to-t to-transparent' />
+          <div className='from-background via-background/80 absolute inset-0 bg-linear-to-t to-transparent' />
           <div className='relative container mx-auto h-full px-4'>
             <div className='absolute right-0 bottom-8 left-0 flex items-end px-4'>
               {/* 2. 调整 Poster 尺寸和宽高比以适应横图 */}
-              <div className='-mb-8 w-72 flex-shrink-0'>
+              <div className='-mb-8 w-72 shrink-0'>
                 {' '}
                 {/* 增加宽度，减少负边距 */}
                 <img
                   src={proxyImageUrl(movieDetail.img)}
                   alt='Poster'
                   // 关键：修改为横向宽高比
-                  className='bg-muted/20 aspect-[800/538] h-auto w-full rounded-md object-cover shadow-lg'
+                  className='bg-muted/20 aspect-800/538 h-auto w-full rounded-md object-cover shadow-lg'
                 />
               </div>
-              <div className='ml-6 flex-grow pb-4'>
+              <div className='ml-6 grow pb-4'>
                 <a
                   className='line-clamp-2 cursor-pointer text-2xl font-bold underline-offset-2 hover:underline md:text-4xl'
                   href={`https://www.javbus.com/${movieDetail.id}`}
@@ -441,7 +437,7 @@ export default function MovieDetailDisplay({ movie }: MovieDetailDisplayProps) {
                             <img
                               src={proxyImageUrl(similar.img)}
                               alt={similar.title}
-                              className='bg-muted/20 aspect-[2/3] w-full object-cover transition-transform duration-300 ease-in-out group-hover:scale-105'
+                              className='bg-muted/20 aspect-2/3 w-full object-cover transition-transform duration-300 ease-in-out group-hover:scale-105'
                             />
                           </div>
                           <p className='text-muted-foreground truncate text-center text-xs'>
@@ -567,7 +563,7 @@ export default function MovieDetailDisplay({ movie }: MovieDetailDisplayProps) {
                       <CardTitle>资源下载</CardTitle>
                     </CardHeader>
                     <CardContent className='p-0'>
-                      <ScrollArea className='h-[400px]'>
+                      <ScrollArea className='h-100'>
                         {/* 2. 在表格外层包裹 TooltipProvider */}
                         <TooltipProvider>
                           {/* 3. 使用 table-fixed 强制执行列宽 */}
@@ -593,7 +589,7 @@ export default function MovieDetailDisplay({ movie }: MovieDetailDisplayProps) {
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <div className='flex items-center gap-2 overflow-hidden'>
-                                          <div className='flex flex-shrink-0 items-center gap-1'>
+                                          <div className='flex shrink-0 items-center gap-1'>
                                             {magnet.isHD && (
                                               <Badge
                                                 variant='destructive'

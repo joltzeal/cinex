@@ -23,7 +23,7 @@ import { CheckCircle, Copy, FileText, Loader, DownloadCloud, Info, XCircle, Paus
 import Link from "next/link";
 import { toast } from "sonner";
 // import Lightbox from "yet-another-react-lightbox";
-import Image from "next/image";
+// import Image from "next/image";
 import { formatDate } from "@/lib/format";
 
 interface DownloadProgressCellProps {
@@ -259,11 +259,11 @@ export function DownloadProgressCell({ urls }: DownloadProgressCellProps) {
                                             className="relative aspect-video overflow-hidden rounded-md cursor-pointer group"
                                             onClick={() => handleScreenshotClick(detail.screenshots!, index)}
                                           >
-                                            <Image
+                                            <img
                                               src={ss.screenshot}
                                               alt={`Screenshot ${index + 1}`}
-                                              fill
-                                              className="object-cover transition-transform duration-300 group-hover:scale-110"
+                                              
+                                              className="object-cover transition-transform duration-300 group-hover:scale-110 "
                                               sizes="(max-width: 768px) 50vw, 33vw"
                                             />
                                             <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity" />

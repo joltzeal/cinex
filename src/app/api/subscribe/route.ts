@@ -102,6 +102,8 @@ export async function POST(request: NextRequest) {
     // 1. 解析请求参数
     const body = await request.json().catch(() => ({}));
     const url = body.url.trim();
+    const autoSubscribe = body.autoSubscribe ?? true;
+    
     if (!url) {
       return NextResponse.json({ error: 'url is required' }, { status: 400 });
     }
@@ -182,7 +184,8 @@ export async function POST(request: NextRequest) {
         filterType,
         filterValue,
         filter: savedFilter || filter,
-        starInfo: starInfo
+        starInfo: starInfo,
+        autoSubscribe:autoSubscribe
       } as any,
     });
 

@@ -5,7 +5,6 @@ import { createDownload, downloadImmediatelyTask } from "@/lib/download";
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
-    console.log(formData);
     const downloadURLsRaw = formData.get("downloadURLs") as string | null;
     if (!downloadURLsRaw || JSON.parse(downloadURLsRaw).length === 0) {
       return NextResponse.json({ message: "请添加下载链接" }, { status: 400 });

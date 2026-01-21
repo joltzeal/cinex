@@ -3,7 +3,6 @@ import { ProxyConfig } from '@/types/telegram';
 import { logger } from '@/lib/logger';
 
 export function getProxyConfigFromEnv(): ProxyConfig | undefined {
-  // ... same logic as original ...
   const proxyEnv =
     process.env.HTTPS_PROXY ||
     process.env.https_proxy ||

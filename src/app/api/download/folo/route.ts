@@ -27,7 +27,6 @@ export async function POST(request: NextRequest) {
 
 
     const magnetLinks = extractMagnetLinks(data.content_markdown);
-    console.log(magnetLinks);
 
     if (!magnetLinks.length) {
       return corsJsonResponse({
@@ -56,7 +55,6 @@ export async function POST(request: NextRequest) {
       },
       select: { url: true },
     });
-    console.log(existingUrls);
 
     if (existingUrls.length > 0) {
       const duplicateUrls = existingUrls.map((item:DocumentDownloadURL) => item.url);

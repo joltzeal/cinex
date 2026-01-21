@@ -17,11 +17,12 @@ import { cn } from '@/lib/utils';
 import { IconPlus } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 export default function SubscribeDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const [url, setUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [autoSubscribe,setAutoSubscribe] = useState(true)
   const router = useRouter();
   const handleSubmit = async () => {
     if (!url.trim()) {
@@ -44,7 +45,7 @@ export default function SubscribeDialog() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ url: url.trim() })
+        body: JSON.stringify({ url: url.trim() ,autoSubscribe:autoSubscribe})
       });
 
       if (!response.ok) {
@@ -95,6 +96,23 @@ export default function SubscribeDialog() {
               className='col-span-3'
               disabled={isLoading}
             />
+            <Label htmlFor='auto-subscribe' className='text-right'>
+              自动订阅
+            </Label>
+            <RadioGroup
+              value={autoSubscribe ? "true" : "false"}
+              onValueChange={(value) => setAutoSubscribe(value === "true")}
+              className='col-span-3 flex gap-6'
+            >
+              <div className='flex items-center gap-2'>
+                <RadioGroupItem value="true" id="auto-on" />
+                <Label htmlFor="auto-on" className='cursor-pointer'>开启</Label>
+              </div>
+              <div className='flex items-center gap-2'>
+                <RadioGroupItem value="false" id="auto-off" />
+                <Label htmlFor="auto-off" className='cursor-pointer'>关闭</Label>
+              </div>
+            </RadioGroup>
           </div>
         </div>
         <DialogFooter>

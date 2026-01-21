@@ -13,7 +13,6 @@ export function StarPost({ forumId, threadId, postId, star }: { forumId: string,
   // 使用 useEffect 来同步外部 prop 的变化到内部 state
   // 当父组件传入的 star 值改变时，这个组件的状态也会随之更新
   useEffect(() => {
-    console.log(star);
     setIsStar(star);
   }, [star]);
 

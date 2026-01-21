@@ -37,7 +37,6 @@ export async function GET(
 
     const isAdded = findMediaItemByIdOrTitle(id);
 
-    console.log(id);
     
 
     if (movie && movie.detail && movie.magnets) {
@@ -72,7 +71,6 @@ export async function GET(
         });
         return NextResponse.json({ data: createdMovie }, { status: 200 });
       } else if (!movie.detail || !movie.magnets) {
-        console.log('not detail and not magnets');
         
         const updatedMovie = await prisma.movie.update({
           where: { number: movieDetail.id },

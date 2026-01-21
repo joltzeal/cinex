@@ -201,7 +201,6 @@ const useMovie = (movie: Movie) => {
     comment: string;
     tags: string[];
   }) => {
-    console.log(data);
     try {
       const response = await fetch(`/api/movie/${movieDetail.id}/reviews`, {
         method: 'POST',

@@ -1,5 +1,3 @@
-
-// 处理下载任务
 import { prisma } from "@/lib/prisma";
 import { ensureMagnetLink, extractHash, isMagnetLink } from "@/lib/magnet/magnet-helper";
 import { MovieDetail } from "@/types/javbus";
@@ -7,7 +5,6 @@ import { PreviewResponse, WhatslinkPreview } from "../magnet/link-preview";
 import { getActiveClient } from "@/features/download/downloader/manager";
 import path from "path";
 import { DownloadUrlData, TorrentAddOptions } from "@/types/download";
-// import { sseManager } from "../sse-manager";
 import { getBatchClassificationInfo } from "@/lib/ai-provider";
 import { logger } from "../logger";
 import { getMagnetDownloadDirectoryConfig, getMovieDownloadDirectoryConfig } from "@/services/settings";
@@ -22,7 +19,7 @@ export interface CreateDownloadProps {
   description?: string | null;
   images?: string[];
   downloadImmediately?: boolean;
-  movieId?: string | null; // 此处为movie detail json string
+  movieId?: string | null; 
 }
 /**
  * 处理磁力链接预览
@@ -248,9 +245,9 @@ export const downloadImmediatelyTask = async (taskId: string, document: any, mov
           data: { status: MovieStatus.downloading, downloadAt: new Date() }
         });
         
-        // if (movie) {
+        if (movie) {
           await updateMoviesDataByNumber({ number: movie.number, data: { downloadAt: new Date(), status: MovieStatus.downloading } });
-        // }
+        }
       }
       // sseManager.emit(taskId, {
       //   stage: 'PROGRESS',

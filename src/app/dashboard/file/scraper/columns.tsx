@@ -46,12 +46,12 @@ export const columns: ColumnDef<FileTransferLog>[] = [
     accessorKey: 'title',
     header: '标题',
     cell: ({ row }) => (
-      <div className="flex items-center gap-3 w-[200px]">
-        <div className="w-8 h-8 bg-muted rounded-md flex items-center justify-center text-muted-foreground flex-shrink-0">🎬</div>
+      <div className="flex items-center gap-3 w-50">
+        <div className="w-8 h-8 bg-muted rounded-md flex items-center justify-center text-muted-foreground shrink-0">🎬</div>
         <div>
-          <div className="font-medium truncate w-[200px]">{row.original.title}</div>
+          <div className="font-medium truncate w-50">{row.original.title}</div>
           <Tooltip>
-            <TooltipTrigger asChild><div className="text-xs text-muted-foreground truncate w-[200px]">{row.original.number}</div></TooltipTrigger>
+            <TooltipTrigger asChild><div className="text-xs text-muted-foreground truncate w-50">{row.original.number}</div></TooltipTrigger>
             <TooltipContent>
               <p>{row.original.number}</p>
             </TooltipContent>
@@ -68,7 +68,7 @@ export const columns: ColumnDef<FileTransferLog>[] = [
       <div className="flex items-center gap-3 w-full">
         
         {/* 2a. 更大且独立的箭头图标 */}
-        <ArrowDown className="h-6 w-6 text-primary flex-shrink-0" />
+        <ArrowDown className="h-6 w-6 text-primary shrink-0" />
   
         {/* 2b. 文本容器：垂直堆叠路径 */}
         <div className="flex flex-col text-xs text-muted-foreground gap-1 max-w-xs md:max-w-md lg:max-w-lg">
@@ -109,7 +109,6 @@ export const columns: ColumnDef<FileTransferLog>[] = [
     id: 'actions',
     cell: ({ row }) => {
       const handleDelete = async () => {
-        console.log(row.original);
         const response = await fetch(`/api/file/transfer/${row.original.id}`, {
           method: "DELETE",
         });

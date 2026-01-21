@@ -75,6 +75,8 @@ export class TelegramBot {
         return false;
       }
 
+      
+      
       const stringSession = new StringSession(session || '');
       this.client = new TelegramClient(
         stringSession,
@@ -82,7 +84,7 @@ export class TelegramBot {
         apiHash,
         {
           connectionRetries: 5,
-          proxy: getProxyConfigFromEnv()
+          proxy: await db.getPorxy()
         }
       );
 

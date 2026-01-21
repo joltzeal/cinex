@@ -77,10 +77,8 @@ function parseForumUrl(url: string): ParsedUrl | null {
       }
     }
     if (urlObj.hostname.includes('south-plus')) {
-      console.log(urlObj);
       // thread.php?fid-9.html
       const fidMatch = urlObj.href.match(/thread\.php\?fid-(\d+)\.html/);
-      console.log(fidMatch);
       if (fidMatch) {
         return {
           forumId: 'southPlus',
@@ -154,7 +152,7 @@ export function AddSubscribeDialog() {
           添加订阅
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[525px]">
+      <DialogContent className="sm:max-w-131.25">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>添加论坛订阅</DialogTitle>

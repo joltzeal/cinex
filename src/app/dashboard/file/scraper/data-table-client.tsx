@@ -27,7 +27,6 @@ export function FileTreeViewSelector({ fileTreeData, onFileSelect }: FileTreeVie
         onSelectChange={(node) => {
           // 确保只在点击文件（而非文件夹）时触发回调
           if (node && !node.children) {
-            console.log(node);
             
             onFileSelect(node);
           }

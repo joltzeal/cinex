@@ -7,7 +7,6 @@ export async function GET(
 ) {
   const { taskId } = await params;
 
-  console.log('route 中的 taskId', taskId);
   
 
   if (!taskId) {

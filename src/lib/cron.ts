@@ -49,22 +49,20 @@ export function startScheduler() {
     const timezone = "Asia/Shanghai";
     
     // 每小时执行一次JAVBus增量更新
-    // cron.schedule('0 * * * *', runJavbusMovieUpdate, { timezone });
-    // cron.schedule('0 * * * *', runJavbusSubscribeUpdate, { timezone });
+    cron.schedule('0 * * * *', runJavbusMovieUpdate, { timezone });
+    cron.schedule('0 * * * *', runJavbusSubscribeUpdate, { timezone });
 
-    // // 每5分钟执行一次下载状态同步
-    // cron.schedule('*/5 * * * *', runDownloadStatusSync, { timezone });
+    // 每5分钟执行一次下载状态同步
+    cron.schedule('*/5 * * * *', runDownloadStatusSync, { timezone });
 
-    // // 每5分钟媒体库同步
-    // cron.schedule('*/5 * * * *', runMediaLibrarySync, { timezone });
+    // 每5分钟媒体库同步
+    cron.schedule('*/5 * * * *', runMediaLibrarySync, { timezone });
     
-    // // 每5分钟论坛更新
-    // cron.schedule('*/5 * * * *', runForumUpdate, { timezone });
+    // 每5分钟论坛更新
+    cron.schedule('*/5 * * * *', runForumUpdate, { timezone });
 
-    console.log('[Scheduler] 所有定时任务已注册。');
 
     // 3. 应用启动时立即执行一次下载状态同步（优先级更高）
-    console.log('[Scheduler] 触发启动时立即同步任务...');
     setTimeout(() => {
         runDownloadStatusSync().catch(error => {
             console.error(`[Scheduler] 启动时下载状态同步任务执行失败: ${error}`);
