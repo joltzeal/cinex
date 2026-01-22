@@ -47,7 +47,7 @@ export async function PUT(
     logger.info(`找到 ${nullDetailMovies.length} 部没有详情的影片`);
 
     // 并发请求配置
-    const BATCH_SIZE = 2; // 每批并发数
+    const BATCH_SIZE = 3; // 每批并发数
     const DELAY_MS = 1000; // 每批之间的延迟（毫秒）
 
     // 将电影列表分批
@@ -75,7 +75,8 @@ export async function PUT(
               gid: movieDetail.gid!,
               uc: movieDetail.uc!,
               sortBy: 'date',
-              sortOrder: 'desc'
+              sortOrder: 'desc',
+              source:['javbus']
             });
             await prisma.movie.update({
               where: { id: movie.id },

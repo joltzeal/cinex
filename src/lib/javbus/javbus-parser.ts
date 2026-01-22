@@ -233,15 +233,23 @@ export function convertMagnetsHTML(html: string) {
 
   return magnets;
 }
-
-export async function getMovieMagnets(params: {
-  movieId: string;
-  gid: string;
-  uc: string;
+interface GetMovieMagnetsParams {
+  movieId: string;        // 必填
+  gid: string;            // 必填
+  uc: string;             // 必填
   sortBy?: SortBy;
   sortOrder?: SortOrder;
-}): Promise<Magnet[]> {
-  const { movieId, gid, uc } = params;
+  source?: string[];
+}
+export async function getMovieMagnets({
+  movieId,
+  gid,
+  uc,
+  sortBy,
+  sortOrder,
+  source = ['javbus', 'javdb'],
+}: GetMovieMagnetsParams): Promise<Magnet[]> {
+  // const { movieId, gid, uc } = params;
   const client = await getJavbusClient();
   const magnetsRes = await client(`${JAVBUS}/ajax/uncledatoolsbyajax.php`, {
     searchParams: {
@@ -256,8 +264,8 @@ export async function getMovieMagnets(params: {
 
   let magnets: Magnet[] = convertMagnetsHTML(magnetsRes);
 
-  if (params.sortBy && params.sortOrder) {
-    const { sortBy, sortOrder } = params;
+  if (sortBy && sortOrder) {
+    // const { sortBy, sortOrder } = params;
 
     magnets.sort((a, b) => {
       if (sortBy === 'date') {
@@ -278,11 +286,14 @@ export async function getMovieMagnets(params: {
     });
   }
 
-  // 在此处获取javdb 的磁力链接
-  const javdbMagnets = await getJavdbMagnetLinks(movieId);
-  if (javdbMagnets) {
-    magnets = mergeMagnetArrays(magnets, javdbMagnets);
+  if (source.includes('javdb')) {
+    const javdbMagnets = await getJavdbMagnetLinks(movieId);
+    if (javdbMagnets) {
+      magnets = mergeMagnetArrays(magnets, javdbMagnets);
+    }
   }
+
+
 
   return magnets;
 }
@@ -363,7 +374,7 @@ function multipleInfoFinder<T>(
 
 export async function getMovieDetail(id: string): Promise<MovieDetail> {
   const client = await getJavbusClient();
-  
+
   const res = await client(`${JAVBUS}/${id}`).text();
   const doc = parse(res);
 
