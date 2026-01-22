@@ -75,7 +75,7 @@ export async function taskMovieUpdate() {
         if (bestMagnet) {
           let images;
           if ((movieDetail as MovieDetail)?.samples) {
-            images = [subscribeMovie.poster, subscribeMovie.cover, ...(subscribeMovie as unknown as MovieDetail)?.samples.map((img) => img.src)]
+            images = [subscribeMovie.poster, subscribeMovie.cover, ...movieDetail?.samples.map((img) => img.src)]
           } else {
             images = [subscribeMovie.poster, subscribeMovie.cover,]
           }
@@ -84,7 +84,6 @@ export async function taskMovieUpdate() {
           requestBody.append('downloadImmediately', 'true');
           requestBody.append('title', movieDetail.title || subscribeMovie.title);
           requestBody.append('images', JSON.stringify(images))
-          // const movieData: any = subscribeMovie
           requestBody.append('movieId', subscribeMovie.id)
           const response = await fetch('http://localhost:3000/api/download', {
             method: 'POST',
