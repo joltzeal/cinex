@@ -40,12 +40,11 @@ export async function taskJavbusSubscribeUpdate() {
       include: {
         movies: {
           include: {
-            movie: true // 包含实际的 Movie 数据
+            movie: true
           }
         },
       },
     });
-    logger.info(subscriptions.length);
     if (subscriptions.length === 0) {
       logger.info('没有找到任何JAVBus订阅，跳过更新');
       return;
@@ -61,9 +60,8 @@ export async function taskJavbusSubscribeUpdate() {
     }> = [];
     for (let i = 0; i < subscriptions.length; i++) {
       const subscribeItem = subscriptions[i];
-      const { filterType, filterValue } = subscribeItem;
-      logger.info(filterType);
-      logger.info(filterValue);
+      const { filterType, filterValue, autoSubscribe } = subscribeItem;
+
       try {
         const existingSourceIdSet = new Set(
           subscribeItem.movies.map((m: { movie: { number: any; }; }) => m.movie.number)
@@ -115,6 +113,7 @@ export async function taskJavbusSubscribeUpdate() {
             await sleep(REQUEST_DELAY);
           }
         }
+        // 当前订阅列表下需要处理的新电影 处理逻辑
         if (newMovies.length > 0) {
           logger.info(`发现 ${newMovies.length} 部新电影，保存到数据库`);
           for (const movie of newMovies) {
@@ -127,16 +126,16 @@ export async function taskJavbusSubscribeUpdate() {
                 data: { poster: movie.img }
               });
               logger.info(`影片 ${movie.id} 已存在，跳过。`);
+
               await prisma.subscribeMovie.upsert({
                 where: { subscribeId_movieId: { subscribeId: subscribeItem.id, movieId: existingMovie.id } },
                 update: {
-                  // poster: movie.img,
                 },
-                create: { subscribeId: subscribeItem.id, movieId: existingMovie.id,  }
+                create: { subscribeId: subscribeItem.id, movieId: existingMovie.id, }
               });
               continue;
             }
-            // 创建电影
+            // 1.创建电影
             const movieCreate: Prisma.MovieCreateInput = {
               number: movie.id,
               title: movie.title,
@@ -147,10 +146,11 @@ export async function taskJavbusSubscribeUpdate() {
             const createdMovie = await prisma.movie.create({
               data: movieCreate
             });
-            // 创建订阅关系
+            // 2.创建订阅关系
             await prisma.subscribeMovie.create({
               data: { subscribeId: subscribeItem.id, movieId: createdMovie.id }
             });
+            // 3.获取电影详情 + 磁力
             const movieDetail = await getMovieDetail(movie.id);
             const magnets = await getMovieMagnets({
               movieId: movie.id,
@@ -159,7 +159,7 @@ export async function taskJavbusSubscribeUpdate() {
               sortBy: 'date',
               sortOrder: 'desc'
             });
-            // 更新电影
+            // 更新电影中的详情+磁力信息
             await prisma.movie.update({
               where: { id: createdMovie.id },
               data: {
@@ -168,31 +168,38 @@ export async function taskJavbusSubscribeUpdate() {
                 cover: movieDetail.img,
               }
             });
-            if (magnets.length === 0) {
-              logger.info(`影片 ${movie.id} 没有找到任何磁力链接，跳过。`);
-              continue;
-            }
+            // if (magnets.length === 0) {
+            //   logger.info(`影片 ${movie.id} 没有找到任何磁力链接，跳过。`);
+            //   continue;
+            // }
             // 分析电影，是否需要订阅
+            // 2.1 不订阅非单体影片
             if (downloadRuleConfig?.onlySingleMovie && !isSingleMovie(movieDetail)) {
               logger.info(`影片 ${movie.id} 不是单体影片，跳过。`);
               continue;
             }
+            // 2.2 不订阅合集影片
             if (isIntroductionMovie(movieDetail) || isBestMovie(movieDetail)) {
               logger.info(`影片 ${movie.id} 是介绍影片或女優ベスト・総集編，跳过。`);
               continue;
             }
+            // 2.3 不订阅VR影片
             if (!downloadRuleConfig?.downloadVR && isVRMovie(movieDetail)) {
               // 不下载VR影片
               continue;
             }
+            // 2.4 不订阅明确不订阅列表
+            if (autoSubscribe === false) {
+              logger.info(`订阅 ${filterType}=${filterValue}：不订阅影片`);
+              continue;
+            }
             await prisma.movie.update({
-              where: { id: createdMovie.id },
-              data: {
-                status: MovieStatus.subscribed,
-                subscribeAt: new Date()
-              }
-            });
-
+                where: { id: createdMovie.id },
+                data: {
+                  status: MovieStatus.subscribed,
+                  subscribeAt: new Date()
+                }
+              });
           }
           totalNewMovies += newMovies.length;
           updateResults.push({

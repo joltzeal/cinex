@@ -2,9 +2,9 @@
 
 import React, { useState, useMemo } from "react"
 import {
-  Search, Zap, Film, Music, FileArchive,
+  Search, Zap, FileArchive,
   File, ArrowRight, Download, Link as LinkIcon,
-  Copy, ChevronDown, LayoutGrid, Loader2,
+  Copy, ChevronDown, Loader2,
   Eye,
   Plus
 } from "lucide-react"
@@ -16,14 +16,14 @@ import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Card, CardContent } from "@/components/ui/card"
-import { MagnetPreviewDialog } from '@/components/magnet/magnet-preview-dialog';
+import { MagnetPreviewDialog } from '@/components/magnet/magnet-preview-dialog'
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { TorrentSearchResult } from '@/lib/scrapers/interface'
 import { useLoading } from '@/contexts/loading-context'

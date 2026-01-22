@@ -1,4 +1,3 @@
-import { Download } from 'lucide-react';
 import { Magnet, MovieDetail } from '@/types/javbus';
 import { getMovieDetail, getMovieMagnets } from '@/lib/javbus/javbus-parser';
 import { extractBestMagnet } from '@/lib/download/download-processor';
@@ -17,8 +16,7 @@ export async function taskMovieUpdate() {
         status: MovieStatus.subscribed
       }
     });
-
-
+    // 检查订阅下载条件 /是否为高清/是否为中文字幕
     let mustRules: ('isHD' | 'hasSubtitle')[] = [];
     const downloadRuleConfig = await getSetting(SettingKey.DownloadRuleConfig);
     const config = downloadRuleConfig
@@ -45,7 +43,7 @@ export async function taskMovieUpdate() {
         }
         if (!movieDetail.uc || !movieDetail.gid) {
           logger.info(`无法获取影片 ${subscribeMovie.number} 的详情 (gid/uc)，跳过。`);
-          continue; // continue 会直接开始下一次循环
+          continue;
         }
         // 2. 获取所有磁力链接
         let magnets: Magnet[] = await getMovieMagnets({
@@ -66,28 +64,33 @@ export async function taskMovieUpdate() {
         }
         // 根据当前 magnets 提取最佳磁力链接
         // 筛选出不是亚博/等乱七八糟的影片
-        magnets = magnets.filter(magnet => 
-          magnet.title !==`${subscribeMovie.number.toLowerCase()}ch`  
-          ||magnet.title !==`${subscribeMovie.number}ch` 
+        magnets = magnets.filter(magnet =>
+          magnet.title !== `${subscribeMovie.number.toLowerCase()}ch`
+          || magnet.title !== `${subscribeMovie.number}ch`
           // ![`${subscribeMovie.number}C`].includes(magnet.title)
         );
-        
+
         const bestMagnet = extractBestMagnet(movieDetail.id, ['hasSubtitle', 'isHD'], ['uncensored', 'hasSubtitle', 'isHD', 'numberSize'], magnets);
         // 5. 准备并发送下载请求
         if (bestMagnet) {
+          let images;
+          if ((movieDetail as MovieDetail)?.samples) {
+            images = [subscribeMovie.poster, subscribeMovie.cover, ...(subscribeMovie as unknown as MovieDetail)?.samples.map((img) => img.src)]
+          } else {
+            images = [subscribeMovie.poster, subscribeMovie.cover,]
+          }
           const requestBody = new FormData();
           requestBody.append('downloadURLs', JSON.stringify([bestMagnet.link]));
           requestBody.append('downloadImmediately', 'true');
-          const movieData: any = subscribeMovie
-          movieData.type = 'jav'
-          requestBody.append('movie', JSON.stringify(movieData))
-          const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-          const response = await fetch(`${appUrl}/api/download`, {
+          requestBody.append('title', movieDetail.title || subscribeMovie.title);
+          requestBody.append('images', JSON.stringify(images))
+          // const movieData: any = subscribeMovie
+          requestBody.append('movieId', subscribeMovie.id)
+          const response = await fetch('http://localhost:3000/api/download', {
             method: 'POST',
             body: requestBody
           });
           if (response.ok) {
-            logger.info(await response.json());
             logger.info(`已成功为影片 ${subscribeMovie.number} 发送下载请求。`);
             successMovies.push(subscribeMovie);
             await prisma.movie.update({
@@ -123,9 +126,6 @@ export async function taskMovieUpdate() {
         await pushService.sendTaskNotification(taskName, 'success', `成功处理 ${successMovies.length} 部影片。\n\n处理详情:\n${successMovies.map(movie => `• ${movie.number}`).join('\n')}`);
       }
     }
-    // if (pushService) {
-    //   await pushService.sendTaskNotification(taskName, 'failed', `错误详情: ${errorMessage}`);
-    // }
   }
 }
 
