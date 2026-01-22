@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { Prisma } from '@prisma/client';
-import { getMovieDetail } from '@/lib/javbus/javbus-parser';
+import { getMovieDetail, getMovieMagnets } from '@/lib/javbus/javbus-parser';
+import { Magnet } from '@/types/javbus';
 
 // 根据 subscribe 进行订阅
 export async function POST(
@@ -46,8 +47,8 @@ export async function PUT(
     logger.info(`找到 ${nullDetailMovies.length} 部没有详情的影片`);
 
     // 并发请求配置
-    const BATCH_SIZE = 3; // 每批并发数
-    const DELAY_MS = 500; // 每批之间的延迟（毫秒）
+    const BATCH_SIZE = 2; // 每批并发数
+    const DELAY_MS = 1000; // 每批之间的延迟（毫秒）
 
     // 将电影列表分批
     const batches = [];
@@ -69,11 +70,19 @@ export async function PUT(
         batch.map(async (movie: { number: string; id: any; }) => {
           try {
             const movieDetail = await getMovieDetail(movie.number);
+            const magnets: Magnet[] = await getMovieMagnets({
+              movieId: id,
+              gid: movieDetail.gid!,
+              uc: movieDetail.uc!,
+              sortBy: 'date',
+              sortOrder: 'desc'
+            });
             await prisma.movie.update({
               where: { id: movie.id },
               data: {
                 detail: movieDetail as unknown as Prisma.InputJsonValue,
-                cover: movieDetail.img
+                cover: movieDetail.img,
+                magnets:magnets
               }
             });
             logger.info(`✓ ${movie.number} 详情获取成功`);
