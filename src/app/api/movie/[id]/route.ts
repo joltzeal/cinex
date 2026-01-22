@@ -13,7 +13,7 @@ export async function GET(
 ) {
   try {
     const id = (await params).id.toUpperCase();
-    // const { id } = await params;
+    
     if (!id) {
       return NextResponse.json(
         { error: 'Movie ID is required' },

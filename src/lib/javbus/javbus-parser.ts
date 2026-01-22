@@ -287,9 +287,19 @@ export async function getMovieMagnets({
   }
 
   if (source.includes('javdb')) {
-    const javdbMagnets = await getJavdbMagnetLinks(movieId);
-    if (javdbMagnets) {
-      magnets = mergeMagnetArrays(magnets, javdbMagnets);
+    try {
+      const javdbMagnets = await getJavdbMagnetLinks(movieId);
+      if (javdbMagnets) {
+        magnets = mergeMagnetArrays(magnets, javdbMagnets);
+      }
+    } catch (error) {
+      // Check if it's a 403 error
+      if (error instanceof Error && error.message.includes('403')) {
+        console.log(`[JAVDB] 403 Forbidden error when fetching magnets for ${movieId}`);
+      } else {
+        // Re-throw other errors
+        throw error;
+      }
     }
   }
 

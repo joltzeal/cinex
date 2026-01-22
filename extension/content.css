@@ -1,0 +1,1140 @@
+/* Highlight style for matched codes */
+.cinex-code-highlight {
+  background-color: #fef3c7;
+  border-bottom: 2px solid #f59e0b;
+  padding: 2px 4px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  color: #92400e;
+}
+
+.cinex-code-highlight:hover {
+  background-color: #fde68a;
+  border-bottom-color: #d97706;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Hover card container */
+.cinex-hover-card {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  z-index: 999999;
+  min-width: 80vw;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: hidden;
+  animation: cinex-fadeIn 0.2s ease-out;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scroll container for card content */
+.cinex-card-scroll-container {
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overscroll-behavior: contain;
+}
+
+@keyframes cinex-fadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* Close button */
+.cinex-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  color: white;
+}
+
+.cinex-close-btn:hover {
+  background: rgba(0, 0, 0, 0.7);
+  transform: scale(1.1);
+}
+
+/* Loading state */
+.cinex-card-loading {
+  padding: 48px 24px;
+  text-align: center;
+  color: #6b7280;
+}
+
+.cinex-spinner {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 16px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: cinex-spin 0.8s linear infinite;
+}
+
+@keyframes cinex-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cinex-card-loading p {
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Error state */
+.cinex-card-error {
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.cinex-error-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #dc2626;
+  margin: 0 0 8px 0;
+}
+
+.cinex-error-message {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* Banner section */
+.cinex-card-banner {
+  position: relative;
+  height: 500px;
+  min-height: 500px; /* 防止被挤压 */
+  flex-shrink: 0; /* 防止flex布局中被压缩 */
+  width: 100%;
+  overflow: hidden;
+  background: #000;
+}
+
+.cinex-banner-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  transition: transform 0.7s ease-out;
+}
+
+.cinex-card-banner:hover .cinex-banner-img {
+  transform: scale(1.05);
+}
+
+.cinex-banner-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.cinex-banner-gradient {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 75%;
+  background: linear-gradient(to top, white, rgba(255, 255, 255, 0.8), transparent);
+  pointer-events: none;
+}
+
+/* Additional gradient layer for better edge blending */
+.cinex-banner-gradient::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 96px;
+  background: linear-gradient(to top, white, transparent);
+}
+
+.cinex-banner-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  padding: 48px;
+  gap: 32px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.cinex-banner-poster {
+  flex-shrink: 0;
+  width: 340px;
+  aspect-ratio: 800/538;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: transform 0.5s ease;
+}
+
+.cinex-banner-poster:hover {
+  transform: translateY(-4px);
+}
+
+.cinex-banner-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cinex-banner-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.cinex-banner-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cinex-banner-title {
+  font-size: 36px;
+  font-weight: 800;
+  color: #111827;
+  margin: 0;
+  line-height: 1.2;
+  text-shadow: 0 2px 4px rgba(255, 255, 255, 0.5);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cinex-banner-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Badges */
+.cinex-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 6px;
+  background: rgba(243, 244, 246, 0.9);
+  color: #4b5563;
+  white-space: nowrap;
+  backdrop-filter: blur(10px);
+}
+
+.cinex-badge-primary {
+  background: rgba(219, 234, 254, 0.9);
+  color: #1e40af;
+  font-weight: 600;
+  font-family: monospace;
+  font-size: 16px;
+  letter-spacing: 1px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cinex-badge-primary:hover {
+  background: rgba(191, 219, 254, 1);
+  transform: scale(1.02);
+}
+
+.cinex-badge-outline {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cinex-badge-outline:hover {
+  background: rgba(249, 250, 251, 1);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Card body */
+.cinex-card-body {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 32px;
+  padding: 32px 48px 48px;
+  max-width: 1400px;
+  margin: 0 auto;
+  position: relative;
+  margin-top: -32px;
+  z-index: 10;
+}
+
+.cinex-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  min-width: 0; /* 允许内容收缩 */
+  overflow: hidden; /* 防止内容溢出 */
+}
+
+/* Stars container */
+.cinex-stars-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.cinex-stars-hidden {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.cinex-tag-expand {
+  cursor: pointer;
+  background: #dbeafe !important;
+  color: #1e40af !important;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.cinex-tag-expand:hover {
+  background: #bfdbfe !important;
+  transform: scale(1.05);
+}
+
+/* Magnet section */
+.cinex-magnet-section {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cinex-magnet-table-container {
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+.cinex-magnet-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: fixed; /* 固定表格布局 */
+}
+
+.cinex-magnet-table thead {
+  position: sticky;
+  top: 0;
+  background: rgba(249, 250, 251, 0.95);
+  backdrop-filter: blur(8px);
+  z-index: 1;
+}
+
+.cinex-magnet-table th {
+  padding: 12px 8px;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 2px solid #e5e7eb;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cinex-magnet-table th:first-child {
+  width: auto; /* 标题列使用剩余空间 */
+}
+
+.cinex-magnet-size-col {
+  width: 80px;
+  text-align: right !important;
+}
+
+.cinex-magnet-action-col {
+  width: 60px;
+  text-align: center !important;
+}
+
+.cinex-magnet-table tbody tr {
+  border-bottom: 1px solid #f3f4f6;
+  transition: background-color 0.2s ease;
+}
+
+.cinex-magnet-table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+.cinex-magnet-table td {
+  padding: 10px 8px;
+  overflow: hidden; /* 防止内容溢出 */
+}
+
+.cinex-magnet-title-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0; /* 允许flex子元素收缩 */
+  overflow: hidden; /* 防止内容溢出 */
+}
+
+.cinex-magnet-badges {
+  display: flex;
+  gap: 4px;
+}
+
+.cinex-magnet-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cinex-magnet-hd {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.cinex-magnet-subtitle {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.cinex-magnet-title {
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.cinex-magnet-size-cell {
+  color: #6b7280;
+  font-weight: 500;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.cinex-magnet-action-cell {
+  text-align: center;
+}
+
+.cinex-magnet-copy {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  color: #6b7280;
+}
+
+.cinex-magnet-copy:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  color: #374151;
+  transform: scale(1.1);
+}
+
+.cinex-magnet-table-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.cinex-magnet-table-container::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 3px;
+}
+
+.cinex-magnet-table-container::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+.cinex-magnet-table-container::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Info grid */
+.cinex-info-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  padding: 24px;
+  background: rgba(249, 250, 251, 0.4);
+  border: 1px solid rgba(229, 231, 235, 0.5);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.cinex-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0; /* 允许内容收缩 */
+}
+
+.cinex-info-item-wide {
+  grid-column: span 2;
+}
+
+.cinex-info-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cinex-info-label svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0; /* 防止图标被压缩 */
+}
+
+.cinex-info-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Card sections */
+.cinex-card-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0; /* 允许内容收缩 */
+  overflow: hidden; /* 防止内容溢出 */
+}
+
+.cinex-section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cinex-section-title svg {
+  width: 16px;
+  height: 16px;
+  color: #3b82f6;
+}
+
+/* Tags */
+.cinex-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.cinex-tag {
+  display: inline-block;
+  padding: 8px 12px;
+  font-size: 14px;
+  background: #f3f4f6;
+  color: #374151;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.cinex-tag:hover {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+/* Sample images */
+.cinex-samples {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding: 16px;
+  background: rgba(249, 250, 251, 0.3);
+  border: 1px solid rgba(229, 231, 235, 0.5);
+  border-radius: 12px;
+  width: 100%; /* 确保容器宽度为100% */
+  max-width: 100%; /* 防止超出父容器 */
+  box-sizing: border-box; /* 包含padding和border在宽度内 */
+}
+
+.cinex-samples::-webkit-scrollbar {
+  height: 8px;
+}
+
+.cinex-samples::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 4px;
+}
+
+.cinex-samples::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+.cinex-samples::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+.cinex-sample-img {
+  flex-shrink: 0;
+  height: 208px;
+  width: auto;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.cinex-sample-img:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  border-color: #3b82f6;
+}
+
+/* Sidebar */
+.cinex-card-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-top: 0;
+  min-width: 380px; /* 确保侧边栏有最小宽度 */
+  flex-shrink: 0; /* 防止侧边栏被压缩 */
+}
+
+.cinex-sidebar-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.cinex-sidebar-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.cinex-sidebar-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+  background: rgba(249, 250, 251, 0.5);
+}
+
+.cinex-sidebar-content {
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cinex-sidebar-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  transition: all 0.2s ease;
+}
+
+.cinex-sidebar-label {
+  font-size: 14px;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 400;
+}
+
+.cinex-sidebar-label svg {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+}
+
+.cinex-sidebar-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+  text-align: right;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.cinex-sidebar-value:hover {
+  color: #3b82f6;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Scrollbar styling */
+.cinex-card-scroll-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.cinex-card-scroll-container::-webkit-scrollbar-track {
+  background: #f3f4f6;
+}
+
+.cinex-card-scroll-container::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+.cinex-card-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Action buttons */
+.cinex-action-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.cinex-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.cinex-action-btn-default {
+  background: #3b82f6;
+  color: white;
+}
+
+.cinex-action-btn-default:hover {
+  background: #2563eb;
+}
+
+.cinex-action-btn-destructive {
+  background: #ef4444;
+  color: white;
+}
+
+.cinex-action-btn-destructive:hover {
+  background: #dc2626;
+}
+
+.cinex-action-btn-secondary {
+  background: #6b7280;
+  color: white;
+  cursor: not-allowed;
+}
+
+.cinex-action-btn-success {
+  background: #10b981;
+  color: white;
+  cursor: default;
+}
+
+.cinex-action-btn-outline {
+  background: white;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+}
+
+.cinex-action-btn-outline:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+/* Review form */
+.cinex-review-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.cinex-review-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cinex-review-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.cinex-rating-container {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.cinex-rating-star {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  transition: all 0.2s ease;
+  color: #d1d5db;
+}
+
+.cinex-rating-star svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+  stroke: currentColor;
+}
+
+.cinex-rating-star:hover,
+.cinex-rating-star.active {
+  color: #fbbf24;
+  transform: scale(1.1);
+}
+
+.cinex-rating-text {
+  text-align: center;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.cinex-review-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  resize: vertical;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.cinex-review-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.cinex-tags-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: white;
+}
+
+.cinex-tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cinex-review-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: #eff6ff;
+  color: #1e40af;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.cinex-tag-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1e40af;
+  transition: all 0.2s ease;
+}
+
+.cinex-tag-remove:hover {
+  color: #1e3a8a;
+  transform: scale(1.1);
+}
+
+.cinex-tag-input {
+  border: none;
+  outline: none;
+  padding: 6px 0;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.cinex-tag-input::placeholder {
+  color: #9ca3af;
+}
+
+.cinex-review-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.cinex-review-actions .cinex-action-btn {
+  flex: 0 0 auto;
+  min-width: 80px;
+}
+
+/* Scrollbar styling */
+.cinex-card-scroll-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.cinex-card-scroll-container::-webkit-scrollbar-track {
+  background: #f3f4f6;
+}
+
+.cinex-card-scroll-container::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+.cinex-card-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .cinex-hover-card {
+    min-width: 95vw;
+  }
+
+  .cinex-card-body {
+    grid-template-columns: 1fr;
+    padding: 24px;
+  }
+
+  .cinex-banner-content {
+    padding: 24px;
+    gap: 16px;
+  }
+
+  .cinex-banner-poster {
+    width: 200px;
+  }
+
+  .cinex-banner-title {
+    font-size: 24px;
+  }
+
+  .cinex-info-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .cinex-banner-content {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .cinex-banner-poster {
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .cinex-banner-info {
+    text-align: center;
+    align-items: center;
+  }
+
+  .cinex-banner-title {
+    font-size: 20px;
+  }
+
+  .cinex-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cinex-info-item-wide {
+    grid-column: span 1;
+  }
+}
+
+/* Ensure sidebar is always visible on larger screens */
+@media (min-width: 1025px) {
+  .cinex-card-body {
+    grid-template-columns: 1fr 380px;
+  }
+}
+
+/* Image preview modal */
+.cinex-image-preview-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 9999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: cinex-fadeIn 0.2s ease-out;
+}
+
+.cinex-image-preview-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cinex-image-preview-img {
+  max-width: 100%;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.cinex-image-preview-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  color: white;
+  backdrop-filter: blur(10px);
+}
+
+.cinex-image-preview-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: scale(1.1);
+}
+
+.cinex-image-preview-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  color: white;
+  backdrop-filter: blur(10px);
+}
+
+.cinex-image-preview-nav:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.cinex-image-preview-nav.prev {
+  left: 20px;
+}
+
+.cinex-image-preview-nav.next {
+  right: 20px;
+}
+
+.cinex-image-preview-counter {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+}

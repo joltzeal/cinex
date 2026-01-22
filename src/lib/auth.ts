@@ -11,6 +11,10 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true
   },
+  trustedOrigins: [
+    'chrome-extension://*',
+    'moz-extension://*'
+  ],
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
       // 只拦截注册请求
