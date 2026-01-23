@@ -572,53 +572,94 @@ const MovieInfoGrid = ({ movieDetail }: { movieDetail: MovieDetail }) => {
 };
 
 const ReviewCard = ({ data }: { data: Movie }) => {
-  // 解构数据，提供默认值防止解构 undefined 报错
   const { rating, comment, tags } = data || {};
 
-  // 1. 如果所有内容都为空，则不渲染组件
-  if ((rating === null || rating === undefined || rating === "0") && !comment && (!tags || (tags as string[]).length === 0)) {
+  // 辅助判断函数：让逻辑更清晰
+  const hasRating = rating !== null && rating !== undefined && rating !== "0";
+  const hasComment = comment && comment.trim().length > 0;
+  const hasTags = tags && Array.isArray(tags) && tags.length > 0;
+
+  // 1. 全局拦截：如果三个属性真的全都是空的，则彻底不渲染组件
+  if (!hasRating && !hasComment && !hasTags) {
     return null;
   }
 
+  // 通用的 Label 样式组件，保持统一样式
+  const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+    <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-2">
+      {children}
+    </h2>
+  );
+
+  // 通用的空状态文字样式
+  const EmptyStateText = ({ text }: { text: string }) => (
+    <span className="text-sm text-slate-400 italic bg-slate-50 px-2 py-1 rounded">
+      {text}
+    </span>
+  );
+
   return (
-    <div className="w-full bg-card/40 border-border/50  rounded-xl border p-6 backdrop-blur-sm ">
+    <div className="w-full bg-white/60 dark:bg-card/40 border border-slate-200 dark:border-border/50 rounded-xl p-6 shadow-sm backdrop-blur-md transition-all hover:shadow-md">
+      
+      <div className="flex flex-col gap-6">
+        
+        {/* 第一行：评分与标签 (并排展示以节省空间，移动端自动换行) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 border-b border-slate-100 pb-5">
+          
+          {/* 区域 1: 评分 */}
+          <div className="flex flex-col items-start">
+            <SectionLabel>评分 / Rating</SectionLabel>
+            {hasRating ? (
+              <div className="flex items-center gap-2">
+                <Rating readOnly={true} defaultValue={parseInt(rating as string)}>
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <RatingButton key={index} className="text-yellow-500 w-5 h-5" />
+                  ))}
+                </Rating>
+                <span className="text-sm font-bold text-slate-700 ml-1">{rating} 分</span>
+              </div>
+            ) : (
+              <EmptyStateText text="暂无评分" />
+            )}
+          </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr_auto] gap-6 items-start sm:items-center">
-
-        {/* 左侧：评分区域 (仅在 star 有值时显示) */}
-        {(rating !== null && rating !== undefined && rating !== "0") && (
-          <Rating
-            readOnly={true}
-            defaultValue={parseInt(rating)}
-          >
-            {Array.from({ length: 5 }).map((_, index) => (
-              <RatingButton className='text-yellow-500' key={index} />
-            ))}
-          </Rating>
-        )}
-
-        {/* 中间：评论内容 */}
-        <div className="min-w-0">
-          {comment ? (
-            <p className="text-base text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
-              {comment}
-            </p>
-          ) : (
-            // 如果只有评分没有评论，可以留空或显示占位
-            null
-          )}
+          {/* 区域 2: 标签 */}
+          <div className="flex flex-col items-start sm:items-end">
+            <SectionLabel>标签 / Tags</SectionLabel>
+            {hasTags ? (
+              <div className="flex flex-wrap gap-2 sm:justify-end">
+                {(tags as string[]).map((tag, index) => (
+                  <Badge 
+                    key={index} 
+                    variant="secondary" // 假设你的 Badge 有 variant
+                    className="px-2.5 py-0.5 text-xs font-medium  hover:bg-blue-100 border-transparent"
+                  >
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <EmptyStateText text="未添加标签" />
+            )}
+          </div>
         </div>
 
-        {/* 右侧：标签区域 (仅在 tags 有值时显示) */}
-        {tags && (tags as string[]).length > 0 && (
-          <div className="flex flex-wrap gap-2 sm:justify-end sm:border-l border-slate-100 sm:pl-6 border-t sm:border-t-0 pt-4 sm:pt-0 sm:max-w-[300px]">
-            {(tags as string[]).map((tag, index) => (
-              <Badge key={index} className="justify-center h-auto py-1 px-3 whitespace-normal text-center">
-                {tag}
-              </Badge>
-            ))}
+        {/* 第二行：评论内容 */}
+        <div className="flex flex-col">
+          <SectionLabel>评论 / Review</SectionLabel>
+          <div className="min-h-[2rem]"> {/* 给一个最小高度防止布局跳动 */}
+            {hasComment ? (
+              <div className=" p-3 rounded-lg border ">
+                <p className="text-sm sm:text-base leading-7 whitespace-pre-wrap break-words font-normal">
+                  {comment}
+                </p>
+              </div>
+            ) : (
+              <EmptyStateText text="未填写文字评论" />
+            )}
           </div>
-        )}
+        </div>
+
       </div>
     </div>
   );
@@ -654,8 +695,9 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
             {/* --- Left Column: Main Content (8 cols) --- */}
             <main className='space-y-8 lg:col-span-8'>
               {/* Basic Info Grid */}
-              <ReviewCard data={{ ...movie, ...reviewData }} />
+              
               <MovieInfoGrid movieDetail={movieDetail} />
+              <ReviewCard data={{ ...movie, ...reviewData }} />
 
 
               {/* Genres */}
@@ -779,6 +821,16 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
                               '_blank'
                             );
                           }}
+                        >
+                          <PlayCircle className='ml-2 h-4 w-4' />
+                          已入库
+                        </Button>
+                      )}
+                    {movie.status === 'added' && (
+                        <Button
+                          variant='default'
+                          className='cursor-pointer'
+                          disabled={true}
                         >
                           <PlayCircle className='ml-2 h-4 w-4' />
                           已入库

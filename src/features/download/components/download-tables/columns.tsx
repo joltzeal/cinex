@@ -33,6 +33,7 @@ export const columns: ColumnDef<DocumentWithURLs>[] = [
   {
     accessorKey: "images",
     header: "预览图",
+    size:90,
     cell: ({ row }) => {
       const images = row.original.images;
       const proxyImages = images.map((image) => {
@@ -41,7 +42,9 @@ export const columns: ColumnDef<DocumentWithURLs>[] = [
         }
         return image;
       });
-      return <div className="w-16 h-16"><FullScreenImagePreview images={proxyImages} alt={row.original.title} /></div>;
+      return <div className="w-full flex items-center justify-center">
+        <div ><FullScreenImagePreview images={proxyImages} alt={row.original.title} /></div>
+      </div>
     },
   },
   {
@@ -52,11 +55,25 @@ export const columns: ColumnDef<DocumentWithURLs>[] = [
     },
   },
   {
+    accessorKey: "description",
+    header: "描述",
+    cell: ({ row }) => {
+      return <div className="w-100">
+        {
+          row.original.description ? <div className="font-medium truncate w-150">{row.original.description}</div> : <p class="text-sm text-gray-400 tracking-widest select-none">
+  —
+</p>
+        }
+        
+      </div>;
+    },
+  },
+  {
     accessorKey: "downloadURLs",
     header: "下载状态",
     cell: ({ row }) => {
       // 3. 使用新的进度条组件
-      return <DownloadProgressCell  urls={row.original.downloadURLs} />;
+      return <DownloadProgressCell urls={row.original.downloadURLs} />;
     },
   },
   {

@@ -20,7 +20,7 @@ type SafeImageProps = {
 export default function SafeImage({
   src,
   alt,
-  className = "w-16 h-16 object-cover rounded-md",
+  className = "w-24 h-24 object-cover rounded-md",
   fallbackText = "加载失败",
   fallbackIcon,
 }: SafeImageProps) {
@@ -64,7 +64,7 @@ export function FullScreenImagePreview({ images, alt }: FullScreenImagePreviewPr
   // 2. 如果没有图片，显示占位符
   if (!images || images.length === 0) {
     return (
-      <div className="w-16 h-16 bg-muted rounded-md flex items-center justify-center text-xs text-muted-foreground">
+      <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center text-xs text-muted-foreground">
         无图
       </div>
     );
@@ -77,10 +77,10 @@ export function FullScreenImagePreview({ images, alt }: FullScreenImagePreviewPr
   return (
     <>
       <div
-        className="relative w-16 h-16 cursor-pointer hover:opacity-80 transition-opacity group flex items-center justify-center"
+        className="relative w-24 h-24 cursor-pointer hover:opacity-80 transition-opacity group flex items-center justify-center"
         onClick={() => setOpen(true)}
       >
-        <SafeImage src={firstImage} alt={alt} className="w-16 h-16 object-cover rounded-md" />
+        <SafeImage src={firstImage} alt={alt} className="w-24 h-24 object-cover rounded-md" />
         {images.length > 1 && (
           <div className="absolute top-1 right-1 bg-black bg-opacity-60 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
             {images.length}
