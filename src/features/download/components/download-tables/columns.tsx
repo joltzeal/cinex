@@ -60,7 +60,7 @@ export const columns: ColumnDef<DocumentWithURLs>[] = [
     cell: ({ row }) => {
       return <div className="w-100">
         {
-          row.original.description ? <div className="font-medium truncate w-150">{row.original.description}</div> : <p class="text-sm text-gray-400 tracking-widest select-none">
+          row.original.description ? <div className="font-medium truncate w-150">{row.original.description}</div> : <p className="text-sm text-gray-400 tracking-widest select-none">
   —
 </p>
         }
