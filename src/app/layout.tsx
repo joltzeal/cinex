@@ -33,6 +33,7 @@ export default async function RootLayout({
   return (
     <html lang='en' suppressHydrationWarning>
       <head>
+        <script src="//open.thunderurl.com/thunder-link.js"></script>
         <script
           dangerouslySetInnerHTML={{
             __html: `

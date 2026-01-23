@@ -811,7 +811,7 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
                     )}
                     {movie.status === 'added' &&
                       mediaServer?.publicAddress &&
-                      movie.mediaLibrary && (
+                      movie.mediaLibrary ? (
                         <Button
                           variant='default'
                           className='cursor-pointer'
@@ -825,17 +825,14 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
                           <PlayCircle className='ml-2 h-4 w-4' />
                           已入库
                         </Button>
-                      )}
-                    {movie.status === 'added' && (
-                        <Button
+                      ):<Button
                           variant='default'
                           className='cursor-pointer'
                           disabled={true}
                         >
                           <PlayCircle className='ml-2 h-4 w-4' />
                           已入库
-                        </Button>
-                      )}
+                        </Button>}
                     {movie.status === 'subscribed' && (
                       <Button
                         variant='destructive'
