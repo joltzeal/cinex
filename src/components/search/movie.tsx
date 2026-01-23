@@ -3,6 +3,8 @@ import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
 import { useLoading } from "@/contexts/loading-context";
 import { useRouter } from "next/navigation";
+import { Rating, RatingButton } from '@/components/ui/shadcn-io/rating';
+
 import {
   BookText,
   Building,
@@ -59,6 +61,11 @@ const useMovie = (movie: Movie) => {
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
   // const { showLoader, hideLoader, updateLoadingMessage } = useLoading();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [reviewData, setReviewData] = useState({
+    rating: movie.rating,
+    comment: movie.comment,
+    tags: movie.tags
+  });
   const movieDetail = useMemo(() => {
     const detail = (movie.detail as any) || {};
     const magnets = (movie.magnets as any) || [];
@@ -212,6 +219,16 @@ const useMovie = (movie: Movie) => {
       const result = await response.json();
       if (result.success) {
         toast.success('提交评价成功');
+        // 更新 movie 对象中的评价数据
+        movie.rating = data.rating;
+        movie.comment = data.comment;
+        movie.tags = data.tags as any;
+        // 更新状态以触发重新渲染
+        setReviewData({
+          rating: data.rating,
+          comment: data.comment,
+          tags: data.tags as any
+        });
       } else {
         toast.error('提交评价失败');
       }
@@ -266,7 +283,7 @@ const useMovie = (movie: Movie) => {
     handleDownloadMagnet,
     handleSubmitReview,
     handleUnSubscribeMovie,
-
+    reviewData,
   };
 };
 
@@ -496,9 +513,9 @@ const MagnetSection = ({ magnets, isSubmitting, movie, onMagnetDownload }: any) 
                               <LoaderCircle className='h-4 w-4 animate-spin' />
                             ) : isSubmitting ? (
                               <LoaderCircle className='h-4 w-4 animate-spin' />
-                            ) :<Download className='h-4 w-4' />
+                            ) : <Download className='h-4 w-4' />
                           }
-                          
+
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -524,7 +541,7 @@ const MagnetSection = ({ magnets, isSubmitting, movie, onMagnetDownload }: any) 
   );
 };
 // --- 子组件: 详细信息卡片 ---
-const MovieInfoGrid = ({ movieDetail }: any) => {
+const MovieInfoGrid = ({ movieDetail }: { movieDetail: MovieDetail }) => {
   if (!movieDetail) return null;
   return (
     <div className='bg-card/40 border-border/50 grid grid-cols-2 gap-4 rounded-xl border p-6 backdrop-blur-sm md:grid-cols-4'>
@@ -553,6 +570,59 @@ const MovieInfoGrid = ({ movieDetail }: any) => {
     </div>
   );
 };
+
+const ReviewCard = ({ data }: { data: Movie }) => {
+  // 解构数据，提供默认值防止解构 undefined 报错
+  const { rating, comment, tags } = data || {};
+
+  // 1. 如果所有内容都为空，则不渲染组件
+  if ((rating === null || rating === undefined || rating === "0") && !comment && (!tags || (tags as string[]).length === 0)) {
+    return null;
+  }
+
+  return (
+    <div className="w-full bg-card/40 border-border/50  rounded-xl border p-6 backdrop-blur-sm ">
+
+      <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr_auto] gap-6 items-start sm:items-center">
+
+        {/* 左侧：评分区域 (仅在 star 有值时显示) */}
+        {(rating !== null && rating !== undefined && rating !== "0") && (
+          <Rating
+            readOnly={true}
+            defaultValue={parseInt(rating)}
+          >
+            {Array.from({ length: 5 }).map((_, index) => (
+              <RatingButton className='text-yellow-500' key={index} />
+            ))}
+          </Rating>
+        )}
+
+        {/* 中间：评论内容 */}
+        <div className="min-w-0">
+          {comment ? (
+            <p className="text-base text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
+              {comment}
+            </p>
+          ) : (
+            // 如果只有评分没有评论，可以留空或显示占位
+            null
+          )}
+        </div>
+
+        {/* 右侧：标签区域 (仅在 tags 有值时显示) */}
+        {tags && (tags as string[]).length > 0 && (
+          <div className="flex flex-wrap gap-2 sm:justify-end sm:border-l border-slate-100 sm:pl-6 border-t sm:border-t-0 pt-4 sm:pt-0 sm:max-w-[300px]">
+            {(tags as string[]).map((tag, index) => (
+              <Badge key={index} className="justify-center h-auto py-1 px-3 whitespace-normal text-center">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
   const {
     movieDetail,
@@ -565,7 +635,8 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
     handleSubmitReview,
     isReviewDialogOpen,
     setIsReviewDialogOpen,
-    handleUnSubscribeMovie
+    handleUnSubscribeMovie,
+    reviewData
   } = useMovie(movie);
   const mediaServer = useMediaServer();
   const { open, images, initialIndex, openPreview, setOpen } =
@@ -583,7 +654,9 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
             {/* --- Left Column: Main Content (8 cols) --- */}
             <main className='space-y-8 lg:col-span-8'>
               {/* Basic Info Grid */}
+              <ReviewCard data={{ ...movie, ...reviewData }} />
               <MovieInfoGrid movieDetail={movieDetail} />
+
 
               {/* Genres */}
               <section>
@@ -821,9 +894,9 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
       />
       <MovieReviewDialog
         review={{
-          rating: movie.rating ? movie.rating : '0',
-          comment: movie.comment ?? '',
-          tags: movie.tags ? (movie.tags as unknown as string[]) : []
+          rating: reviewData.rating ? reviewData.rating : '0',
+          comment: reviewData.comment ?? '',
+          tags: reviewData.tags ? (reviewData.tags as unknown as string[]) : []
         }}
         isOpen={isReviewDialogOpen}
         onClose={() => setIsReviewDialogOpen(false)}
