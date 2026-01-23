@@ -9,9 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DocumentDownloadStatus } from "@prisma/client";
 import { useDebouncedCallback } from 'use-debounce';
-import { SubscribeMovieStatusMap } from "@/constants/data";
 
 const statusMap = {
   undownload: "未下载",

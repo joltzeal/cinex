@@ -41,12 +41,8 @@ export async function getDocuments({
           },
         },
       }),
-      ...(type && {
-        downloadURLs: {
-          some: {
-            type: type,
-          },
-        },
+      ...(type && type !== 'all' && {
+        movieId: type === 'movie' ? { not: null } : null,
       }),
     };
 
@@ -68,7 +64,7 @@ export async function getDocuments({
     const pageCount = Math.ceil(totalCount / pageSize);
 
     // TypeScript 现在知道 documents 是 DocumentWithURLs[] 类型
-    return { documents, pageCount, totalCount }; 
+    return { documents, pageCount, totalCount };
   } catch (error) {
     console.error("Failed to fetch documents:", error);
     return { documents: [], pageCount: 0, totalCount: 0 };

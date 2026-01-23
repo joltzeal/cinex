@@ -26,8 +26,8 @@ export default async function Page({ searchParams }: PageProps) {
       <div className='flex flex-1 flex-col space-y-4'>
         <div className='flex items-start justify-between'>
           <Heading
-            title='Download Board'
-            description='Manage Download Tasks'
+            title='下载计划'
+            description='在这里查看或者控制你的下载计划'
           />
           <CreateDocumentDialog></CreateDocumentDialog>
         </div>
