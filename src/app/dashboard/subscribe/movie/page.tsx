@@ -57,9 +57,11 @@ export default async function Page(props: pageProps) {
   });
 
   const libraryMovieList = await getSubscribeMovieList({
-    where: {
-      status: MovieStatus.added
-    },
+    // where: {
+    //   status: {
+    //     notIn: [MovieStatus.uncheck]
+    //   }
+    // },
     orderBy: {
       date: 'desc'
     }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { proxyRequest } from '@/lib/proxyFetch';
+import { proxyRequest, curlRequest } from '@/lib/proxyFetch';
 import {
   ARANKINGS_CCESS_DENIED_MESSAGE,
   RANKINGS_CACHE_DURATION_MS,
@@ -11,7 +11,7 @@ import { parseOnejavVideoList } from '@/lib/rankings/onejav';
 import { parseVideoList } from '@/lib/javdb/javdb-parser';
 import { VideoInfo } from '@/types/javdb';
 import { prisma } from '@/lib/prisma';
-import { logger } from '@/lib/logger';
+
 function ip6SafeRegex(): RegExp {
   // 参考多段组合写法，覆盖 8 组、压缩、尾部省略、多种展开
   const part = "[A-Fa-f0-9]{1,4}";
@@ -149,7 +149,7 @@ async function getCachedData(
       { headers: { 'X-Cache': 'MISS' } }
     );
   } catch (error) {
-    
+
     // Handle specific, known errors from the fetcher
     if (error instanceof AccessDeniedError) {
       return NextResponse.json(
@@ -218,27 +218,81 @@ export async function GET(req: NextRequest) {
   // --- Avfan Branch ---
   else if (website === 'avfan') {
     const cacheKey = `avfan:${period}`;
+    console.log(`https://avfan.com/zh-CN/rankings/fanza_ranking?t=${period}`);
     return getCachedData(cacheKey, async () => {
-      const response = await proxyRequest(
-        
-        `https://avfan.com/zh-CN/rankings/fanza_ranking?t=${period}`,
-        {
-          method: 'GET',
-          headers: {
-            'User-Agent': USER_AGENT,
-            'accept-language': 'zh-CN,zh;q=0.9'
+      const url = `${RANKINGS_JAVDB_BASE_URL}?p=${period}&t=censored`;
+      console.log(url);
+
+
+      try {
+        const response = await curlRequest(
+          `https://avfan.com/zh-CN/rankings/fanza_ranking?t=${period}`,
+          {
+            method: 'GET',
+            headers: {
+              'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+              'accept-language': 'zh,en-US;q=0.9,en;q=0.8,zh-CN;q=0.7',
+              'cache-control': 'no-cache',
+              'pragma': 'no-cache',
+              'priority': 'u=0, i',
+              'sec-ch-ua': '"Chromium";v="145", "Not:A-Brand";v="99"',
+              'sec-ch-ua-mobile': '?0',
+              'sec-ch-ua-platform': '"macOS"',
+              'sec-fetch-dest': 'document',
+              'sec-fetch-mode': 'navigate',
+              'sec-fetch-site': 'none',
+              'sec-fetch-user': '?1',
+              'upgrade-insecure-requests': '1',
+              'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36',
+              'cookie': 'legal_age=1;'
+            }
           }
+        );
+
+        console.log('Response status:', response.statusCode);
+
+        const body = response.body;
+
+        if (!body) {
+          throw new Error('Failed to fetch');
         }
-      );
-      
-      
-      const body = response.body;
-      
-      if (!body) {
-        throw new Error('Failed to fetch');
+        return await addMovieStatus(parseAvfanVideoList(body.toString()));
+      } catch (error: any) {
+        console.error('Request error:', error.message);
+
+        if (error.response) {
+          console.log('Response body:', error.response.body);
+        }
+
+        // 如果是 AccessDeniedError，直接抛出让 getCachedData 处理
+        if (error instanceof AccessDeniedError) {
+          throw error;
+        }
+
+        throw new Error(`Failed to fetch: ${error.message}`);
       }
-      return await addMovieStatus(parseAvfanVideoList(body.toString()));
     });
+    // return getCachedData(cacheKey, async () => {
+    //   const response = await proxyRequest(
+
+    //     `https://avfan.com/zh-CN/rankings/fanza_ranking?t=${period}`,
+    //     {
+    //       method: 'GET',
+    //       headers: {
+    //         'User-Agent': USER_AGENT,
+    //         'accept-language': 'zh-CN,zh;q=0.9'
+    //       }
+    //     }
+    //   );
+
+
+    //   const body = response.body;
+
+    //   if (!body) {
+    //     throw new Error('Failed to fetch');
+    //   }
+    //   return await addMovieStatus(parseAvfanVideoList(body.toString()));
+    // });
   }
   // --- JavDB Branch ---
   else if (website === 'javdb') {
@@ -247,47 +301,116 @@ export async function GET(req: NextRequest) {
       const url = `${RANKINGS_JAVDB_BASE_URL}?p=${period}&t=censored`;
 
       try {
-        const response = await proxyRequest(url, {
+        const response = await curlRequest(url, {
           method: 'GET',
-          headers: { 'User-Agent': USER_AGENT }
+          headers: {
+            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'accept-language': 'zh,en-US;q=0.9,en;q=0.8,zh-CN;q=0.7',
+            'cache-control': 'no-cache',
+            'pragma': 'no-cache',
+            'priority': 'u=0, i',
+            'sec-ch-ua': '"Chromium";v="145", "Not:A-Brand";v="99"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"macOS"',
+            'sec-fetch-dest': 'document',
+            'sec-fetch-mode': 'navigate',
+            'sec-fetch-site': 'none',
+            'sec-fetch-user': '?1',
+            'upgrade-insecure-requests': '1',
+            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36'
+          }
         });
-
 
         const bodyText = response.body;
 
-        
+        if (!bodyText) {
+          throw new Error('Failed to fetch');
+        }
+
+        // 检查错误响应中是否包含访问被拒绝的消息
+        if (bodyText.includes(ARANKINGS_CCESS_DENIED_MESSAGE)) {
+          throw new AccessDeniedError(
+            '由於版權限制，本站禁止了你的網路所在國家的訪問。'
+          );
+        }
+
+        if (bodyText.includes('於你的異常行為，管理員禁止了你的訪問，將在3-7日後解除。')) {
+          throw new AccessDeniedError(
+            `<${extractSingleIP(bodyText, false)}> 由於你的異常行為，管理員禁止了你的訪問，將在3-7日後解除。`
+          );
+        }
+
         return await addMovieStatus(parseVideoList(bodyText));
       } catch (error: any) {
+        console.error('Request error:', error.message);
+
+        if (error.response) {
+          console.log('Response body:', error.response.body);
+        }
+
         // 如果是 AccessDeniedError，直接抛出让 getCachedData 处理
         if (error instanceof AccessDeniedError) {
           throw error;
         }
 
-        // got 会在非 2xx 状态码时抛出错误
-        if (error.response) {
-          
-          // 检查错误响应中是否包含访问被拒绝的消息
-          const errorBody = error.response.body || '';
-          if (errorBody.includes(ARANKINGS_CCESS_DENIED_MESSAGE)) {
-            throw new AccessDeniedError(
-              '由於版權限制，本站禁止了你的網路所在國家的訪問。'
-            );
-          }
-
-          if (errorBody.includes('於你的異常行為，管理員禁止了你的訪問，將在3-7日後解除。')) {
-            throw new AccessDeniedError(
-              `<${extractSingleIP(errorBody, false)}> 由於你的異常行為，管理員禁止了你的訪問，將在3-7日後解除。`
-            );
-          }
-
-          throw new Error(`Failed to fetch: ${error.response.statusCode} ${error.response.statusMessage}`);
-        }
-
-        // 其他错误（网络错误等）
-        console.error('Request error:', error.message);
         throw new Error(`Failed to fetch: ${error.message}`);
       }
     });
+    // const cacheKey = `javdb:${period}`;
+    // return getCachedData(cacheKey, async () => {
+    //   const url = `${RANKINGS_JAVDB_BASE_URL}?p=${period}&t=censored`;
+    //   console.log(url);
+
+
+    //   try {
+    //     const response = await proxyRequest(url, {
+    //       method: 'GET',
+    //       headers: { 'User-Agent': USER_AGENT }
+    //     });
+
+
+    //     const bodyText = response.body;
+
+    //     console.log(bodyText);
+
+
+
+    //     return await addMovieStatus(parseVideoList(bodyText));
+    //   } catch (error: any) {
+    //     // console.log(error);
+
+    //     // 如果是 AccessDeniedError，直接抛出让 getCachedData 处理
+    //     if (error instanceof AccessDeniedError) {
+    //       throw error;
+    //     }
+    //     // got 会在非 2xx 状态码时抛出错误
+    //     if (error.response) {
+    //       console.log('Response status:', error.response.statusCode);
+    //       console.log('Response headers:', error.response.headers);
+    //       console.log('Response body type:', typeof error.response.body);
+    //       console.log('Response body:', error.response.body);
+    //       // 检查错误响应中是否包含访问被拒绝的消息
+    //       const errorBody = error.response.body || '';
+    //       if (errorBody.includes(ARANKINGS_CCESS_DENIED_MESSAGE)) {
+    //         throw new AccessDeniedError(
+    //           '由於版權限制，本站禁止了你的網路所在國家的訪問。'
+    //         );
+    //       }
+
+    //       if (errorBody.includes('於你的異常行為，管理員禁止了你的訪問，將在3-7日後解除。')) {
+    //         throw new AccessDeniedError(
+    //           `<${extractSingleIP(errorBody, false)}> 由於你的異常行為，管理員禁止了你的訪問，將在3-7日後解除。`
+    //         );
+    //       }
+
+    //       throw new Error(`Failed to fetch: ${error.response.statusCode} ${error.response.statusMessage}`);
+    //     }
+
+    //     // 其他错误（网络错误等）
+    //     console.error('Request error:', error.message);
+    //     throw new Error(`Failed to fetch: ${error.message}`);
+    //   }
+    // });
   } else if (website === '141jav') {
     const cacheKey = `141jav:${period}`;
     return getCachedData(cacheKey, async () => {
