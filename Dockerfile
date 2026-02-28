@@ -42,7 +42,7 @@ FROM base AS runner
 WORKDIR /app
 
 # Install runtime dependencies
-RUN apk add --no-cache openssl postgresql-client
+RUN apk add --no-cache openssl postgresql-client curl
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
