@@ -2,7 +2,7 @@ import { Magnet } from '@/types/javbus';
 import { VideoInfo } from '@/types/javdb';
 import * as cheerio from 'cheerio';
 import { convertSizeToBytes } from '@/lib/utils/file-size';
-import { proxyRequest } from '../proxyFetch';
+import { proxyRequest,curlRequest } from '../proxyFetch';
 
 /**
  * 根据番号查找电影
@@ -94,7 +94,7 @@ export function parseMagnetLinks(html: string): Magnet[] {
 export async function getJavdbMagnetLinks(
   number: string
 ): Promise<Magnet[] | null> {
-  const response = await proxyRequest(
+  const response = await curlRequest(
     `https://javdb.com/search?q=${number.toUpperCase()}&f=all`,
     {
       method: 'GET',
@@ -104,7 +104,7 @@ export async function getJavdbMagnetLinks(
       }
     }
   );
-  if (!response.ok) {
+  if (response.statusCode !== 200) {
     throw new Error(
       `Failed to fetch: ${response.statusCode} ${response.statusMessage}`
     );
@@ -118,14 +118,14 @@ export async function getJavdbMagnetLinks(
   if (!foundMovie) {
     return null;
   }
-  const movieDetail = await proxyRequest(foundMovie.link!, {
+  const movieDetail = await curlRequest(foundMovie.link!, {
     method: 'GET',
     headers: {
       'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     }
   });
-  if (!movieDetail.ok) {
+  if (movieDetail.statusCode !== 200) {
     throw new Error(
       `Failed to fetch: ${movieDetail.statusCode} ${movieDetail.statusMessage}`
     );
