@@ -200,7 +200,7 @@ function InfobarProvider({
 
   return (
     <InfobarContext.Provider value={contextValue}>
-      <TooltipProvider delayDuration={0}>
+      <TooltipProvider delay={0}>
         <div
           data-slot='infobar-wrapper'
           style={
@@ -613,7 +613,7 @@ function InfobarMenuButton({
 
   return (
     <Tooltip>
-      <TooltipTrigger asChild>{button}</TooltipTrigger>
+      <TooltipTrigger >{button}</TooltipTrigger>
       <TooltipContent
         side='right'
         align='center'

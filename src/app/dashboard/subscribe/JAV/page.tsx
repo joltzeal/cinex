@@ -86,7 +86,7 @@ export default async function Page(props: pageProps) {
   return (
     <PageContainer scrollable={true}>
       <div className='flex flex-1 flex-col space-y-4'>
-        <div className='flex flex-col gap-4'>
+        <div className='flex flex-col'>
           <div className='flex flex-col items-start justify-between gap-2 sm:flex-row'>
             <Heading title='订阅源' description='自定义 Javbus 订阅源' />
             <div className='flex items-center gap-2'>
@@ -97,7 +97,6 @@ export default async function Page(props: pageProps) {
             </div>
           </div>
         </div>
-        <Separator />
 
         {/* 显示筛选状态和分页信息 */}
         <div className='text-muted-foreground flex items-center justify-between text-sm'>

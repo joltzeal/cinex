@@ -307,12 +307,12 @@ export default function MagnetPage() {
                         <span className="text-muted-foreground">Size</span>
                         <span className="font-mono">{minSize} - {maxSize} GB</span>
                       </div>
-                      <Slider value={[maxSize]} onValueChange={(v) => setMaxSize(v[0])} max={100} step={1} className="py-2" />
+                      <Slider value={[maxSize]} onValueChange={(v) => setMaxSize(Array.isArray(v) ? v[0] : v)} max={100} step={1} className="py-2" />
                     </div>
 
                     <Separator />
 
-                    <Accordion type="multiple" defaultValue={["quality", "source"]} className="w-full">
+                    <Accordion  defaultValue={["quality", "source"]} className="w-full">
                       <AccordionItem value="quality" className="border-none">
                         <AccordionTrigger className="py-2 text-sm font-semibold hover:no-underline">Quality</AccordionTrigger>
                         <AccordionContent className="pt-1 pb-2 space-y-2">
@@ -465,7 +465,7 @@ export default function MagnetPage() {
                           {selectedResult.fileList.length > 0 ? (
                             selectedResult.fileList.map((file, i) => (
                               <Tooltip key={i}>
-                                <TooltipTrigger asChild>
+                                <TooltipTrigger >
                                   <div className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors ">
                                     <File className="w-4 h-4 shrink-0 text-muted-foreground" />
                                     <span className="text-xs">{truncateFileName(file)}</span>

@@ -31,7 +31,7 @@ export default function NewTaskDialog() {
 
   return (
     <Dialog>
-      <DialogTrigger asChild>
+      <DialogTrigger >
         <Button variant='secondary' size='sm'>
           ＋ Add New Todo
         </Button>
@@ -66,7 +66,7 @@ export default function NewTaskDialog() {
           </div>
         </form>
         <DialogFooter>
-          <DialogTrigger asChild>
+          <DialogTrigger >
             <Button type='submit' size='sm' form='todo-form'>
               Add Todo
             </Button>

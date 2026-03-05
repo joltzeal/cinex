@@ -33,7 +33,7 @@ export const columns: ColumnDef<FileTransferLog>[] = [
     id: 'select',
     header: ({ table }) => (
       <Checkbox
-        checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
+        checked={table.getIsAllPageRowsSelected() ? true : table.getIsSomePageRowsSelected() ? undefined : false}
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
       />
@@ -51,7 +51,7 @@ export const columns: ColumnDef<FileTransferLog>[] = [
         <div>
           <div className="font-medium truncate w-50">{row.original.title}</div>
           <Tooltip>
-            <TooltipTrigger asChild><div className="text-xs text-muted-foreground truncate w-50">{row.original.number}</div></TooltipTrigger>
+            <TooltipTrigger ><div className="text-xs text-muted-foreground truncate w-50">{row.original.number}</div></TooltipTrigger>
             <TooltipContent>
               <p>{row.original.number}</p>
             </TooltipContent>
@@ -123,7 +123,7 @@ export const columns: ColumnDef<FileTransferLog>[] = [
 
       return (
         <DropdownMenu>
-          <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+          <DropdownMenuTrigger ><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>操作</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => navigator.clipboard.writeText(row.original.sourcePath)}>复制源路径</DropdownMenuItem>

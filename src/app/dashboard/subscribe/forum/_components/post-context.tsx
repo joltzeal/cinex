@@ -128,7 +128,7 @@ export function PostContext({ post,forum }: { post: ForumPost,forum: string }) {
 
   return (
     <ContextMenu>
-      <ContextMenuTrigger asChild>
+      <ContextMenuTrigger >
         {/* <PostContentView htmlContent={processedContent||''} /> */}
         {/* We attach the handler to this div */}
         <div className="" onContextMenu={handleContextMenu}>

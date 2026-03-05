@@ -141,10 +141,10 @@ export function DownloadProgressCell({ urls }: DownloadProgressCellProps) {
   return (
     <>
       <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
-        <TooltipProvider delayDuration={100}>
+        <TooltipProvider delay={100}>
           <Tooltip>
-            <TooltipTrigger asChild>
-              <DialogTrigger asChild>
+            <TooltipTrigger >
+              <DialogTrigger >
                 <div className="flex flex-col gap-2 cursor-pointer w-48">
                   <div className="flex justify-between items-center text-sm">
                     <span className="font-medium">任务进度</span>
@@ -225,10 +225,10 @@ export function DownloadProgressCell({ urls }: DownloadProgressCellProps) {
                           {/* 操作按钮区 */}
                           <div className="flex items-center flex-shrink-0 ml-2">
                             <Popover>
-                              <TooltipProvider delayDuration={100}>
+                              <TooltipProvider delay={100}>
                                 <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <PopoverTrigger asChild>
+                                  <TooltipTrigger >
+                                    <PopoverTrigger >
                                       <Button variant="ghost" size="icon" disabled={!detail}>
                                         <Info className="w-4 h-4" />
                                       </Button>

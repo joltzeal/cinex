@@ -197,8 +197,9 @@ export default function LibraryPage(props: pageProps) {
             </label>
             <Select
               value={filterType}
-              onValueChange={(value: FilterType) => {
-                setFilterType(value);
+              onValueChange={(value) => {
+                if (!value) return;
+                setFilterType(value as FilterType);
                 // 切换类型时清空其他类型的输入，避免逻辑混乱
                 if (value !== 'keyword') setKeywordFilter('');
                 if (value !== 'rating') setRatingFilter('');
@@ -221,7 +222,7 @@ export default function LibraryPage(props: pageProps) {
             <label className='text-xs font-medium text-muted-foreground'>筛选条件</label>
             <div className="relative">
               {filterType === 'rating' && (
-                <Select value={ratingFilter} onValueChange={setRatingFilter}>
+                <Select value={ratingFilter} onValueChange={(value) => value && setRatingFilter(value)}>
                   <SelectTrigger className="bg-background w-full">
                     <SelectValue placeholder='选择评分等级' />
                   </SelectTrigger>
@@ -237,7 +238,7 @@ export default function LibraryPage(props: pageProps) {
               {filterType === 'tag' && (
                 <Select
                   value={tagFilter}
-                  onValueChange={setTagFilter}
+                  onValueChange={(value) => value && setTagFilter(value)}
                   disabled={allTags.length === 0}
                 >
                   <SelectTrigger className="bg-background w-full">

@@ -172,7 +172,7 @@ export function EditDocumentDialog({ document, trigger }: EditDocumentDialogProp
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
+      <DialogTrigger >
         {trigger || (
           <Button variant="ghost" size="sm">
             <Edit className="h-4 w-4 mr-2" />

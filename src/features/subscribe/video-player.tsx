@@ -46,11 +46,12 @@ export function VideoPlayer({
     }
   };
 
-  const handleVolumeChange = (value: number[]) => {
-    setVolume(value[0]);
+  const handleVolumeChange = (value: number | readonly number[]) => {
+    const vol = Array.isArray(value) ? value[0] : value;
+    setVolume(vol);
     const video = document.querySelector('video') as HTMLVideoElement;
     if (video) {
-      video.volume = value[0];
+      video.volume = vol;
     }
   };
 
@@ -69,11 +70,12 @@ export function VideoPlayer({
     setLoaded(state.loaded);
   };
 
-  const handleSeek = (value: number[]) => {
-    setPlayed(value[0]);
+  const handleSeek = (value: number | readonly number[]) => {
+    const seekValue = Array.isArray(value) ? value[0] : value;
+    setPlayed(seekValue);
     const video = document.querySelector('video') as HTMLVideoElement;
     if (video && duration) {
-      video.currentTime = value[0] * duration;
+      video.currentTime = seekValue * duration;
     }
   };
 
@@ -201,7 +203,7 @@ export function VideoPlayer({
                 <Slider
                   value={[played]}
                   onValueChange={handleSeek}
-                  onValueCommit={handleSeekMouseUp}
+                  onValueCommitted={handleSeekMouseUp}
                   onPointerDown={handleSeekMouseDown}
                   max={1}
                   step={0.001}

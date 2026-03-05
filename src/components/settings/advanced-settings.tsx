@@ -134,7 +134,7 @@ export function AdvancedSettings() {
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
                     <Tooltip>
-                      <TooltipTrigger asChild>
+                      <TooltipTrigger >
                         <span>{getNextExecutionDescription(task.schedule)}</span>
                       </TooltipTrigger>
                       <TooltipContent>

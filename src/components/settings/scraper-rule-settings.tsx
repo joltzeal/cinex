@@ -327,7 +327,7 @@ export function ScraperRuleSettings({ initialData }: ScraperRuleSettingsProps) {
                   <h3 className="text-lg font-medium tracking-tight">命名与元数据</h3>
 
                   <Popover>
-                    <PopoverTrigger asChild>
+                    <PopoverTrigger >
                       <div className="flex flex-row justify-start items-center cursor-pointer">
                         <p className="text-sm text-muted-foreground">
                           定义文件、目录和 NFO 的命名格式。查看格式

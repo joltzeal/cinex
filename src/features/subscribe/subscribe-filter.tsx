@@ -47,7 +47,7 @@ export function SubscribeFilter() {
   return (
     <div className='flex items-center gap-2'>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+        <DropdownMenuTrigger >
           <Button variant='outline' size='sm' className='h-8 border-dashed'>
             <Filter className='mr-2 h-4 w-4' />
             {currentFilter === 'all'

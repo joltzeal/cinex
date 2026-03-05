@@ -108,7 +108,7 @@ export function MagnetPreviewDialog({
             <DialogTitle className='break-all'>
               {previewData?.name || 'Loading Preview...'}
             </DialogTitle>
-            <DialogDescription asChild>
+            <DialogDescription >
               <div
                 className='text-muted-foreground mt-2 flex cursor-pointer items-start text-xs'
                 onClick={handleCopy}

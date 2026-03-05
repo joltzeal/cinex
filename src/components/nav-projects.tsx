@@ -42,14 +42,14 @@ export function NavProjects({
       <SidebarMenu>
         {projects.map((item) => (
           <SidebarMenuItem key={item.name}>
-            <SidebarMenuButton asChild>
+            <SidebarMenuButton >
               <a href={item.url}>
                 <item.icon />
                 <span>{item.name}</span>
               </a>
             </SidebarMenuButton>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+              <DropdownMenuTrigger >
                 <SidebarMenuAction showOnHover>
                   <IconDots />
                   <span className='sr-only'>More</span>

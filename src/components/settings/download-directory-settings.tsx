@@ -158,7 +158,7 @@ export function DirectorySettingsComponent({ initialData }: DirectorySettingsPro
                 <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1.5">
                       <Label>媒体类型</Label>
-                      <Select value={config.mediaType} onValueChange={(value) => handleUpdateConfig(config.id, 'mediaType', value)}>
+                      <Select value={config.mediaType} onValueChange={(value) => value && handleUpdateConfig(config.id, 'mediaType', value)}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="movie">电影</SelectItem>
@@ -176,7 +176,7 @@ export function DirectorySettingsComponent({ initialData }: DirectorySettingsPro
                 <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1.5">
                       <Label>整理方式</Label>
-                      <Select value={config.organizeMethod} onValueChange={(value) => handleUpdateConfig(config.id, 'organizeMethod', value)}>
+                      <Select value={config.organizeMethod} onValueChange={(value) => value && handleUpdateConfig(config.id, 'organizeMethod', value)}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="hardlink">硬链接</SelectItem>

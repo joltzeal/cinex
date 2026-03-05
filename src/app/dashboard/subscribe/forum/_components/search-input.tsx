@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Search, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
+import { READ_FILTER_QUERY_KEY } from "./read-filter";
 
 export function SearchInput() {
   const router = useRouter();
@@ -22,13 +23,16 @@ export function SearchInput() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      router.push(`/dashboard/subscribe/forum?forumId=search&q=${encodeURIComponent(searchQuery.trim())}`);
+      const readFilter = searchParams.get(READ_FILTER_QUERY_KEY);
+      const readQuery = readFilter === 'unread' ? `&${READ_FILTER_QUERY_KEY}=unread` : '';
+      router.push(`/dashboard/subscribe/forum?forumId=search&q=${encodeURIComponent(searchQuery.trim())}${readQuery}`);
     }
   };
 
   const handleClear = () => {
     setSearchQuery("");
-    router.push('/dashboard/subscribe/forum');
+    const readFilter = searchParams.get(READ_FILTER_QUERY_KEY);
+    router.push(readFilter === 'unread' ? `/dashboard/subscribe/forum?${READ_FILTER_QUERY_KEY}=unread` : '/dashboard/subscribe/forum');
   };
 
   return (
@@ -59,4 +63,3 @@ export function SearchInput() {
     </form>
   );
 }
-

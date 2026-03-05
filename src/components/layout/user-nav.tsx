@@ -21,7 +21,7 @@ export function UserNav() {
   if (user) {
     return (
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+        <DropdownMenuTrigger >
           <Button variant='ghost' className='relative h-8 w-8 rounded-full'>
             <UserAvatarProfile user={user} />
           </Button>
@@ -30,7 +30,6 @@ export function UserNav() {
           className='w-56'
           align='end'
           sideOffset={10}
-          forceMount
         >
           <DropdownMenuLabel className='font-normal'>
             <div className='flex flex-col space-y-1'>

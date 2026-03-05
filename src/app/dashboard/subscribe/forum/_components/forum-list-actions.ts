@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma } from "@/lib/prisma";
+import { getForumPostReadFilterWhere, type ReadFilter } from "./read-filter";
 
 const PAGE_SIZE = 50;
 
@@ -17,7 +18,7 @@ export interface ForumPost {
   isStar?: boolean;
 }
 
-export async function loadSearchPosts(searchQuery: string, offset: number = 0) {
+export async function loadSearchPosts(searchQuery: string, offset: number = 0, readFilter: ReadFilter = 'all') {
   const posts = await prisma.forumPost.findMany({
     where: {
       OR: [
@@ -32,6 +33,7 @@ export async function loadSearchPosts(searchQuery: string, offset: number = 0) {
           },
         },
       ],
+      ...getForumPostReadFilterWhere(readFilter),
     },
     include: {
       forumSubscribe: true,
@@ -49,10 +51,11 @@ export async function loadSearchPosts(searchQuery: string, offset: number = 0) {
   };
 }
 
-export async function loadStarredPosts(offset: number = 0) {
+export async function loadStarredPosts(offset: number = 0, readFilter: ReadFilter = 'all') {
   const posts = await prisma.forumPost.findMany({
     where: {
       isStar: true,
+      ...getForumPostReadFilterWhere(readFilter),
     },
     include: {
       forumSubscribe: true,
@@ -70,10 +73,11 @@ export async function loadStarredPosts(offset: number = 0) {
   };
 }
 
-export async function loadSubscriptionPosts(subscriptionId: string, offset: number = 0) {
+export async function loadSubscriptionPosts(subscriptionId: string, offset: number = 0, readFilter: ReadFilter = 'all') {
   const posts = await prisma.forumPost.findMany({
     where: {
       forumSubscribeId: subscriptionId,
+      ...getForumPostReadFilterWhere(readFilter),
     },
     orderBy: {
       createdAt: "desc",
@@ -98,4 +102,3 @@ export async function getSubscription(forumId: string, threadId: string) {
     },
   });
 }
-

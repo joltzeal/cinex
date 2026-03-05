@@ -29,7 +29,7 @@ export default function NewSectionDialog() {
 
   return (
     <Dialog>
-      <DialogTrigger asChild>
+      <DialogTrigger >
         <Button variant='secondary' size='lg' className='w-full'>
           ＋ Add New Section
         </Button>
@@ -56,7 +56,7 @@ export default function NewSectionDialog() {
           </div>
         </form>
         <DialogFooter>
-          <DialogTrigger asChild>
+          <DialogTrigger >
             <Button type='submit' size='sm' form='todo-form'>
               Add Section
             </Button>

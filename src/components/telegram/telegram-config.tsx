@@ -95,7 +95,7 @@ export function TelegramConfigSection({ settings, onSave }: TelegramConfigSectio
             )}
 
             {/* 编辑按钮 (Trigger) */}
-            <DialogTrigger asChild>
+            <DialogTrigger >
               <Button variant="outline" size="sm" className={!hasConfig ? "border-yellow-500/30 text-yellow-500 hover:text-yellow-600 hover:bg-yellow-500/10" : ""}>
                 {hasConfig ? "Edit" : "Setup"}
               </Button>

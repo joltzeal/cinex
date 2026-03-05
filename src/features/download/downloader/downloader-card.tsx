@@ -174,7 +174,7 @@ export function DownloaderCard({ icon, title, downloaderName, settings: initialS
           测试连接
         </Button>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
+          <DialogTrigger >
             <Button>
               <Settings className="mr-2 h-4 w-4" />
               {/* 【修改7】按钮文本根据是否新配置变化 */}

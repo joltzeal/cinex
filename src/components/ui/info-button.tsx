@@ -24,6 +24,7 @@ export function InfoButton({
   className,
   variant = 'ghost',
   size = 'icon',
+  onClick,
   ...props
 }: InfoButtonProps) {
   const { setContent, setOpen } = useInfobar();
@@ -36,7 +37,7 @@ export function InfoButton({
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     setContent(content);
     setOpen(true);
-    props.onClick?.(e);
+    onClick?.(e as any);
   };
 
   return (

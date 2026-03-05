@@ -55,7 +55,7 @@ function FormSlider<
                 max={max}
                 step={step}
                 value={[field.value || min]}
-                onValueChange={(value) => field.onChange(value[0])}
+                onValueChange={(value) => field.onChange(Array.isArray(value) ? value[0] : value)}
                 disabled={disabled}
               />
               {showValue && (

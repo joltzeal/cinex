@@ -292,7 +292,7 @@ export function CreateDocumentDialog() {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
+      <DialogTrigger >
         <Button>创建新文档</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[625px]">

@@ -6,6 +6,7 @@ import { SyncButton } from "./sync-button";
 import { AddSubscribeDialog } from "./add-subscribe-dialog";
 import { DeleteThreadButton } from "./delete-thread-button";
 import { SearchInput } from "./search-input";
+import { ReadFilterToggle } from "./read-filter-toggle";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -20,11 +21,13 @@ import { CookieSettingsDialog } from "./cookie-setting";
 import { getSetting, SettingKey } from "@/services/settings";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
+import { getForumPostReadFilterWhere, READ_FILTER_QUERY_KEY, type ReadFilter } from "./read-filter";
 
 interface SubscribeTabsProps {
   currentForumId?: string;
   currentThreadId?: string;
   searchQuery?: string;
+  readFilter?: ReadFilter;
 }
 
 // 论坛名称映射
@@ -36,7 +39,7 @@ const FORUM_NAMES: Record<string, string> = {
   'southPlus': '南+',
 };
 
-export async function SubscribeTabs({ currentForumId, currentThreadId, searchQuery }: SubscribeTabsProps) {
+export async function SubscribeTabs({ currentForumId, currentThreadId, searchQuery, readFilter = 'all' }: SubscribeTabsProps) {
   // 查询所有订阅
   const subscriptions = await prisma.forumSubscribe.findMany({
     orderBy: {
@@ -48,6 +51,7 @@ export async function SubscribeTabs({ currentForumId, currentThreadId, searchQue
   const starredPostsCount = await prisma.forumPost.count({
     where: {
       isStar: true,
+      ...getForumPostReadFilterWhere(readFilter),
     },
   });
 
@@ -67,6 +71,7 @@ export async function SubscribeTabs({ currentForumId, currentThreadId, searchQue
               },
             },
           ],
+          ...getForumPostReadFilterWhere(readFilter),
         },
       })
     : 0;
@@ -103,6 +108,9 @@ export async function SubscribeTabs({ currentForumId, currentThreadId, searchQue
         <div className="flex items-center gap-4">
           {/* 搜索输入框 */}
           <SearchInput />
+
+          {/* 全部/未读 切换 */}
+          <ReadFilterToggle />
           
           {/* 导航菜单 */}
           <NavigationMenu>
@@ -124,9 +132,13 @@ export async function SubscribeTabs({ currentForumId, currentThreadId, searchQue
                           : '从未检查';
                         return (
                           <li key={sub.id}>
-                            <NavigationMenuLink asChild>
+                            <NavigationMenuLink >
                               <Link
-                                href={`/dashboard/subscribe/forum?forumId=${sub.forum}&threadId=${sub.thread}`}
+                                href={`/dashboard/subscribe/forum?${new URLSearchParams({
+                                  forumId: sub.forum,
+                                  threadId: sub.thread,
+                                  ...(readFilter === 'unread' ? { [READ_FILTER_QUERY_KEY]: 'unread' } : {}),
+                                }).toString()}`}
                                 className={cn(
                                   "select-none rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
                                   isActive && "bg-accent text-accent-foreground"
@@ -167,7 +179,10 @@ export async function SubscribeTabs({ currentForumId, currentThreadId, searchQue
           )}
           
           <Link
-            href="/dashboard/subscribe/forum?forumId=star"
+            href={`/dashboard/subscribe/forum?${new URLSearchParams({
+              forumId: 'star',
+              ...(readFilter === 'unread' ? { [READ_FILTER_QUERY_KEY]: 'unread' } : {}),
+            }).toString()}`}
             className={cn(
               "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background hover:bg-accent hover:text-accent-foreground h-9 px-4",
               currentForumId === 'star' && "bg-accent text-accent-foreground"

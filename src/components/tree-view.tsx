@@ -392,7 +392,7 @@ function TreeItem({
                     onOpenChange={(open) => onToggleExpand(item.id, open)}
                   >
                     <CollapsibleTrigger
-                      asChild
+                      
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Button variant="ghost" size="icon" className="h-6 w-6">
@@ -468,7 +468,7 @@ function TreeItem({
                     </Badge>
                   )}
                   <HoverCard>
-                    <HoverCardTrigger asChild>
+                    <HoverCardTrigger >
                       <Button
                         variant="ghost"
                         size="sm"
@@ -534,7 +534,7 @@ function TreeItem({
                   {renderIcon()}
                   <span className="flex-1 block truncate">{item.name}</span>
                   <HoverCard>
-                    <HoverCardTrigger asChild>
+                    <HoverCardTrigger >
                       <Button
                         variant="ghost"
                         size="sm"
@@ -576,7 +576,7 @@ function TreeItem({
             >
               <AnimatePresence initial={false}>
                 {isOpen && (
-                  <CollapsibleContent forceMount asChild>
+                  <CollapsibleContent  >
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}

@@ -45,7 +45,7 @@ export function CookieSettingsDialog({ currentSettings }: { currentSettings: For
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+      <DialogTrigger >
         <Button variant="outline">
           <Settings className="h-4 w-4" />
         </Button>

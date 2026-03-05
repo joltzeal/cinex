@@ -60,7 +60,7 @@ function FormDatePicker<
             </FormLabel>
           )}
           <Popover>
-            <PopoverTrigger asChild>
+            <PopoverTrigger >
               <FormControl>
                 <Button
                   variant='outline'

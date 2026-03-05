@@ -99,7 +99,7 @@ function ManualRecognitionDialog({ fileTreeData }: ManualRecognitionDialogProps)
 
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-      <DialogTrigger asChild><Button variant="outline"><PlusCircle className="mr-2 h-4 w-4" />手动识别</Button></DialogTrigger>
+      <DialogTrigger ><Button variant="outline"><PlusCircle className="mr-2 h-4 w-4" />手动识别</Button></DialogTrigger>
       <DialogContent className="sm:max-w-106.25">
         <DialogHeader>
           <DialogTitle>手动识别</DialogTitle>
@@ -127,7 +127,7 @@ function ManualRecognitionDialog({ fileTreeData }: ManualRecognitionDialogProps)
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="transfer-method" className="text-right">转移方式</Label>
-            <Select value={transferMethod} onValueChange={setTransferMethod}>
+            <Select value={transferMethod} onValueChange={(value) => value && setTransferMethod(value)}>
               <SelectTrigger className="col-span-3"><SelectValue placeholder="选择一种方式" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="HARDLINK">硬链接</SelectItem><SelectItem value="SOFTLINK">软链接</SelectItem>

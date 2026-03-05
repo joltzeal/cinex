@@ -449,7 +449,7 @@ const MagnetSection = ({ magnets, isSubmitting, movie, onMagnetDownload }: any) 
                     <TableRow key={magnet.id}>
                       <TableCell className='py-2'>
                         <Tooltip>
-                          <TooltipTrigger asChild>
+                          <TooltipTrigger >
                             <div className='flex items-center gap-2 overflow-hidden'>
                               <div className='flex shrink-0 items-center gap-1'>
                                 {magnet.isHD && (
@@ -811,7 +811,7 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
                     )}
                     {movie.status === 'added' &&
                       mediaServer?.publicAddress &&
-                      movie.mediaLibrary ? (
+                      movie.mediaLibrary && (
                         <Button
                           variant='default'
                           className='cursor-pointer'
@@ -825,14 +825,7 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
                           <PlayCircle className='ml-2 h-4 w-4' />
                           已入库
                         </Button>
-                      ):<Button
-                          variant='default'
-                          className='cursor-pointer'
-                          disabled={true}
-                        >
-                          <PlayCircle className='ml-2 h-4 w-4' />
-                          已入库
-                        </Button>}
+                      )}
                     {movie.status === 'subscribed' && (
                       <Button
                         variant='destructive'

@@ -1,11 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { ForumList } from "./forum-list";
+import { getForumPostReadFilterWhere, type ReadFilter } from "./read-filter";
 
 interface ForumListWrapperProps {
   forumId?: string;
   threadId?: string;
   postId?: string;
   searchQuery?: string;
+  readFilter?: ReadFilter;
 }
 
 const PAGE_SIZE = 50;
@@ -34,10 +36,11 @@ async function calculateRequiredItems(postId: string, where: any, orderBy: any):
   return Math.ceil(requiredItems / PAGE_SIZE) * PAGE_SIZE;
 }
 
-export async function ForumListWrapper({ forumId, threadId, postId, searchQuery }: ForumListWrapperProps) {
+export async function ForumListWrapper({ forumId, threadId, postId, searchQuery, readFilter = 'all' }: ForumListWrapperProps) {
   let initialPosts:any[] = [];
   let initialHasMore:boolean = false;
   let subscriptionId: string | undefined;
+  const readWhere = getForumPostReadFilterWhere(readFilter);
 
   // 处理搜索结果
   if (forumId === 'search' && searchQuery) {
@@ -54,6 +57,7 @@ export async function ForumListWrapper({ forumId, threadId, postId, searchQuery 
           },
         },
       ],
+      ...readWhere,
     };
     const orderBy = { createdAt: "desc" as const };
 
@@ -77,7 +81,7 @@ export async function ForumListWrapper({ forumId, threadId, postId, searchQuery 
   }
   // 处理收藏列表
   else if (forumId === 'star') {
-    const where = { isStar: true };
+    const where = { isStar: true, ...readWhere };
     const orderBy = { createdAt: "desc" as const };
 
     // 如果有选中的帖子，计算需要加载的数量
@@ -112,7 +116,7 @@ export async function ForumListWrapper({ forumId, threadId, postId, searchQuery 
     if (subscription) {
       subscriptionId = subscription.id;
       
-      const where = { forumSubscribeId: subscription.id };
+      const where = { forumSubscribeId: subscription.id, ...readWhere };
       const orderBy = { createdAt: "desc" as const };
 
       // 如果有选中的帖子，计算需要加载的数量
@@ -138,10 +142,10 @@ export async function ForumListWrapper({ forumId, threadId, postId, searchQuery 
       threadId={threadId}
       postId={postId}
       searchQuery={searchQuery}
+      readFilter={readFilter}
       initialPosts={initialPosts}
       initialHasMore={initialHasMore}
       subscriptionId={subscriptionId}
     />
   );
 }
-

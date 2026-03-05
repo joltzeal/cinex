@@ -153,7 +153,7 @@ export function MediaServerSettingsComponent({ initialData }: MediaServerSetting
   }, [initialData, form.reset]);
   const iconStyle = "h-4 w-4 text-muted-foreground";
   return (
-    <Card>
+    <Card >
       <CardHeader>
         <CardTitle>媒体服务器</CardTitle>
         <CardDescription>连接到您的 Jellyfin 或 Emby 服务器以同步媒体库。</CardDescription>

@@ -3,7 +3,7 @@ import { IconBrandGithub } from '@tabler/icons-react';
 
 export default function CtaGithub() {
   return (
-    <Button variant='ghost' asChild size='sm' className='group hidden sm:flex'>
+    <Button variant='ghost'  size='sm' className='group hidden sm:flex'>
       <a
         href='https://github.com/joltzeal/cinex'
         rel='noopener noreferrer'

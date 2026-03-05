@@ -43,12 +43,14 @@ export function DataTableToolbar() {
     router.push(pathname + '?' + createQueryString('query', term));
   }, 300);
 
-  const handleStatusChange = (status: string) => {
+  const handleStatusChange = (status: string | null) => {
+    if (!status) return;
     // 'all' value means clearing the filter
     router.push(pathname + '?' + createQueryString('status', status === 'all' ? '' : status));
   };
 
-  const handleTypeChange = (type: string) => {
+  const handleTypeChange = (type: string | null) => {
+    if (!type) return;
     router.push(pathname + '?' + createQueryString('type', type === 'all' ? '' : type));
   };
 

@@ -106,7 +106,7 @@ export default function SettingsPageClient(props: SettingsPageClientProps) {
         </aside>
 
         {/* 右侧内容区域 */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 ">
           <div
             ref={parentRef}
             className="h-full overflow-y-auto pr-2 scrollbar-hide"
@@ -115,7 +115,7 @@ export default function SettingsPageClient(props: SettingsPageClientProps) {
               msOverflowStyle: 'none',
             }}
           >
-            <div className="space-y-6 pb-8">
+            <div className="space-y-6 pb-8 mx-2 mt-1">
               <section id="media-server">
                 <MediaServerSettingsComponent initialData={config?.mediaServerConfig} />
               </section>

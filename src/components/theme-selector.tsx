@@ -43,7 +43,7 @@ export function ThemeSelector() {
       <Label htmlFor='theme-selector' className='sr-only'>
         主题
       </Label>
-      <Select value={activeTheme} onValueChange={setActiveTheme}>
+      <Select value={activeTheme} onValueChange={(value) => value && setActiveTheme(value)}>
         <SelectTrigger
           id='theme-selector'
           className='justify-start *:data-[slot=select-value]:w-12'

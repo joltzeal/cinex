@@ -460,7 +460,7 @@ export default function JavbusSubscribeInfoItem({
               open={showDeleteDialog}
               onOpenChange={setShowDeleteDialog}
             >
-              <AlertDialogTrigger asChild>
+              <AlertDialogTrigger >
                 <Button
                   variant='ghost'
                   size='icon'
@@ -496,7 +496,7 @@ export default function JavbusSubscribeInfoItem({
               open={showFetchDialog}
               onOpenChange={setShowFetchDialog}
             >
-              <AlertDialogTrigger asChild>
+              <AlertDialogTrigger >
                 <Button
                   variant='ghost'
                   size='icon'
@@ -625,9 +625,9 @@ export default function JavbusSubscribeInfoItem({
                           </Badge>
                         )}
                     </div>
-                    <TooltipProvider delayDuration={100}>
+                    <TooltipProvider delay={100}>
                       <Tooltip>
-                        <TooltipTrigger asChild>
+                        <TooltipTrigger >
                           <p className='text-foreground group-hover:text-primary w-full truncate text-center text-xs leading-tight'>
                             {movie.number}
                           </p>

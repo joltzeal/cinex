@@ -69,13 +69,13 @@ export default function AppSidebar() {
                   item.items.map((subItem) => {
                     const SubIcon = subItem.icon ? Icons[subItem.icon] : null;
                     return (
-                      <SidebarMenuItem key={subItem.title}>
+                      <SidebarMenuItem key={subItem.title} className='cursor-pointer'>
                         <SidebarMenuButton
-                          asChild
+
                           tooltip={subItem.title}
                           isActive={pathname === subItem.url}
                         >
-                          <Link href={subItem.url}>
+                          <Link href={subItem.url} className=' flex items-center gap-4 w-full'>
                             {SubIcon && <SubIcon />}
                             <span>{subItem.title}</span>
                           </Link>
@@ -84,13 +84,13 @@ export default function AppSidebar() {
                     );
                   })
                 ) : (
-                  <SidebarMenuItem>
+                  <SidebarMenuItem className='cursor-pointer'>
                     <SidebarMenuButton
-                      asChild
+
                       tooltip={item.title}
                       isActive={pathname === item.url}
                     >
-                      <Link href={item.url}>
+                      <Link href={item.url} className=' flex items-center gap-4 w-full' >
                         <Icon />
                         <span>{item.title}</span>
                       </Link>
@@ -103,32 +103,17 @@ export default function AppSidebar() {
         })}
       </SidebarContent>
       <SidebarFooter>
+        
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton
-                  size='lg'
-                  className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
-                >
-                  {user && (
-                    <UserAvatarProfile
-                      className='h-8 w-8 rounded-lg'
-                      showInfo
-                      user={user}
-                    />
-                  )}
-                  <IconChevronsDown className='ml-auto size-4' />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className='w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg'
-                side='bottom'
-                align='end'
-                sideOffset={4}
-              >
-                <DropdownMenuLabel className='p-0 font-normal'>
-                  <div className='px-1 py-1.5'>
+              <DropdownMenuTrigger
+                render={(props) => (
+                  <SidebarMenuButton
+                    {...props}
+                    size='lg'
+                    className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground w-full'
+                  >
                     {user && (
                       <UserAvatarProfile
                         className='h-8 w-8 rounded-lg'
@@ -136,8 +121,29 @@ export default function AppSidebar() {
                         user={user}
                       />
                     )}
-                  </div>
-                </DropdownMenuLabel>
+                    <IconChevronsDown className='ml-auto size-4' />
+                  </SidebarMenuButton>
+                )}
+              />
+              <DropdownMenuContent
+                className='w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg'
+                side='bottom'
+                align='end'
+                sideOffset={4}
+              >
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className='p-0 font-normal'>
+                    <div className='px-1 py-1.5'>
+                      {user && (
+                        <UserAvatarProfile
+                          className='h-8 w-8 rounded-lg'
+                          showInfo
+                          user={user}
+                        />
+                      )}
+                    </div>
+                  </DropdownMenuLabel>
+                </DropdownMenuGroup>
                 <DropdownMenuSeparator />
 
                 <DropdownMenuGroup>
@@ -148,7 +154,7 @@ export default function AppSidebar() {
                     Profile
                   </DropdownMenuItem>
 
-                  
+
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

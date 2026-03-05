@@ -659,7 +659,7 @@ const saveSettings = async (newSettings: TelegramConfig) => {
           重启服务
         </Button>
         <HoverCard>
-      <HoverCardTrigger asChild>
+      <HoverCardTrigger >
         <Button>
           <RotateCcw className="mr-2" size={18} />
           运行日志
@@ -701,14 +701,14 @@ const saveSettings = async (newSettings: TelegramConfig) => {
     </HoverCard>
       </div>
     }>
-      <div className="flex flex-col h-full bg-background text-foreground overflow-hidden gap-4">
+      <div className="flex flex-col h-full bg-background text-foreground overflow-hidden gap-4 ">
 
         {/* 1. Header Section */}
-        <header className="shrink-0  z-10 border-b border-transparent">
+        <header className="shrink-0  z-10 border-b border-transparent m-1">
           
 
           {/* Bento Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-2 ">
             <Card className="bg-card border-border shadow-sm overflow-hidden relative py-2 gap-2">
               {botStatus.running && (
                 <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
@@ -781,10 +781,10 @@ const saveSettings = async (newSettings: TelegramConfig) => {
         </header>
 
         {/* 2. Main Content Split */}
-        <div className="flex-1 flex flex-col min-h-0   gap-4 z-10">
+        <div className="flex-1 flex flex-col min-h-0   gap-4 z-10 ">
 
           {/* Table Section */}
-          <div className="flex-1 flex flex-col bg-card rounded-lg border border-border overflow-hidden shadow-sm">
+          <div className="flex-1 flex flex-col bg-card rounded-lg border border-border overflow-hidden shadow-sm ">
             {/* Toolbar */}
             <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between gap-4">
               <div className="relative flex-1 max-w-md">

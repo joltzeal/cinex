@@ -73,7 +73,7 @@ export default function SubscribeDialog() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
+      <DialogTrigger >
         <button className={cn(buttonVariants(), 'text-xs md:text-sm')}>
           <IconPlus className='mr-2 h-4 w-4' /> 添加新订阅
         </button>

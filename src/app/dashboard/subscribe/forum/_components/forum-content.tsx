@@ -131,7 +131,7 @@ export async function ForumContent({ postId, forumId, threadId }: ForumContentPr
                   </div>
                 </div>
                 {post.url && (
-                  <Button asChild size="sm">
+                  <Button  size="sm">
                     <Link
                       href={getForumUrl(actualForumId, post.postId, post.url)!}
                       target="_blank"

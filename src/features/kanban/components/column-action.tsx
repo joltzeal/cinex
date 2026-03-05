@@ -57,7 +57,7 @@ export function ColumnActions({
         />
       </form>
       <DropdownMenu modal={false}>
-        <DropdownMenuTrigger asChild>
+        <DropdownMenuTrigger >
           <Button variant='secondary' className='ml-1'>
             <span className='sr-only'>Actions</span>
             <DotsHorizontalIcon className='h-4 w-4' />

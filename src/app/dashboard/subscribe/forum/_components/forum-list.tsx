@@ -9,18 +9,20 @@ import { LucideMousePointerClick, Star, Loader2 } from "lucide-react";
 import { AddSubscribeDialog } from "./add-subscribe-dialog";
 import { ForumListImage } from "./forum-list-image";
 import { loadSearchPosts, loadStarredPosts, loadSubscriptionPosts, getSubscription, type ForumPost } from "./forum-list-actions";
+import { READ_FILTER_QUERY_KEY, type ReadFilter } from "./read-filter";
 
 interface ForumListProps {
   forumId?: string;
   threadId?: string;
   postId?: string;
   searchQuery?: string;
+  readFilter?: ReadFilter;
   initialPosts: ForumPost[];
   initialHasMore: boolean;
   subscriptionId?: string;
 }
 
-export function ForumList({ forumId, threadId, postId, searchQuery, initialPosts, initialHasMore, subscriptionId }: ForumListProps) {
+export function ForumList({ forumId, threadId, postId, searchQuery, readFilter = 'all', initialPosts, initialHasMore, subscriptionId }: ForumListProps) {
   const [posts, setPosts] = useState<ForumPost[]>(initialPosts);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [loading, setLoading] = useState(false);
@@ -32,7 +34,7 @@ export function ForumList({ forumId, threadId, postId, searchQuery, initialPosts
   useEffect(() => {
     setPosts(initialPosts);
     setHasMore(initialHasMore);
-  }, [forumId, threadId, searchQuery, initialPosts, initialHasMore]);
+  }, [forumId, threadId, searchQuery, readFilter, initialPosts, initialHasMore]);
 
   // Scroll to selected post when postId changes
   useEffect(() => {
@@ -60,11 +62,11 @@ export function ForumList({ forumId, threadId, postId, searchQuery, initialPosts
       let result;
 
       if (forumId === 'search' && searchQuery) {
-        result = await loadSearchPosts(searchQuery, offset);
+        result = await loadSearchPosts(searchQuery, offset, readFilter);
       } else if (forumId === 'star') {
-        result = await loadStarredPosts(offset);
+        result = await loadStarredPosts(offset, readFilter);
       } else if (subscriptionId) {
-        result = await loadSubscriptionPosts(subscriptionId, offset);
+        result = await loadSubscriptionPosts(subscriptionId, offset, readFilter);
       }
 
       if (result) {
@@ -77,7 +79,7 @@ export function ForumList({ forumId, threadId, postId, searchQuery, initialPosts
       setLoading(false);
       loadingRef.current = false;
     }
-  }, [loading, hasMore, posts.length, forumId, searchQuery, subscriptionId]);
+  }, [loading, hasMore, posts.length, forumId, searchQuery, subscriptionId, readFilter]);
 
   const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
     const target = event.target as HTMLDivElement;
@@ -117,7 +119,7 @@ export function ForumList({ forumId, threadId, postId, searchQuery, initialPosts
               <Link
                 key={post.id}
                 data-post-id={post.id}
-                href={`/dashboard/subscribe/forum?forumId=search&q=${encodeURIComponent(searchQuery)}&postId=${post.id}`}
+                href={`/dashboard/subscribe/forum?forumId=search&q=${encodeURIComponent(searchQuery)}&postId=${post.id}${readFilter === 'unread' ? `&${READ_FILTER_QUERY_KEY}=unread` : ''}`}
                 className={cn(
                   "flex flex-col gap-2 p-2 rounded-lg border hover:bg-accent transition-colors",
                   postId === post.id && "bg-accent border-primary"
@@ -185,7 +187,7 @@ export function ForumList({ forumId, threadId, postId, searchQuery, initialPosts
               <Link
                 key={post.id}
                 data-post-id={post.id}
-                href={`/dashboard/subscribe/forum?forumId=star&postId=${post.id}`}
+                href={`/dashboard/subscribe/forum?forumId=star&postId=${post.id}${readFilter === 'unread' ? `&${READ_FILTER_QUERY_KEY}=unread` : ''}`}
                 className={cn(
                   "flex flex-col gap-2 p-2 rounded-lg border hover:bg-accent transition-colors",
                   postId === post.id && "bg-accent border-primary"
@@ -292,7 +294,7 @@ export function ForumList({ forumId, threadId, postId, searchQuery, initialPosts
             <Link
               key={post.id}
               data-post-id={post.id}
-              href={`/dashboard/subscribe/forum?forumId=${forumId}&threadId=${threadId}&postId=${post.id}`}
+              href={`/dashboard/subscribe/forum?forumId=${forumId}&threadId=${threadId}&postId=${post.id}${readFilter === 'unread' ? `&${READ_FILTER_QUERY_KEY}=unread` : ''}`}
               className={cn(
                 "flex flex-col gap-2 p-2 rounded-lg border hover:bg-accent transition-colors",
                 postId === post.id && "bg-accent border-primary"
