@@ -143,13 +143,6 @@ export async function ForumContent({ postId, forumId, threadId }: ForumContentPr
                   </Button>
 
                 )}
-                {/* {
-                  post.content && (
-                    <PostDownload content={post.content} title={post.title} >
-                    </PostDownload>
-                  )
-                } */}
-                {/*  */}
                 {actualForumId && actualThreadId && (
                   <StarPost key={post.id} forumId={actualForumId} threadId={actualThreadId} postId={post.id} star={post.isStar} />
                 )}

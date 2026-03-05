@@ -133,19 +133,26 @@ export async function SubscribeTabs({ currentForumId, currentThreadId, searchQue
                         return (
                           <li key={sub.id}>
                             <NavigationMenuLink >
+                              
                               <Link
                                 href={`/dashboard/subscribe/forum?${new URLSearchParams({
                                   forumId: sub.forum,
                                   threadId: sub.thread,
                                   ...(readFilter === 'unread' ? { [READ_FILTER_QUERY_KEY]: 'unread' } : {}),
                                 }).toString()}`}
-                                className={cn(
-                                  "select-none rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
-                                  isActive && "bg-accent text-accent-foreground"
-                                )}
+                                className={
+                                  cn(
+                                    "w-full",
+                                    isActive && "bg-accent text-accent-foreground select-none rounded-md p-2"
+                                  )
+                                }
+                                // className={cn(
+                                //   "select-none rounded-md p-2 leading-none no-underline outline-none transition-colors  focus:bg-accent  focus:text-accent-foreground w-full",
+                                //   isActive && "bg-accent text-accent-foreground "
+                                // )}
                               >
-                                <div className="flex items-center justify-between gap-3">
-                                  <div className="flex-1 space-y-1">
+                                <div className="flex items-center justify-between w-full">
+                                  <div >
                                     <div className="text-sm font-medium leading-none">
                                       {sub.title || sub.thread}
                                     </div>
@@ -153,7 +160,7 @@ export async function SubscribeTabs({ currentForumId, currentThreadId, searchQue
                                       最后更新: {lastCheckedText}
                                     </p>
                                   </div>
-                                  <div className="flex-shrink-0">
+                                  <div >
                                     <DeleteThreadButton forumId={sub.forum} threadId={sub.thread} />
                                   </div>
                                 </div>

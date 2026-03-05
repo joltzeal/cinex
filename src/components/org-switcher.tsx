@@ -14,14 +14,11 @@ export function OrgSwitcher() {
   const { state } = useSidebar();
 
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <SidebarMenuButton
-          size='lg'
-          className='cursor-default hover:bg-transparent'
-        >
-          <div className=' text-sidebar-primary-foreground flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg'>
-            {/* 您可以在这里替换为您的 logo 图片 */}
+    <SidebarMenu >
+      <SidebarMenuItem >
+        <SidebarMenuButton  className='px-0 py-0 h-14'>
+          <div className='w-full flex items-center justify-start gap-3 '>
+            <div className='text-sidebar-primary-foreground flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg'>
             <Image
               src="/icon.png"
               alt="Cinex"
@@ -29,7 +26,6 @@ export function OrgSwitcher() {
               height={28}
               className='size-full object-cover'
             />
-            <GalleryVerticalEnd className='size-4' />
           </div>
           <div
             className={`grid flex-1 text-left text-sm leading-tight transition-all duration-200 ease-in-out ${
@@ -43,7 +39,9 @@ export function OrgSwitcher() {
               保持干燥
             </span>
           </div>
-        </SidebarMenuButton>
+          </div>
+</SidebarMenuButton>
+       
       </SidebarMenuItem>
     </SidebarMenu>
   );
