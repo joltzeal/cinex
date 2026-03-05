@@ -2,7 +2,6 @@
 import { prisma } from "@/lib/prisma";
 import { ForumSubscribe } from "@prisma/client";
 import Link from "next/link";
-import { SyncButton } from "./sync-button";
 import { AddSubscribeDialog } from "./add-subscribe-dialog";
 import { DeleteThreadButton } from "./delete-thread-button";
 import { SearchInput } from "./search-input";

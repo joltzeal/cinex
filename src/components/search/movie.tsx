@@ -729,7 +729,7 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
                 <h3 className='mb-3 flex items-center gap-2 text-lg font-semibold'>
                   <Film className='text-primary h-4 w-4' /> 预览剧照
                 </h3>
-                <ScrollArea className='border-border/50 bg-card/30 w-full rounded-md border p-4 whitespace-nowrap'>
+                <ScrollArea className='border-border/50 bg-card/30 w-full rounded-md border p-4 whitespace-nowrap '>
                   <div className='flex gap-4'>
                     {movieDetail.samples?.map((sample: any, index: number) => (
                       <div

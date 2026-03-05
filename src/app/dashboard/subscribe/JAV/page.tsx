@@ -3,7 +3,6 @@ import { SubscribeFilter } from '@/features/subscribe/subscribe-filter';
 import JavbusSubscribeInfoItem from '@/features/subscribe/subscribe-item';
 import { SubscribeKeywordSearch } from '@/features/subscribe/subscribe-keyword-search';
 import PageContainer from '@/components/layout/page-container';
-import { Button } from '@/components/ui/button';
 import {
   Empty,
   EmptyContent,
@@ -22,10 +21,7 @@ import {
   PaginationNext,
   PaginationPrevious
 } from '@/components/ui/pagination';
-import { Separator } from '@/components/ui/separator';
-import { logger } from '@/lib/logger';
 import { searchParamsCache } from '@/lib/searchparams';
-import { getSetting, SettingKey } from '@/services/settings';
 import {
   getSubscribeListCount,
   getSubscribeListWithMovies

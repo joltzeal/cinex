@@ -1,11 +1,12 @@
 @import 'tailwindcss';
-
+@import './theme.css';
+@import '@daveyplate/better-auth-ui/css';
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 @import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
-@import './theme.css';
-@import '@daveyplate/better-auth-ui/css';
 
 :root {
   --radius: 0.625rem;
@@ -124,16 +125,6 @@
   body {
     @apply bg-background text-foreground;
   }
-}
-
-/* Hide scrollbar utility */
-.scrollbar-hide {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;  /* Chrome, Safari and Opera */
 }
 
 /* View Transition Wave Effect */
