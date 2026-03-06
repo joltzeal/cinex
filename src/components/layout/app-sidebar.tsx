@@ -116,7 +116,7 @@ export default function AppSidebar() {
                   >
                     {user && (
                       <UserAvatarProfile
-                        className='h-8 w-8 rounded-lg'
+                        className='h-8 w-8'
                         showInfo
                         user={user}
                       />
@@ -126,7 +126,7 @@ export default function AppSidebar() {
                 )}
               />
               <DropdownMenuContent
-                className='w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg'
+                className='w-(--base-dropdown-menu-trigger-width) min-w-56 rounded-lg'
                 side='bottom'
                 align='end'
                 sideOffset={4}

@@ -271,6 +271,10 @@ const useMovie = (movie: Movie) => {
     }
   }
 
+  const handleClickSimilarMovie = (id: string) => {
+    window.open(`https://www.javbus.com/${id}`, '_blank');
+  }
+
   return {
     movieDetail,
     isSubmitting,
@@ -283,6 +287,7 @@ const useMovie = (movie: Movie) => {
     handleDownloadMagnet,
     handleSubmitReview,
     handleUnSubscribeMovie,
+    handleClickSimilarMovie,
     reviewData,
   };
 };
@@ -295,6 +300,10 @@ const proxyImageUrl = (url: string): string => {
 };
 // --- 子组件: Banner ---
 const MovieBanner = ({ movieDetail, isCopied, handleCopyId }: any) => {
+
+  const handleClickMovie = () => {
+    window.open(`https://www.javbus.com/${movieDetail.id}`, '_blank');
+  }
   if (!movieDetail) return null;
 
   return (
@@ -346,7 +355,14 @@ const MovieBanner = ({ movieDetail, isCopied, handleCopyId }: any) => {
               )}
             </div>
 
-            <h1 className='text-foreground line-clamp-3 text-3xl leading-tight font-extrabold tracking-tight drop-shadow-sm md:text-4xl'>
+            <h1 className='text-foreground line-clamp-3 text-3xl  font-extrabold tracking-tight drop-shadow-sm md:text-4xl inline-block
+         leading-relaxed
+         [background-image:linear-gradient(to_right,currentColor,currentColor)]
+         [background-repeat:no-repeat]
+         [background-position:0_100%]
+         [background-size:0%_3px]
+         [transition:background-size_500ms_ease]
+         hover:[background-size:100%_3px] cursor-pointer' onClick={handleClickMovie}>
               {movieDetail.title}
             </h1>
 
@@ -437,20 +453,12 @@ const MagnetSection = ({ magnets, isSubmitting, movie, onMagnetDownload }: any) 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {/* { movie.documents && movie.documents.length > 0 && (
-                    movie.documents.map(
-                      (document: Document) => {
-                        return 'aaa'
-                      }
-                    )
-                  )} */}
-
                   {magnets?.map((magnet: Magnet) => (
                     <TableRow key={magnet.id}>
                       <TableCell className='py-2'>
                         <Tooltip>
-                          <TooltipTrigger >
-                            <div className='flex items-center gap-2 overflow-hidden'>
+                          <TooltipTrigger className="w-full">
+                            <div className='flex items-center gap-2 overflow-hidden w-full truncate'>
                               <div className='flex shrink-0 items-center gap-1'>
                                 {magnet.isHD && (
                                   <Badge
@@ -600,12 +608,12 @@ const ReviewCard = ({ data }: { data: Movie }) => {
 
   return (
     <div className="w-full bg-white/60 dark:bg-card/40 border border-slate-200 dark:border-border/50 rounded-xl p-6 shadow-sm backdrop-blur-md transition-all hover:shadow-md">
-      
+
       <div className="flex flex-col gap-6">
-        
+
         {/* 第一行：评分与标签 (并排展示以节省空间，移动端自动换行) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 border-b border-slate-100 pb-5">
-          
+
           {/* 区域 1: 评分 */}
           <div className="flex flex-col items-start">
             <SectionLabel>评分 / Rating</SectionLabel>
@@ -629,8 +637,8 @@ const ReviewCard = ({ data }: { data: Movie }) => {
             {hasTags ? (
               <div className="flex flex-wrap gap-2 sm:justify-end">
                 {(tags as string[]).map((tag, index) => (
-                  <Badge 
-                    key={index} 
+                  <Badge
+                    key={index}
                     variant="secondary" // 假设你的 Badge 有 variant
                     className="px-2.5 py-0.5 text-xs font-medium  hover:bg-blue-100 border-transparent"
                   >
@@ -675,6 +683,7 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
     handleDownloadMagnet,
     handleSubmitReview,
     isReviewDialogOpen,
+    handleClickSimilarMovie,
     setIsReviewDialogOpen,
     handleUnSubscribeMovie,
     reviewData
@@ -695,7 +704,7 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
             {/* --- Left Column: Main Content (8 cols) --- */}
             <main className='space-y-8 lg:col-span-8'>
               {/* Basic Info Grid */}
-              
+
               <MovieInfoGrid movieDetail={movieDetail} />
               <ReviewCard data={{ ...movie, ...reviewData }} />
 
@@ -734,7 +743,7 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
                     {movieDetail.samples?.map((sample: any, index: number) => (
                       <div
                         key={sample.id}
-                        className='group relative shrink-0 cursor-pointer overflow-hidden rounded-md'
+                        className='group relative aspect-800/538 h-52 shrink-0 cursor-pointer overflow-hidden rounded-md'
                         onClick={() => {
                           const imageList = movieDetail.samples.map(
                             (s: any) => ({
@@ -749,7 +758,8 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
                         <img
                           src={proxyImageUrl(sample.src)}
                           alt='Sample'
-                          className='h-52 w-auto object-cover transition-transform duration-300 group-hover:scale-105'
+                          loading='lazy'
+                          className='h-full w-full object-cover transition-transform duration-300 group-hover:scale-105'
                         />
                         <div className='absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/10' />
                       </div>
@@ -764,13 +774,13 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
                 <h3 className='mb-3 flex items-center gap-2 text-lg font-semibold'>
                   <Star className='text-primary h-4 w-4' /> 相似推荐
                 </h3>
-                <ScrollArea className='border-border/50 bg-card/30 w-full rounded-md border p-4 whitespace-nowrap'>
-                  <div className='flex gap-4'>
+                <div className='w-full'>
+                  <div className="grid grid-cols-6 gap-4">
                     {movieDetail.similarMovies?.map((similar: any) => (
                       <div
                         key={similar.id}
-                        className='group w-32 cursor-pointer space-y-2'
-                        onClick={() => console.log('Navigate to:', similar.id)}
+                        className='group cursor-pointer space-y-2'
+                        onClick={() => handleClickSimilarMovie(similar.id)}
                       >
                         <div className='relative aspect-2/3 overflow-hidden rounded-md shadow-sm'>
                           <img
@@ -779,6 +789,12 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
                             className='h-full w-full object-cover transition-transform duration-300 group-hover:scale-110'
                           />
                           <div className='absolute inset-0 rounded-md ring-1 ring-black/10 ring-inset' />
+                          <Badge
+                            variant={'default'}
+                            className='absolute top-1.5 left-1.5 h-6 px-1.5 text-[10px] font-semibold backdrop-blur-sm'
+                          >
+                            {similar.id}
+                          </Badge>
                         </div>
                         <p className='text-muted-foreground group-hover:text-foreground truncate text-center text-xs transition-colors'>
                           {similar.title}
@@ -786,8 +802,7 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
                       </div>
                     ))}
                   </div>
-                  <ScrollBar orientation='horizontal' />
-                </ScrollArea>
+                </div>
               </section>
             </main>
 

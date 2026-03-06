@@ -166,10 +166,8 @@ export async function ForumContent({ postId, forumId, threadId }: ForumContentPr
                       </EmptyDescription>
                     </EmptyHeader>
                   </Empty>
-                  <Empty title="Loading Content">
-                    <EmptyDescription>
-
-                    </EmptyDescription>
+                  <Empty title="Loading ">
+                    
                   </Empty>
                 </div>
               )}

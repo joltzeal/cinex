@@ -23,7 +23,7 @@ type pageProps = {
   subscribeMovieList: Movie[];
 };
 
-type FilterType = 'rating' | 'tag' | 'keyword';
+type FilterType = 'rating' | 'tag' | 'keyword'| null;
 
 export default function LibraryPage(props: pageProps) {
   const { subscribeMovieList } = props;
@@ -32,7 +32,7 @@ export default function LibraryPage(props: pageProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [movieData, setMovieData] = useState<Movie | null>(null);
   // 筛选状态
-  const [filterType, setFilterType] = useState<FilterType>('keyword');
+  const [filterType, setFilterType] = useState<FilterType>(null);
   const [ratingFilter, setRatingFilter] = useState<string>('');
   const [tagFilter, setTagFilter] = useState<string>('');
   const [keywordFilter, setKeywordFilter] = useState<string>('');
@@ -112,7 +112,6 @@ export default function LibraryPage(props: pageProps) {
         );
       });
     }
-
     return filtered;
   }, [
     subscribeMovieList,
@@ -206,8 +205,8 @@ export default function LibraryPage(props: pageProps) {
                 if (value !== 'tag') setTagFilter('');
               }}
             >
-              <SelectTrigger className="bg-background">
-                <SelectValue />
+              <SelectTrigger className=" mb-0">
+                <SelectValue placeholder={!filterType ? "选择筛选类型" : filterType} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value='keyword'>关键字搜索</SelectItem>
@@ -219,7 +218,7 @@ export default function LibraryPage(props: pageProps) {
 
           {/* 动态筛选输入区 */}
           <div className='flex-1 space-y-2'>
-            <label className='text-xs font-medium text-muted-foreground'>筛选条件</label>
+            <label className='text-xs font-medium text-muted-foreground flex items-center gap-1'>筛选条件</label>
             <div className="relative">
               {filterType === 'rating' && (
                 <Select value={ratingFilter} onValueChange={(value) => value && setRatingFilter(value)}>
@@ -269,11 +268,25 @@ export default function LibraryPage(props: pageProps) {
                   />
                 </div>
               )}
+              {
+                !filterType && (
+                  <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    className="pl-9 bg-background"
+                    placeholder='通过关键词/评分/标签进行搜索...'
+                    value={keywordFilter}
+                    disabled
+                    
+                  />
+                </div>
+                )
+              }
             </div>
           </div>
 
           {/* 按钮组 */}
-          <div className='flex items-center gap-2 pt-1'>
+          <div className='flex items-center gap-2 '>
             <Button onClick={handleSearch} className='min-w-20'>
               搜索
             </Button>

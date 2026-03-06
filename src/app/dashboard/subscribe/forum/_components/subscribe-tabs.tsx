@@ -13,6 +13,7 @@ import {
   NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
+  navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
 import { Star } from "lucide-react";
@@ -57,22 +58,22 @@ export async function SubscribeTabs({ currentForumId, currentThreadId, searchQue
   // 查询搜索结果数量（模糊匹配 title 或 content）
   const searchPostsCount = searchQuery
     ? await prisma.forumPost.count({
-        where: {
-          OR: [
-            {
-              title: {
-                contains: searchQuery,
-              },
+      where: {
+        OR: [
+          {
+            title: {
+              contains: searchQuery,
             },
-            {
-              content: {
-                contains: searchQuery,
-              },
+          },
+          {
+            content: {
+              contains: searchQuery,
             },
-          ],
-          ...getForumPostReadFilterWhere(readFilter),
-        },
-      })
+          },
+        ],
+        ...getForumPostReadFilterWhere(readFilter),
+      },
+    })
     : 0;
 
   if (subscriptions.length === 0) {
@@ -100,7 +101,43 @@ export async function SubscribeTabs({ currentForumId, currentThreadId, searchQue
     (sub: ForumSubscribe) => sub.forum === currentForumId && sub.thread === currentThreadId
   );
   const currentSettings = await getSetting(SettingKey.ForumCookie);
-
+  const components: { title: string; href: string; description: string }[] = [
+    {
+      title: "Alert Dialog",
+      href: "/docs/primitives/alert-dialog",
+      description:
+        "A modal dialog that interrupts the user with important content and expects a response.",
+    },
+    {
+      title: "Hover Card",
+      href: "/docs/primitives/hover-card",
+      description:
+        "For sighted users to preview content available behind a link.",
+    },
+    {
+      title: "Progress",
+      href: "/docs/primitives/progress",
+      description:
+        "Displays an indicator showing the completion progress of a task, typically displayed as a progress bar.",
+    },
+    {
+      title: "Scroll-area",
+      href: "/docs/primitives/scroll-area",
+      description: "Visually or semantically separates content.",
+    },
+    {
+      title: "Tabs",
+      href: "/docs/primitives/tabs",
+      description:
+        "A set of layered sections of content—known as tab panels—that are displayed one at a time.",
+    },
+    {
+      title: "Tooltip",
+      href: "/docs/primitives/tooltip",
+      description:
+        "A popup that displays information related to an element when the element receives keyboard focus or the mouse hovers over it.",
+    },
+  ]
   return (
     <div className="border-b bg-background">
       <div className="flex items-center justify-between px-4 py-3 gap-4">
@@ -110,7 +147,7 @@ export async function SubscribeTabs({ currentForumId, currentThreadId, searchQue
 
           {/* 全部/未读 切换 */}
           <ReadFilterToggle />
-          
+
           {/* 导航菜单 */}
           <NavigationMenu>
             <NavigationMenuList>
@@ -120,6 +157,48 @@ export async function SubscribeTabs({ currentForumId, currentThreadId, searchQue
                     {FORUM_NAMES[forumId] || forumId}
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
+                    <ul className="grid w-100 gap-2 md:w-125 md:grid-cols-2 lg:w-150">
+                      {forumSubs.map((sub: ForumSubscribe) => {
+                        const isActive = sub.forum === currentForumId && sub.thread === currentThreadId;
+                        const lastCheckedText = sub.lastChecked
+                          ? formatDistanceToNow(sub.lastChecked, {
+                            addSuffix: true,
+                            locale: zhCN
+                          })
+                          : '从未检查';
+                        return <li>
+                          <NavigationMenuLink render={
+                            <Link href={`/dashboard/subscribe/forum?${new URLSearchParams({
+                              forumId: sub.forum,
+                              threadId: sub.thread,
+                              ...(readFilter === 'unread' ? { [READ_FILTER_QUERY_KEY]: 'unread' } : {}),
+                            }).toString()}`} className={
+                              cn(isActive ? "bg-muted" : "hover:bg-muted/10",)
+                            }><div className={
+                              cn(
+                                "w-full",
+                              )
+                            }>
+                                <div className="flex items-center justify-between w-full ">
+                                  <div >
+                                    <div className="text-sm font-medium leading-none mb-1">
+                                      {sub.title || sub.thread}
+                                    </div>
+                                    <div className="line-clamp-2 text-xs leading-snug text-muted-foreground">
+                                      最后更新: {lastCheckedText}
+                                    </div>
+                                  </div>
+                                  <div >
+                                    <DeleteThreadButton forumId={sub.forum} threadId={sub.thread} />
+                                  </div>
+                                </div>
+                              </div></Link>
+                          } />
+                        </li>
+                      })}
+                    </ul>
+                  </NavigationMenuContent>
+                  {/* <NavigationMenuContent>
                     <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
                       {forumSubs.map((sub: ForumSubscribe) => {
                         const isActive = sub.forum === currentForumId && sub.thread === currentThreadId;
@@ -131,7 +210,8 @@ export async function SubscribeTabs({ currentForumId, currentThreadId, searchQue
                           : '从未检查';
                         return (
                           <li key={sub.id}>
-                            <NavigationMenuLink >
+                            
+                            <NavigationMenuLink className={navigationMenuTriggerStyle()}>
                               
                               <Link
                                 href={`/dashboard/subscribe/forum?${new URLSearchParams({
@@ -142,13 +222,8 @@ export async function SubscribeTabs({ currentForumId, currentThreadId, searchQue
                                 className={
                                   cn(
                                     "w-full",
-                                    isActive && "bg-accent text-accent-foreground select-none rounded-md p-2"
                                   )
                                 }
-                                // className={cn(
-                                //   "select-none rounded-md p-2 leading-none no-underline outline-none transition-colors  focus:bg-accent  focus:text-accent-foreground w-full",
-                                //   isActive && "bg-accent text-accent-foreground "
-                                // )}
                               >
                                 <div className="flex items-center justify-between w-full">
                                   <div >
@@ -169,13 +244,13 @@ export async function SubscribeTabs({ currentForumId, currentThreadId, searchQue
                         );
                       })}
                     </ul>
-                  </NavigationMenuContent>
+                  </NavigationMenuContent> */}
                 </NavigationMenuItem>
               ))}
             </NavigationMenuList>
           </NavigationMenu>
         </div>
-        
+
         <div className="flex items-center gap-2">
           {/* 显示搜索结果数量 */}
           {currentForumId === 'search' && searchQuery && (
@@ -183,7 +258,7 @@ export async function SubscribeTabs({ currentForumId, currentThreadId, searchQue
               找到 {searchPostsCount} 条结果
             </div>
           )}
-          
+
           <Link
             href={`/dashboard/subscribe/forum?${new URLSearchParams({
               forumId: 'star',
@@ -201,9 +276,28 @@ export async function SubscribeTabs({ currentForumId, currentThreadId, searchQue
           {/* {currentForumId && currentThreadId && currentForumId !== 'star' && currentForumId !== 'search' && (
             <SyncButton forumId={currentForumId} threadId={currentThreadId} />
           )} */}
-          <CookieSettingsDialog currentSettings={currentSettings || { javbus: '', southplus: '' }}/>
+          <CookieSettingsDialog currentSettings={currentSettings || { javbus: '', southplus: '' }} />
         </div>
       </div>
     </div>
   );
+}
+function ListItem({
+  title,
+  children,
+  href,
+
+  sub,
+  ...props
+}: React.ComponentPropsWithoutRef<"li"> & { href: string, title: string, children: React.ReactNode, sub: string, forum: string }) {
+  return (
+    <li {...props}>
+      <NavigationMenuLink render={
+        <Link href={href}><div className="flex flex-col gap-1 text-sm">
+          <div className="leading-none font-medium">{title}</div>
+          <div className="line-clamp-2 text-muted-foreground">{children}</div>
+        </div></Link>
+      } />
+    </li>
+  )
 }
