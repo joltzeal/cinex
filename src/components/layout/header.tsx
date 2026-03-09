@@ -6,6 +6,7 @@ import { ThemeSelector } from '../theme-selector';
 import { ModeToggle } from './ThemeToggle/theme-toggle';
 import CtaGithub from './cta-github';
 import { SearchComponent } from '../search-command-dialog';
+import { SearchPalette } from '../command-palette';
 
 export default function Header() {
   return (
@@ -19,7 +20,7 @@ export default function Header() {
       <div className='flex items-center gap-2 px-4'>
         <CtaGithub />
         <div className='hidden md:flex'>
-          <SearchComponent />
+          <SearchPalette></SearchPalette>
         </div>
         <ModeToggle />
         <ThemeSelector />

@@ -4,8 +4,15 @@ import {
   Film,
   LucideIcon, Search,
   Users,
-  Video
+  Video,
+  CalculatorIcon,
+  CalendarIcon,
+  CreditCardIcon,
+  SettingsIcon,
+  SmileIcon,
+  UserIcon,
 } from "lucide-react"
+
 import * as React from "react"
 import {
   AlertDialog,
@@ -20,12 +27,15 @@ import {
 import { useLoading } from "@/contexts/loading-context"
 import { Button } from "@/components/ui/button"
 import {
+  Command,
   CommandDialog,
   CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
+  CommandShortcut,
 } from "@/components/ui/command"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -161,15 +171,15 @@ export function SearchComponent() {
         </kbd>
       </Button>
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput
+        <Command>
+          <CommandInput
           placeholder="搜索内容"
           value={inputValue}
           onValueChange={setInputValue}
         />
-        <CommandList>
-          <CommandEmpty>没有找到结果。</CommandEmpty>
-
-          <CommandGroup heading="搜索选项">
+          <CommandList>
+            <CommandEmpty>没有找到结果。</CommandEmpty>
+            <CommandGroup heading="搜索选项">
             {searchCategories.map((category) => (
               <CommandItem
                 key={category.name}
@@ -187,9 +197,9 @@ export function SearchComponent() {
               </CommandItem>
             ))}
           </CommandGroup>
-        </CommandList>
+          </CommandList>
+        </Command>
       </CommandDialog>
-
       {/* AlertDialog 不再需要 Trigger，直接由 onlineVideoOpen 状态控制 */}
       <AlertDialog open={onlineVideoOpen} onOpenChange={setOnlineVideoOpen}>
         <AlertDialogContent>
@@ -200,9 +210,7 @@ export function SearchComponent() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            {/* 取消时，仅关闭 AlertDialog，不影响 CommandDialog */}
             <AlertDialogCancel onClick={() => setOnlineVideoOpen(false)}>取消</AlertDialogCancel>
-            {/* 确认时，调用 handleSearchOnlineVideo 并传入 inputValue */}
             <AlertDialogAction onClick={() => handleSearchOnlineVideo(inputValue)}>搜索</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

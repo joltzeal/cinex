@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -45,32 +47,33 @@ export function SubscribeFilter() {
   };
 
   return (
+
     <div className='flex items-center gap-2'>
       <DropdownMenu>
-        <DropdownMenuTrigger >
-          <Button variant='outline' size='sm' className='h-8 border-dashed'>
-            <Filter className='mr-2 h-4 w-4' />
-            {currentFilter === 'all'
-              ? '筛选类型'
-              : filterTypeMap[currentFilter as keyof typeof filterTypeMap]
-                  ?.label || currentFilter}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align='end' className='w-[200px]'>
-          <DropdownMenuLabel>筛选类型</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuRadioGroup
-            value={currentFilter}
-            onValueChange={handleFilterChange}
-          >
-            {Object.entries(filterTypeMap).map(([key, { label }]) => (
-              <DropdownMenuRadioItem key={key} value={key}>
-                {label}
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
+        <DropdownMenuTrigger render={<Button variant='outline' size='sm' className='h-8 border-dashed'>
+          <Filter className='mr-2 h-4 w-4' />
+          {currentFilter === 'all'
+            ? '筛选类型'
+            : filterTypeMap[currentFilter as keyof typeof filterTypeMap]
+              ?.label || currentFilter}
+        </Button>} />
+        <DropdownMenuContent>
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Panel Position</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={currentFilter}
+              onValueChange={handleFilterChange}
+            >
+              {Object.entries(filterTypeMap).map(([key, { label }]) => (
+                <DropdownMenuRadioItem key={key} value={key}>
+                  {label}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
+
 
       {currentFilter !== 'all' && (
         <Button
