@@ -116,9 +116,9 @@ export function ThunderDownload({ document, documents, isBatch = false, trigger 
   }
 
   return (
-    <Button 
-      variant="outline" 
-      size="sm" 
+    <Button
+      variant="outline"
+      size="sm"
       onClick={handleDownload}
       disabled={isLoading}
     >
@@ -148,10 +148,23 @@ export function BatchThunderDownload({ documents }: { documents: DocumentWithURL
       <span className="text-sm text-muted-foreground">
         已选择 {selectedDocuments.length} 个文档
       </span>
-      <ThunderDownload 
-        documents={selectedDocuments} 
-        isBatch={true} 
+      <ThunderDownload
+        documents={selectedDocuments}
+        isBatch={true}
       />
     </div>
   );
+}
+
+export async function SingleThunderDownload({ link }: { link: string }) {
+  if (typeof window === 'undefined' || !window.thunderLink) {
+    toast.error("迅雷下载器未安装，请先安装迅雷客户端");
+    return;
+  }
+
+  await window.thunderLink!.newTask({
+    tasks: [{
+      url: link,  // 下载地址（必填）  
+    }]
+  });
 }
