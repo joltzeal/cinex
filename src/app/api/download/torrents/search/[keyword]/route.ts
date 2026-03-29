@@ -4,18 +4,20 @@ import { ScraperClass } from '@/lib/scrapers/interface';
 import { LaoWangScraper } from '@/lib/scrapers/laowang';
 import { AnyBtScraper } from '@/lib/scrapers/anybt';
 import { BtDiggScraper } from '@/lib/scrapers/btdig';
+import { CLXQ } from '@/lib/scrapers/clxq';
+import { SCRAPER_OPTIONS, type ScraperId } from '@/lib/scrapers/metadata';
 
 // ===================================================================
 // 爬虫注册表
 // 将来有新的爬虫类，只需要在这里添加即可
 // ===================================================================
-const SCRAPER_CLASSES: ScraperClass[] = [
-  ClgClgScraper,
-  LaoWangScraper, // 在这里注册
-  AnyBtScraper,
-  BtDiggScraper
-  // FutureScraper, // 示例：将来添加新的爬虫
-];
+const SCRAPER_REGISTRY: Record<ScraperId, ScraperClass> = {
+  clgclg: ClgClgScraper,
+  laowang: LaoWangScraper,
+  anybt: AnyBtScraper,
+  btdigg: BtDiggScraper,
+  clxq: CLXQ,
+};
 // ===================================================================
 
 const SORT_MAP: { [key: number]: string } = {
@@ -45,16 +47,30 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const sortParam = searchParams.get('sort') || '0';
     const typeParam = searchParams.get('type') || '0'; // 预留，当前未使用
+    const requestedSources = searchParams.getAll('sources').filter(Boolean) as ScraperId[];
 
     const sort = parseInt(sortParam, 10);
     if (isNaN(sort) || sort < 0 || sort > 4) {
       return NextResponse.json({ error: 'Invalid sort parameter. Must be between 0 and 4.' }, { status: 400 });
     }
 
-    console.log(`API received search: keyword='${searchKeyword}', sort=${sort}, type=${typeParam}`);
+    const validSourceIds = new Set<ScraperId>(SCRAPER_OPTIONS.map((item) => item.id));
+    const invalidSources = requestedSources.filter((source) => !validSourceIds.has(source));
+    if (invalidSources.length > 0) {
+      return NextResponse.json({
+        error: `Invalid sources parameter: ${invalidSources.join(', ')}`,
+      }, { status: 400 });
+    }
+
+    const scraperIds = requestedSources.length > 0
+      ? requestedSources
+      : SCRAPER_OPTIONS.map((item) => item.id);
+    const scraperClasses = scraperIds.map((id) => SCRAPER_REGISTRY[id]).filter(Boolean);
+
+    console.log(`API received search: keyword='${searchKeyword}', sort=${sort}, type=${typeParam}, sources=${scraperIds.join(',')}`);
 
     // 3. 并行执行所有已注册的爬虫
-    const promises = SCRAPER_CLASSES.map(async (Scraper) => {
+    const promises = scraperClasses.map(async (Scraper) => {
       console.log(`-> Starting scraper: ${Scraper.sourceName}`);
       const instance = new Scraper();
       const list = await instance.search(searchKeyword, sort);
@@ -89,6 +105,7 @@ export async function GET(
         searchKeyword,
         sort: SORT_MAP[sort] || 'unknown',
         type: parseInt(typeParam, 10),
+        sources: scraperIds,
       },
       data,
     });

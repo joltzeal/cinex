@@ -6,7 +6,8 @@ import {
   File, ArrowRight, Download, Link as LinkIcon,
   Copy, ChevronDown, Loader2,
   Eye,
-  Plus
+  Plus,
+  SlidersHorizontal
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,6 +31,17 @@ import { useLoading } from '@/contexts/loading-context'
 import { toast } from "sonner"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { subscribeToTaskToast } from "@/lib/task-sse-subscribe"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu"
+import { SCRAPER_OPTIONS, type ScraperId } from "@/lib/scrapers/metadata"
 
 interface SourceData {
   count: number
@@ -38,8 +50,10 @@ interface SourceData {
 
 interface ApiResponse {
   query: {
-    keyword: string
+    searchKeyword: string
     sort: string
+    type: number
+    sources: ScraperId[]
   }
   data: {
     [source: string]: SourceData
@@ -81,6 +95,18 @@ export default function MagnetPage() {
   const { showLoader, hideLoader } = useLoading()
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedScrapers, setSelectedScrapers] = useState<ScraperId[]>(
+    SCRAPER_OPTIONS.map((item) => item.id)
+  );
+
+  const selectedScraperLabel = useMemo(() => {
+    if (selectedScrapers.length === SCRAPER_OPTIONS.length) return "全部爬虫"
+    if (selectedScrapers.length === 0) return "未选择爬虫"
+    if (selectedScrapers.length === 1) {
+      return SCRAPER_OPTIONS.find((item) => item.id === selectedScrapers[0])?.label || "1 个爬虫"
+    }
+    return `已选 ${selectedScrapers.length} 个爬虫`
+  }, [selectedScrapers])
 
   const handleDownload = async ({link,downloadImmediately}:{ link:string,downloadImmediately:boolean}) => {
     console.log(link,downloadImmediately)
@@ -155,14 +181,21 @@ export default function MagnetPage() {
   const handleSearch = async (e?: React.FormEvent) => {
     e?.preventDefault()
     if (!searchQuery.trim()) return
+    if (selectedScrapers.length === 0) {
+      toast.error("请至少选择一个爬虫")
+      return
+    }
 
     setIsLoading(true)
     showLoader(`正在搜索 "${searchQuery}" 相关的磁力链接...`)
     setError(null)
     setSearchResults(null)
+    setSelectedResult(null)
 
     try {
-      const url = `/api/download/torrents/search/${encodeURIComponent(searchQuery)}?sort=0`
+      const params = new URLSearchParams({ sort: "0" })
+      selectedScrapers.forEach((source) => params.append("sources", source))
+      const url = `/api/download/torrents/search/${encodeURIComponent(searchQuery)}?${params.toString()}`
       const response = await fetch(url)
       if (!response.ok) throw new Error(`Error: ${response.statusText}`)
       const data: ApiResponse = await response.json()
@@ -204,6 +237,61 @@ export default function MagnetPage() {
     toast.info('磁力已复制')
   }
 
+  const toggleScraper = (scraperId: ScraperId) => {
+    setSelectedScrapers((prev) => {
+      if (prev.includes(scraperId)) {
+        if (prev.length === 1) {
+          toast.error("至少保留一个爬虫")
+          return prev
+        }
+        return prev.filter((id) => id !== scraperId)
+      }
+
+      return [...prev, scraperId]
+    })
+  }
+
+  const selectAllScrapers = () => {
+    setSelectedScrapers(SCRAPER_OPTIONS.map((item) => item.id))
+  }
+
+  const renderScraperSelector = (compact = false) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className={cn(
+          "inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          compact ? "h-10 rounded-xl px-3" : "h-12"
+        )}
+      >
+        <SlidersHorizontal className="h-4 w-4" />
+        <span className="max-w-36 truncate">{selectedScraperLabel}</span>
+        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>选择搜索爬虫</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {SCRAPER_OPTIONS.map((scraper) => (
+            <DropdownMenuCheckboxItem
+              key={scraper.id}
+              checked={selectedScrapers.includes(scraper.id)}
+              onClick={() => toggleScraper(scraper.id)}
+            >
+              {scraper.label}
+            </DropdownMenuCheckboxItem>
+          ))}
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="justify-center text-xs"
+          onClick={selectAllScrapers}
+        >
+          全选
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+
   return (
     <div className="flex flex-col w-full h-full  bg-background text-foreground font-sans">
 
@@ -218,22 +306,27 @@ export default function MagnetPage() {
           </div>
 
           <form onSubmit={handleSearch} className="w-full max-w-2xl relative mb-8">
-            <div className="relative flex items-center w-full group">
-              <Search className="absolute left-5 text-muted-foreground w-6 h-6 group-focus-within:text-primary transition-colors" />
-              <Input
-                className="h-16 pl-14 pr-16 rounded-full text-lg shadow-lg border-muted bg-card/50 hover:bg-card focus-visible:ring-primary/50 transition-all"
-                placeholder="Search hash, name, or tag..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <Button
-                type="submit"
-                size="icon"
-                disabled={isLoading}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full w-12 h-12"
-              >
-                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
-              </Button>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="relative flex items-center w-full group">
+                <Search className="absolute left-5 text-muted-foreground w-6 h-6 group-focus-within:text-primary transition-colors" />
+                <Input
+                  className="h-16 pl-14 pr-16 rounded-full text-lg shadow-lg border-muted bg-card/50 hover:bg-card focus-visible:ring-primary/50 transition-all"
+                  placeholder="Search hash, name, or tag..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <Button
+                  type="submit"
+                  size="icon"
+                  disabled={isLoading}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full w-12 h-12"
+                >
+                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
+                </Button>
+              </div>
+              <div className="flex justify-end sm:justify-start">
+                {renderScraperSelector()}
+              </div>
             </div>
           </form>
 
@@ -259,7 +352,7 @@ export default function MagnetPage() {
       ) : (
         <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
 
-          <div className="flex-none h-16 border-b bg-background/95 backdrop-blur px-4 sm:px-6 flex items-center gap-4 z-20">
+          <div className="flex-none min-h-16 border-b bg-background/95 backdrop-blur px-4 py-3 sm:px-6 flex flex-wrap items-center gap-3 z-20">
             <div className="flex items-center gap-2 cursor-pointer mr-2" onClick={handleReset}>
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
                 <Zap className="w-4 h-4 text-primary" />
@@ -277,6 +370,10 @@ export default function MagnetPage() {
                 />
               </div>
             </form>
+
+            <div className="flex items-center gap-2">
+              {renderScraperSelector(true)}
+            </div>
 
             <div className="ml-auto flex items-center gap-2">
               {/* <Button variant="ghost" size="sm" className="hidden sm:flex gap-2">
