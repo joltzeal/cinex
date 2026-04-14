@@ -98,6 +98,38 @@ interface DownloadMoviePictureParams {
   movieDetail: any;
   fileAttr: any;
 }
+
+const BIG_COVER_ASPECT_RATIO = 800 / 538;
+const BIG_COVER_RATIO_TOLERANCE = 0.02;
+const POSTER_CROP_WIDTH_RATIO = 378 / 538;
+
+async function tryWritePosterFromBigCover(coverBuffer: Buffer, posterFilePath: string) {
+  const coverImage = await Jimp.read(coverBuffer);
+  const coverAspectRatio = coverImage.width / coverImage.height;
+  const isExpectedBigCoverRatio =
+    Math.abs(coverAspectRatio - BIG_COVER_ASPECT_RATIO) <= BIG_COVER_RATIO_TOLERANCE;
+
+  if (!isExpectedBigCoverRatio) {
+    return false;
+  }
+
+  const cropWidth = Math.min(
+    coverImage.width,
+    Math.round(coverImage.height * POSTER_CROP_WIDTH_RATIO)
+  );
+  const cropX = Math.max(0, coverImage.width - cropWidth);
+
+  coverImage.crop({
+    x: cropX,
+    y: 0,
+    w: cropWidth,
+    h: coverImage.height,
+  });
+
+  await coverImage.write(posterFilePath as `${string}.${string}`);
+  return true;
+}
+
 async function downloadMoviePicture(params: DownloadMoviePictureParams) {
   // await downloadImage(url, outputDir);
   // thumb_url: 'https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/ssni00939/ssni00939ps.jpg',
@@ -107,8 +139,7 @@ async function downloadMoviePicture(params: DownloadMoviePictureParams) {
   // preview_video_url: 'https://cc3001.dmm.co.jp/litevideo/freepv/s/ssn/ssni00939/ssni009394ks.mp4',
   const { filePath, fileName, rule, movieDetail } = params;
   // poster 竖图， fanart thumb 横图，poster thumb 需要添加水印 fanart。
-  const posterUrl = movieDetail.big_thumb_url || movieDetail.thumb_url;
-  const fanartUrl = movieDetail.big_cover_url || movieDetail.cover_url;
+  const posterFallbackUrl = movieDetail.big_thumb_url || movieDetail.thumb_url;
   const thumbUrl = movieDetail.big_cover_url || movieDetail.cover_url;
   // 下载 poster // 解析 URL
   const headers = {
@@ -130,16 +161,12 @@ async function downloadMoviePicture(params: DownloadMoviePictureParams) {
   // 确保目录存在
   await fs.mkdir(filePath, { recursive: true });
 
-  const posterRes = await proxyRequest(posterUrl, {
-    headers: headers,
-    responseType: 'buffer',
-  });
-  if (posterRes.statusCode !== 200) throw new Error(`下载失败: ${posterUrl} (状态码: ${posterRes.statusCode})`);
-  const posterBuffer = posterRes.rawBody;
   const posterFilePath = path.join(filePath, `${fileName}-poster.jpg`);
-  await fs.writeFile(posterFilePath, posterBuffer);
 
   // 下载 fanart 和 thumb
+  if (!thumbUrl) {
+    throw new Error('未找到可用的横版封面地址');
+  }
   const thumbRes = await proxyRequest(thumbUrl, {
     headers: headers,
     responseType: 'buffer',
@@ -150,6 +177,30 @@ async function downloadMoviePicture(params: DownloadMoviePictureParams) {
   const fanartFilePath = path.join(filePath, `${fileName}-fanart.jpg`);
   await fs.writeFile(thumbFilePath, thumbBuffer);
   await fs.writeFile(fanartFilePath, thumbBuffer);
+
+  let posterWritten = false;
+  if (movieDetail.big_cover_url && thumbUrl === movieDetail.big_cover_url) {
+    try {
+      posterWritten = await tryWritePosterFromBigCover(thumbBuffer, posterFilePath);
+    } catch (error) {
+      logger.warn(`使用 big_cover_url 裁切 poster 失败，回退到 thumb 图:${error}`);
+    }
+  }
+
+  if (!posterWritten) {
+    if (!posterFallbackUrl) {
+      throw new Error('未找到可用的 poster 图片地址');
+    }
+    const posterRes = await proxyRequest(posterFallbackUrl, {
+      headers: headers,
+      responseType: 'buffer',
+    });
+    if (posterRes.statusCode !== 200) {
+      throw new Error(`下载失败: ${posterFallbackUrl} (状态码: ${posterRes.statusCode})`);
+    }
+    const posterBuffer = posterRes.rawBody;
+    await fs.writeFile(posterFilePath, posterBuffer);
+  }
 
   // 添加水印
   const watermarkKeys = ['leak', 'cWord', 'destroyed', 'wuma', 'youma'];

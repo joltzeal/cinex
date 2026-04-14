@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -125,11 +126,15 @@ export const columns: ColumnDef<FileTransferLog>[] = [
         <DropdownMenu>
           <DropdownMenuTrigger ><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>操作</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(row.original.sourcePath)}>复制源路径</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(row.original.destinationPath)}>复制目标路径</DropdownMenuItem>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>操作</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => navigator.clipboard.writeText(row.original.sourcePath)}>复制源路径</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigator.clipboard.writeText(row.original.destinationPath)}>复制目标路径</DropdownMenuItem>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-600" onClick={handleDelete}>删除记录</DropdownMenuItem>
+            <DropdownMenuGroup>
+              <DropdownMenuItem variant="destructive" onClick={handleDelete}>删除记录</DropdownMenuItem>
+            </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
       );
