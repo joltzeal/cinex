@@ -138,9 +138,10 @@ async function downloadMoviePicture(params: DownloadMoviePictureParams) {
   // big_cover_url: '',
   // preview_video_url: 'https://cc3001.dmm.co.jp/litevideo/freepv/s/ssn/ssni00939/ssni009394ks.mp4',
   const { filePath, fileName, rule, movieDetail } = params;
+  
   // poster 竖图， fanart thumb 横图，poster thumb 需要添加水印 fanart。
   const posterFallbackUrl = movieDetail.big_thumb_url || movieDetail.thumb_url;
-  const thumbUrl = movieDetail.big_cover_url || movieDetail.cover_url;
+  const horizontalCoverUrl = movieDetail.big_cover_url || movieDetail.cover_url;
   // 下载 poster // 解析 URL
   const headers = {
     'accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
@@ -164,14 +165,14 @@ async function downloadMoviePicture(params: DownloadMoviePictureParams) {
   const posterFilePath = path.join(filePath, `${fileName}-poster.jpg`);
 
   // 下载 fanart 和 thumb
-  if (!thumbUrl) {
+  if (!horizontalCoverUrl) {
     throw new Error('未找到可用的横版封面地址');
   }
-  const thumbRes = await proxyRequest(thumbUrl, {
+  const thumbRes = await proxyRequest(horizontalCoverUrl, {
     headers: headers,
     responseType: 'buffer',
   });
-  if (thumbRes.statusCode !== 200) throw new Error(`下载失败: ${thumbUrl} (状态码: ${thumbRes.statusCode})`);
+  if (thumbRes.statusCode !== 200) throw new Error(`下载失败: ${horizontalCoverUrl} (状态码: ${thumbRes.statusCode})`);
   const thumbBuffer = thumbRes.rawBody;
   const thumbFilePath = path.join(filePath, `${fileName}-thumb.jpg`);
   const fanartFilePath = path.join(filePath, `${fileName}-fanart.jpg`);
@@ -179,12 +180,10 @@ async function downloadMoviePicture(params: DownloadMoviePictureParams) {
   await fs.writeFile(fanartFilePath, thumbBuffer);
 
   let posterWritten = false;
-  if (movieDetail.big_cover_url && thumbUrl === movieDetail.big_cover_url) {
-    try {
-      posterWritten = await tryWritePosterFromBigCover(thumbBuffer, posterFilePath);
-    } catch (error) {
-      logger.warn(`使用 big_cover_url 裁切 poster 失败，回退到 thumb 图:${error}`);
-    }
+  try {
+    posterWritten = await tryWritePosterFromBigCover(thumbBuffer, posterFilePath);
+  } catch (error) {
+    logger.warn(`使用横版封面裁切 poster 失败，回退到 thumb 图:${error}`);
   }
 
   if (!posterWritten) {
