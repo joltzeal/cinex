@@ -109,6 +109,20 @@ export const columns: ColumnDef<FileTransferLog>[] = [
   {
     id: 'actions',
     cell: ({ row }) => {
+      const canRetry = row.original.status === TransferStatus.FAILURE;
+
+      const handleRetry = async () => {
+        const response = await fetch(`/api/file/transfer/${row.original.id}/retry`, {
+          method: "POST",
+        });
+        if (!response.ok) {
+          toast.error('重试失败');
+          return;
+        }
+        toast.success('已开始重试');
+        window.location.reload();
+      };
+
       const handleDelete = async () => {
         const response = await fetch(`/api/file/transfer/${row.original.id}`, {
           method: "DELETE",
@@ -130,6 +144,9 @@ export const columns: ColumnDef<FileTransferLog>[] = [
               <DropdownMenuLabel>操作</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => navigator.clipboard.writeText(row.original.sourcePath)}>复制源路径</DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigator.clipboard.writeText(row.original.destinationPath)}>复制目标路径</DropdownMenuItem>
+              {canRetry && (
+                <DropdownMenuItem onClick={handleRetry}>重试</DropdownMenuItem>
+              )}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>

@@ -34,7 +34,7 @@ export class WhatslinkPreview extends LinkPreview {
     const origins = [
       'https://whatslink.info',
       'https://magnet.pages.dev',
-      'https://tmp.nulla.top'
+      'https://magnet.pics'
       // 您可以在这里添加更多备用的 origin
     ];
 

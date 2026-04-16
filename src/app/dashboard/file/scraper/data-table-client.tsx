@@ -1,4 +1,3 @@
-// 文件路径: components/file-tree-view-selector.tsx
 'use client';
 
 import React from 'react';
