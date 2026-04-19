@@ -302,6 +302,7 @@ export async function manualTransfer(
     if (!fileInfo.number || !fileInfo.letters) {
       throw new Error('无法解析文件信息');
     }
+    const searchNumber = fileInfo.number;
     // 2. 根据番号获取元数据
     const filePath = params.file.id;
     originalFilePath = filePath;
@@ -313,7 +314,7 @@ export async function manualTransfer(
     const parseConfig = await getSetting(SettingKey.MovieParseConfig) || BASE_PARSE_CONFIG;
 
     // 5. 根据番号获取元数据 需要配置 metatube api
-    const movieSearchList = await metatubeClient.searchByNumber(params.number);
+    const movieSearchList = await metatubeClient.searchByNumber(searchNumber);
     if (movieSearchList.length === 0) {
       throw new Error('未找到匹配的影片信息');
     }

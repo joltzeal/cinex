@@ -148,6 +148,26 @@ function showFilePath(filePath: string): string {
     return filePath;
 }
 
+function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function stripCompactChineseSubtitleMarker(fileName: string, movieNumber: string) {
+    if (!movieNumber) {
+        return { fileName, hasMarker: false };
+    }
+
+    const compactMarkerRegex = new RegExp(`(${escapeRegExp(movieNumber)})[-_ .]?(?:CHS|CH)$`, 'i');
+    if (!compactMarkerRegex.test(fileName)) {
+        return { fileName, hasMarker: false };
+    }
+
+    return {
+        fileName: fileName.replace(compactMarkerRegex, '$1'),
+        hasMarker: true,
+    };
+}
+
 /**
  * 辅助函数：安全地检查文件是否存在
  */
@@ -477,17 +497,29 @@ export async function getFileInfo(filePath: string): Promise<FileInfo> {
         }
         cnwordList.push("-uc."); // -uc. 也视为中文字幕的一种标志
 
+        const explicitlyNoSubtitle = filePathStr.includes("無字幕") || filePathStr.includes("无字幕");
+        const compactSubtitleMarker = stripCompactChineseSubtitleMarker(fileName, movieNumber);
+        if (compactSubtitleMarker.hasMarker && !explicitlyNoSubtitle) {
+            cWord = cnwordStyle;
+            hasSub = true;
+            fileName = compactSubtitleMarker.fileName;
+        }
+
         let fileNameTempForCheck = (fileName + ".").toUpperCase().replace("CD", "").replace("CARIB", "");
 
         for (const each of cnwordList) {
-            if (fileNameTempForCheck.includes(each.toUpperCase()) && !filePathStr.includes("無字幕") && !filePathStr.includes("无字幕")) {
-                cWord = cnwordStyle;
-                hasSub = true;
-                // **关键改动**: 找到字幕标志后，从原始文件名中移除它，避免后续cdPart的误判
-                const regex = new RegExp(each.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&'), 'i');
-                fileName = fileName.replace(regex, "");
-                break; // 找到后即跳出循环
+            if (!fileNameTempForCheck.includes(each.toUpperCase())) {
+                continue;
             }
+            if (!hasSub && explicitlyNoSubtitle) {
+                continue;
+            }
+
+            cWord = cnwordStyle;
+            hasSub = true;
+            const regex = new RegExp(each.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&'), 'i');
+            fileName = fileName.replace(regex, "");
+            break;
         }
 
         // 第二步：检查外部字幕文件。如果文件名已表明有字幕，则无需重复设置cWord
