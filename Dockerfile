@@ -10,7 +10,7 @@ RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 # Enable pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@10.9.0 --activate
 
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
@@ -23,7 +23,7 @@ FROM base AS builder
 WORKDIR /app
 
 # Enable pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@10.9.0 --activate
 
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
@@ -49,7 +49,7 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
 # Enable pnpm for runtime (needed for prisma commands)
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@10.9.0 --activate
 
 # Set environment to production
 ENV NODE_ENV=production

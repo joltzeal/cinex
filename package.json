@@ -2,6 +2,7 @@
   "name": "cinex",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@10.9.0",
   "author": {
     "name": "Kiran",
     "url": "https://github.com/Kiranism"
