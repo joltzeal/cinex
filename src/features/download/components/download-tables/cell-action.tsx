@@ -8,6 +8,7 @@ import { DocumentWithURLs } from "@/lib/download/download-data";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
@@ -123,43 +124,43 @@ export function ActionsCell({ document }: ActionsCellProps) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel>操作</DropdownMenuLabel>
-          <DropdownMenuItem
-            onClick={handleDownload}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            <span>立即下载</span>
-          </DropdownMenuItem>
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>操作</DropdownMenuLabel>
+            <DropdownMenuItem onClick={handleDownload}>
+              <Download className="mr-2 h-4 w-4" />
+              <span>立即下载</span>
+            </DropdownMenuItem>
           
-          {/* 2. 添加新的菜单项 */}
-          <DropdownMenuItem onClick={handleCopyLinks}>
-            <LinkIcon className="mr-2 h-4 w-4" />
-            <span>复制下载链接</span>
-          </DropdownMenuItem>
+            {/* 2. 添加新的菜单项 */}
+            <DropdownMenuItem onClick={handleCopyLinks}>
+              <LinkIcon className="mr-2 h-4 w-4" />
+              <span>复制下载链接</span>
+            </DropdownMenuItem>
 
-          <DropdownMenuItem
-            onClick={() => navigator.clipboard.writeText(document.id)}
-          >
-            <Copy className="mr-2 h-4 w-4" />
-            <span>复制文档ID</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => {
-            const editTrigger = window.document.getElementById(`edit-trigger-${document.id}`);
-            if (editTrigger) {
-              editTrigger.click();
-            }
-          }}>
-            <Edit className="mr-2 h-4 w-4" />
-            <span>编辑</span>
-          </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => navigator.clipboard.writeText(document.id)}
+            >
+              <Copy className="mr-2 h-4 w-4" />
+              <span>复制文档ID</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              const editTrigger = window.document.getElementById(`edit-trigger-${document.id}`);
+              if (editTrigger) {
+                editTrigger.click();
+              }
+            }}>
+              <Edit className="mr-2 h-4 w-4" />
+              <span>编辑</span>
+            </DropdownMenuItem>
           
-          <DropdownMenuItem onClick={() => {
-            // 手动触发迅雷下载
-            handleThunderDownload();
-          }}>
-            <Download className="mr-2 h-4 w-4" />
-            <span>迅雷</span>
-          </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              // 手动触发迅雷下载
+              handleThunderDownload();
+            }}>
+              <Download className="mr-2 h-4 w-4" />
+              <span>迅雷</span>
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="text-red-500 focus:bg-red-100 focus:text-red-600"
