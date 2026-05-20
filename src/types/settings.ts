@@ -34,8 +34,7 @@ interface MediaServerConfig {
 
 interface PushNotificationConfig {
   domain: string;
-  username: string;
-  token?: string;
+  token: string;
 }
 
 interface AiProviderConfig {

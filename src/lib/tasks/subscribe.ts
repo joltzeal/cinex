@@ -208,6 +208,10 @@ export async function taskJavbusSubscribeUpdate() {
             newCount: newMovies.length,
             filter: subscribeItem.filter
           });
+          await prisma.subscribe.update({
+            where: { id: subscribeItem.id },
+            data: { updatedAt: new Date() }
+          });
         } else {
           logger.info(`订阅 ${filterType}=${filterValue} 没有新电影`);
         }
@@ -216,10 +220,6 @@ export async function taskJavbusSubscribeUpdate() {
           // logger.info(`等待 ${SUBSCRIPTION_DELAY}ms 后处理下一个订阅...`);
           await sleep(SUBSCRIPTION_DELAY);
         }
-        await prisma.subscribe.update({
-          where: { id: subscribeItem.id },
-          data: { updatedAt: new Date() }
-        });
       } catch (error) {
         logger.error(`执行 ${taskName} 时发生错误:${error}`,);
         throw error;

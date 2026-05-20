@@ -24,13 +24,15 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { InputWithIcon } from '@/components/ui/input-with-icon';
-import { Globe, User, KeyRound } from 'lucide-react';
+import { Globe, KeyRound } from 'lucide-react';
 
 // 定义推送通知配置的 Zod Schema
 const formSchema = z.object({
-  domain: z.string().min(1, '域名不能为空').regex(/^[a-zA-Z0-9.-]+$/, '请输入有效的域名'),
-  username: z.string().min(1, '用户名不能为空'),
-  token: z.string().optional(),
+  domain: z.string().min(1, '推送服务域名不能为空').refine((value) => {
+    const domain = value.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+    return /^[a-zA-Z0-9.-]+(:\d+)?$/.test(domain);
+  }, '请输入有效的域名'),
+  token: z.string().min(1, '推送令牌不能为空'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -47,20 +49,19 @@ export function PushNotificationSettingsComponent({ initialData }: PushNotificat
   // 初始化 useForm
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: initialData || {
-      domain: '',
-      username: '',
-      token: '',
+    defaultValues: {
+      domain: initialData?.domain || '',
+      token: initialData?.token || '',
     },
   });
 
   useEffect(() => {
-    // 检查 initialData 是否存在 (从 undefined/null 变为有值的对象)
     if (initialData) {
-      // 当 initialData 变化时，用新数据重置表单
-      form.reset(initialData);
+      form.reset({
+        domain: initialData.domain || '',
+        token: initialData.token || '',
+      });
     }
-    // 依赖项数组确保这个 effect 只在 initialData 或 form.reset 函数变化时运行
   }, [initialData, form.reset]);
 
   // 定义测试连接的处理函数
@@ -126,7 +127,7 @@ export function PushNotificationSettingsComponent({ initialData }: PushNotificat
       <Card>
         <CardHeader>
           <CardTitle>消息推送设置</CardTitle>
-          <CardDescription>配置用于发送任务通知和系统消息的推送服务。</CardDescription>
+          <CardDescription>配置 MoePush 推送服务，用于发送任务通知和系统消息。</CardDescription>
         </CardHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -141,25 +142,7 @@ export function PushNotificationSettingsComponent({ initialData }: PushNotificat
                     <FormControl>
                       <InputWithIcon
                         icon={<Globe className={iconStyle} />}
-                        placeholder="例如：push.mydomain.cn"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="username"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>用户名</FormLabel>
-                    <FormControl>
-                      <InputWithIcon
-                        icon={<User className={iconStyle} />}
-                        placeholder="例如：admin"
+                        placeholder="例如：moepush.app"
                         {...field}
                       />
                     </FormControl>
@@ -173,12 +156,12 @@ export function PushNotificationSettingsComponent({ initialData }: PushNotificat
                 name="token"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>推送令牌 (可选)</FormLabel>
+                    <FormLabel>推送令牌</FormLabel>
                     <FormControl>
                       <InputWithIcon
                         icon={<KeyRound className={iconStyle} />}
                         type="password"
-                        placeholder="请输入推送令牌（如果设置了的话）"
+                        placeholder="例如：ZHfsTSKLKO3MZVSQ"
                         {...field}
                       />
                     </FormControl>

@@ -31,6 +31,26 @@ import { toast } from 'sonner';
 
 // --- Props 定义 ---
 
+const transferStatusMap = {
+  [TransferStatus.SUCCESS]: '成功',
+  [TransferStatus.FAILURE]: '失败',
+  [TransferStatus.PROCESSING]: '处理中',
+};
+
+const transferMethodMap = {
+  [TransferMethod.COPY]: '复制',
+  [TransferMethod.MOVE]: '移动',
+  [TransferMethod.HARDLINK]: '硬链接',
+  [TransferMethod.SOFTLINK]: '软链接',
+};
+
+const statusOptions = [
+  { value: 'all', label: '全部状态' },
+  { value: TransferStatus.SUCCESS, label: transferStatusMap[TransferStatus.SUCCESS] },
+  { value: TransferStatus.FAILURE, label: transferStatusMap[TransferStatus.FAILURE] },
+  { value: TransferStatus.PROCESSING, label: transferStatusMap[TransferStatus.PROCESSING] },
+];
+
 interface DataTableClientComponentProps {
   recordsData: FileTransferLog[];
   fileTreeData: FileTreeNode[];
@@ -167,17 +187,69 @@ export function DataTableClientComponent({ recordsData, fileTreeData }: DataTabl
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    globalFilterFn: (row, _columnId, filterValue) => {
+      const query = String(filterValue ?? '').trim().toLowerCase();
+      if (!query) return true;
+
+      const record = row.original;
+      const searchableValues = [
+        record.id,
+        record.title,
+        record.number,
+        record.sourcePath,
+        record.destinationPath,
+        record.transferMethod,
+        transferMethodMap[record.transferMethod],
+        record.status,
+        transferStatusMap[record.status],
+        record.errorMessage,
+        record.initiatedAt?.toISOString(),
+        record.initiatedAt?.toLocaleString(),
+        record.completedAt?.toISOString(),
+        record.completedAt?.toLocaleString(),
+        record.updatedAt?.toISOString(),
+        record.updatedAt?.toLocaleString(),
+      ];
+
+      return searchableValues.some((value) =>
+        String(value ?? '').toLowerCase().includes(query)
+      );
+    },
     onGlobalFilterChange: setGlobalFilter,
     onRowSelectionChange: setRowSelection,
     state: { sorting, columnFilters, globalFilter, rowSelection },
   });
+  const currentStatus =
+    (table.getColumn('status')?.getFilterValue() as TransferStatus | undefined) ??
+    'all';
 
   return (
     <div className="w-full space-y-4">
       <div className="flex items-center justify-between">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="搜索整理记录..." value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} className="pl-10 w-full sm:w-75" />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="搜索整理记录..." value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} className="pl-10 w-full sm:w-75" />
+          </div>
+          <Select
+            value={currentStatus}
+            onValueChange={(value) =>
+              table
+                .getColumn('status')
+                ?.setFilterValue(value === 'all' ? undefined : value)
+            }
+          >
+            <SelectTrigger className="w-full sm:w-36">
+              <SelectValue placeholder="状态" />
+            </SelectTrigger>
+            <SelectContent>
+              {statusOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex items-center gap-2">
           <ManualRecognitionDialog fileTreeData={fileTreeData} />

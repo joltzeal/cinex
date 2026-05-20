@@ -4,12 +4,12 @@ import { PushNotificationService } from '@/lib/push-notification';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { domain, username, token } = body;
+    const { domain, token } = body;
 
     // 验证必填字段
-    if (!domain || !username) {
+    if (!domain || !token) {
       return NextResponse.json(
-        { success: false, message: '域名和用户名不能为空' },
+        { success: false, message: '推送服务域名和推送令牌不能为空' },
         { status: 400 }
       );
     }
@@ -17,7 +17,6 @@ export async function POST(request: NextRequest) {
     // 创建推送服务实例
     const pushService = new PushNotificationService({
       domain,
-      username,
       token
     });
 

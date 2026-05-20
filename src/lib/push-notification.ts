@@ -1,19 +1,15 @@
 export interface PushNotificationConfig {
   domain: string;
-  username: string;
-  token?: string;
+  token: string;
 }
 
 export interface PushMessageParams {
   title?: string;
-  description: string;
+  description?: string;
   content?: string;
-  channel?: string;
-  token?: string;
   url?: string;
-  to?: string;
-  async?: boolean;
   render_mode?: 'code' | 'raw' | 'markdown';
+  [key: string]: unknown;
 }
 
 export class PushNotificationService {
@@ -28,38 +24,16 @@ export class PushNotificationService {
    */
   async sendMessage(params: PushMessageParams): Promise<{ success: boolean; message?: string; uuid?: string }> {
     try {
-      const { domain, username } = this.config;
-      const baseUrl = `https://${domain}/push/${username}`;
+      const { domain, token } = this.config;
+      const baseUrl = normalizePushDomain(domain);
+      const url = `${baseUrl}/api/push/${encodeURIComponent(token)}`;
 
-      
-      // 构建查询参数
-      const queryParams = new URLSearchParams();
-      
-      if (params.title) queryParams.append('title', params.title);
-      if (params.description) queryParams.append('description', params.description);
-      if (params.content) queryParams.append('content', params.content);
-      if (params.channel) queryParams.append('channel', params.channel);
-      if (params.url) queryParams.append('url', params.url);
-      if (params.to) queryParams.append('to', params.to);
-      if (params.async) queryParams.append('async', params.async.toString());
-      if (params.render_mode) queryParams.append('render_mode', params.render_mode);
-      
-      // 使用配置中的 token 或参数中的 token
-      const token = params.token || this.config.token;
-      if (token) {
-        queryParams.append('token', token);
-      }
-
-      const url = `${baseUrl}?${queryParams.toString()}`;
-
-      
       const response = await fetch(url, {
-        method: 'GET',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { 'Authorization': token }),
         },
-        // 添加超时设置
+        body: JSON.stringify(formatMarkdownMessage(params)),
         signal: AbortSignal.timeout(10000), // 10秒超时
       });
 
@@ -72,21 +46,19 @@ export class PushNotificationService {
         };
       }
 
-      const result = await response.json();
-      if(result.success){
+      const result = await parsePushResponse(response);
+      if (!result || result.success !== false) {
         return {
           success: true,
-          message: '推送成功',
-          uuid: result.uuid
-        };
-      }else{
-        return {
-          success: false,
-          message: `推送失败: ${result.message}`
+          message: result?.message || '推送成功',
+          uuid: result?.uuid
         };
       }
-      
-      
+
+      return {
+        success: false,
+        message: `推送失败: ${result.message || '服务返回失败'}`
+      };
     } catch (error) {
       console.error('[PushNotification] 推送消息时发生错误:', error);
       
@@ -127,13 +99,61 @@ export class PushNotificationService {
    * 发送任务执行通知
    */
   async sendTaskNotification(taskName: string, status: 'success' | 'failed', details?: string): Promise<{ success: boolean; message?: string }> {
-    const statusText = status === 'success' ? '✅ 成功' : '❌ 失败';
-    const emoji = status === 'success' ? '🎉' : '⚠️';
+    const statusText = status === 'success' ? '成功' : '失败';
     
     return this.sendMessage({
-      title: `${emoji} 任务执行通知`,
-      description: `${taskName} 执行${status === 'success' ? '成功' : '失败'}`,
-      content: `## 任务执行结果\n\n**任务名称**: ${taskName}\n**执行状态**: ${statusText}\n**执行时间**: ${new Date().toLocaleString('zh-CN')}\n\n${details ? `**详细信息**:\n${details}` : ''}`,
+      title: '任务执行通知',
+      content: [
+        `*任务名称*: ${taskName}`,
+        `*执行状态*: ${statusText}`,
+        `*执行时间*: ${new Date().toLocaleString('zh-CN')}`,
+        details ? `\n*详细信息*:\n${details}` : ''
+      ].filter(Boolean).join('\n'),
+      render_mode: 'markdown',
     });
   }
+}
+
+function normalizePushDomain(domain: string) {
+  const trimmed = domain.trim().replace(/\/+$/, '');
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  return `https://${trimmed}`;
+}
+
+async function parsePushResponse(response: Response): Promise<{
+  success?: boolean;
+  message?: string;
+  uuid?: string;
+} | null> {
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    return null;
+  }
+
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+function formatMarkdownMessage(params: PushMessageParams) {
+  const sections = [
+    params.title ? `*${params.title}*` : '',
+    params.description || '',
+    params.content || '',
+    params.url ? `[查看详情](${params.url})` : ''
+  ].filter(Boolean);
+
+  return normalizeTelegramMarkdown(sections.join('\n\n'));
+}
+
+function normalizeTelegramMarkdown(message: string) {
+  return message
+    .replace(/^#{1,6}\s+(.+)$/gm, '*$1*')
+    .replace(/\*\*(.*?)\*\*/g, '*$1*')
+    .trim();
 }

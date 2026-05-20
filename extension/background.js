@@ -92,6 +92,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
       });
     return true;
+  } else if (request.action === 'previewMagnet') {
+    handlePreviewMagnet(request.magnetLink, request.apiUrl)
+      .then(sendResponse)
+      .catch(error => {
+        sendResponse({
+          success: false,
+          error: error.message
+        });
+      });
+    return true;
   }
 });
 
@@ -272,6 +282,48 @@ async function handleSubmitReview(movieId, data, apiUrl) {
     return {
       success: false,
       error: error.message || '提交评价失败'
+    };
+  }
+}
+
+// Function to fetch magnet preview data
+async function handlePreviewMagnet(magnetLink, apiUrl) {
+  try {
+    if (!apiUrl) {
+      throw new Error('请先在扩展中配置 API URL');
+    }
+
+    if (!magnetLink || !magnetLink.startsWith('magnet:')) {
+      throw new Error('无效的磁力链接');
+    }
+
+    const response = await fetch(
+      `${apiUrl}/api/download/torrents/preview?magnet=${encodeURIComponent(magnetLink)}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok || result.error) {
+      return {
+        success: false,
+        error: result.error || result.message || `预览失败 (${response.status})`
+      };
+    }
+
+    return {
+      success: true,
+      data: result
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message || '磁力预览失败'
     };
   }
 }

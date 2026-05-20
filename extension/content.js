@@ -204,6 +204,24 @@ function proxyImageUrl(url, apiUrl) {
   return url;
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatBytes(bytes, decimals = 2) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+}
+
 // Function to render movie card content
 async function renderMovieCard(card, movie, detail) {
   const stars = detail.stars || [];
@@ -311,6 +329,229 @@ async function renderMovieCard(card, movie, detail) {
     document.body.appendChild(modal);
   };
 
+  const showMagnetPreview = async (magnetLink) => {
+    let currentScreenshotIndex = 0;
+    let previewData = null;
+    let screenshots = [];
+
+    const modal = document.createElement('div');
+    modal.className = 'cinex-magnet-preview-modal';
+    modal.setAttribute('data-cinex-no-highlight', 'true');
+
+    const closeModal = () => {
+      document.removeEventListener('keydown', handleKeydown, true);
+      modal.remove();
+    };
+
+    const copyMagnetLink = async () => {
+      await navigator.clipboard.writeText(magnetLink);
+      const copyBtn = modal.querySelector('.cinex-magnet-preview-copy');
+      if (!copyBtn) return;
+      const originalHTML = copyBtn.innerHTML;
+      copyBtn.textContent = '已复制';
+      copyBtn.classList.add('copied');
+      setTimeout(() => {
+        copyBtn.innerHTML = originalHTML;
+        copyBtn.classList.remove('copied');
+      }, 1600);
+    };
+
+    const renderChrome = (body) => {
+      modal.innerHTML = `
+        <div class="cinex-magnet-preview-dialog" data-cinex-no-highlight="true">
+          <div class="cinex-magnet-preview-header">
+            <div class="cinex-magnet-preview-title-wrap">
+              <h3 class="cinex-magnet-preview-title">${escapeHtml(previewData?.name || 'Loading Preview...')}</h3>
+              <button class="cinex-magnet-preview-link cinex-magnet-preview-copy" title="复制磁力链接">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span>${escapeHtml(magnetLink)}</span>
+              </button>
+            </div>
+            <button class="cinex-magnet-preview-close" title="关闭">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="cinex-magnet-preview-body">
+            ${body}
+          </div>
+        </div>
+      `;
+
+      const closeBtn = modal.querySelector('.cinex-magnet-preview-close');
+      closeBtn?.addEventListener('click', closeModal);
+
+      const linkBtn = modal.querySelector('.cinex-magnet-preview-link');
+      linkBtn?.addEventListener('click', copyMagnetLink);
+    };
+
+    const renderLoading = () => {
+      renderChrome(`
+        <div class="cinex-magnet-preview-loading">
+          <div class="cinex-spinner"></div>
+          <p>正在获取磁力预览...</p>
+        </div>
+      `);
+    };
+
+    const renderError = (message) => {
+      renderChrome(`
+        <div class="cinex-magnet-preview-error">
+          <p class="cinex-error-title">预览失败</p>
+          <p class="cinex-error-message">${escapeHtml(message)}</p>
+        </div>
+      `);
+    };
+
+    const renderPreview = () => {
+      const currentScreenshot = screenshots[currentScreenshotIndex];
+
+      renderChrome(`
+        <div class="cinex-magnet-preview-meta">
+          <span class="cinex-magnet-preview-badge">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="12" x2="2" y2="12"></line>
+              <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+              <line x1="6" y1="16" x2="6.01" y2="16"></line>
+              <line x1="10" y1="16" x2="10.01" y2="16"></line>
+            </svg>
+            ${formatBytes(Number(previewData.size))}
+          </span>
+          <span class="cinex-magnet-preview-badge">
+            ${previewData.type === 'FOLDER' ? `
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path>
+              </svg>
+            ` : `
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path>
+                <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
+              </svg>
+            `}
+            ${Number(previewData.count || 0)} ${previewData.type === 'FOLDER' ? 'files' : 'file'}
+          </span>
+          <span class="cinex-magnet-preview-badge">${escapeHtml(previewData.file_type || 'UNKNOWN')}</span>
+        </div>
+        ${screenshots.length > 0 ? `
+          <div class="cinex-magnet-preview-screenshots">
+            <div class="cinex-magnet-preview-image-wrap">
+              ${screenshots.length > 1 ? `
+                <button class="cinex-magnet-preview-nav prev" title="上一张">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                  </svg>
+                </button>
+                <button class="cinex-magnet-preview-nav next" title="下一张">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </button>
+              ` : ''}
+              <img src="${escapeHtml(currentScreenshot.screenshot)}" alt="Screenshot ${currentScreenshotIndex + 1}" class="cinex-magnet-preview-image" />
+            </div>
+            ${screenshots.length > 1 ? `
+              <div class="cinex-magnet-preview-thumbnails">
+                ${screenshots.map((screenshot, index) => `
+                  <button class="cinex-magnet-preview-thumb ${currentScreenshotIndex === index ? 'active' : ''}" data-screenshot-index="${index}">
+                    <img src="${escapeHtml(screenshot.screenshot)}" alt="Thumbnail ${index + 1}" />
+                  </button>
+                `).join('')}
+              </div>
+            ` : ''}
+          </div>
+        ` : `
+          <div class="cinex-magnet-preview-empty">暂无预览截图</div>
+        `}
+      `);
+
+      const prevBtn = modal.querySelector('.cinex-magnet-preview-nav.prev');
+      const nextBtn = modal.querySelector('.cinex-magnet-preview-nav.next');
+
+      prevBtn?.addEventListener('click', () => {
+        currentScreenshotIndex = (currentScreenshotIndex - 1 + screenshots.length) % screenshots.length;
+        renderPreview();
+      });
+
+      nextBtn?.addEventListener('click', () => {
+        currentScreenshotIndex = (currentScreenshotIndex + 1) % screenshots.length;
+        renderPreview();
+      });
+
+      modal.querySelectorAll('.cinex-magnet-preview-thumb').forEach((thumb) => {
+        thumb.addEventListener('click', () => {
+          currentScreenshotIndex = Number(thumb.getAttribute('data-screenshot-index'));
+          renderPreview();
+        });
+      });
+    };
+
+    function handleKeydown(e) {
+      if (!modal.isConnected) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        closeModal();
+      } else if (e.key === 'ArrowLeft' && screenshots.length > 1) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        currentScreenshotIndex = (currentScreenshotIndex - 1 + screenshots.length) % screenshots.length;
+        renderPreview();
+      } else if (e.key === 'ArrowRight' && screenshots.length > 1) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        currentScreenshotIndex = (currentScreenshotIndex + 1) % screenshots.length;
+        renderPreview();
+      }
+    }
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        closeModal();
+      }
+    });
+
+    document.body.appendChild(modal);
+    document.addEventListener('keydown', handleKeydown, true);
+    renderLoading();
+
+    try {
+      const result = await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+          {
+            action: 'previewMagnet',
+            magnetLink,
+            apiUrl
+          },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              reject(new Error(chrome.runtime.lastError.message));
+            } else {
+              resolve(response);
+            }
+          }
+        );
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || '磁力预览失败');
+      }
+
+      previewData = result.data;
+      screenshots = Array.isArray(previewData.screenshots)
+        ? previewData.screenshots.filter((item) => item?.screenshot)
+        : [];
+      currentScreenshotIndex = 0;
+      renderPreview();
+    } catch (error) {
+      renderError(error.message);
+    }
+  };
+
   // Render action buttons based on movie status
   const renderActionButtons = () => {
     const status = movie.status || 'uncheck';
@@ -416,16 +657,22 @@ async function renderMovieCard(card, movie, detail) {
                       ${magnet.isHD ? '<span class="cinex-magnet-badge cinex-magnet-hd">HD</span>' : ''}
                       ${magnet.hasSubtitle ? '<span class="cinex-magnet-badge cinex-magnet-subtitle">字幕</span>' : ''}
                     </div>
-                    <div class="cinex-magnet-title" title="${magnet.title || magnet.link}">
-                      ${magnet.title || magnet.link}
+                    <div class="cinex-magnet-title" title="${escapeHtml(magnet.title || magnet.link)}">
+                      ${escapeHtml(magnet.title || magnet.link)}
                     </div>
                   </td>
-                  <td class="cinex-magnet-size-cell">${magnet.size || 'N/A'}</td>
+                  <td class="cinex-magnet-size-cell">${escapeHtml(magnet.size || 'N/A')}</td>
                   <td class="cinex-magnet-action-cell">
-                    <button class="cinex-magnet-copy" data-link="${magnet.link}" title="复制磁力链接">
+                    <button class="cinex-magnet-btn cinex-magnet-copy" data-link="${escapeHtml(magnet.link)}" title="复制磁力链接">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                    </button>
+                    <button class="cinex-magnet-btn cinex-magnet-preview" data-link="${escapeHtml(magnet.link)}" title="预览">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
                       </svg>
                     </button>
                   </td>
@@ -635,6 +882,16 @@ async function renderMovieCard(card, movie, detail) {
           this.style.color = '';
         }, 2000);
       });
+    });
+  });
+
+  const previewButtons = card.querySelectorAll('.cinex-magnet-preview');
+  previewButtons.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const link = this.getAttribute('data-link');
+      if (link) {
+        showMagnetPreview(link);
+      }
     });
   });
 

@@ -25,7 +25,7 @@ export const MediaGrid = ({ movies, title }: { movies: Movie[], title: string })
           查看全部 <ArrowRight className="ml-1 h-4 w-4" />
         </Button>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 h-full">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {movies.length === 0 ? (
           <div className="col-span-2 md:col-span-4 flex flex-col items-center justify-center py-16 rounded-xl bg-muted/50 border-2 border-dashed border-muted-foreground/20 ">
             <div className="flex flex-col items-center gap-3">
@@ -42,12 +42,15 @@ export const MediaGrid = ({ movies, title }: { movies: Movie[], title: string })
             return (
               <div
                 key={movie.id}
-                className="group relative aspect-2/3 overflow-hidden rounded-xl bg-muted cursor-pointer shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                className="group relative aspect-800/538 overflow-hidden rounded-xl bg-muted cursor-pointer shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
               >
-                <div
-                  className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                  style={{ backgroundImage: `url("${fetchImage(movie.poster!)}")` }}
-                />
+                {movie.cover && (
+                  <img
+                    src={fetchImage(movie.cover)}
+                    alt={movie.title}
+                    className="h-full w-full object-contain"
+                  />
+                )}
                 <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
                 <div className="absolute bottom-0 left-0 p-4 w-full translate-y-4 group-hover:translate-y-0 transition-transform duration-300 opacity-0 group-hover:opacity-100">

@@ -9,19 +9,16 @@ export async function GET() {
 
     let pushConfig = {
       domain: 'not configured',
-      username: 'not configured',
       token: 'not configured'
     };
 
     if (pushSetting) {
       const config = pushSetting as {
         domain: string;
-        username: string;
         token?: string;
       };
       pushConfig = {
         domain: config.domain || 'not configured',
-        username: config.username || 'not configured',
         token: config.token ? 'configured' : 'not configured'
       };
     }

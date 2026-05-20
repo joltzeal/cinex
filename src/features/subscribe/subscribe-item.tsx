@@ -19,8 +19,11 @@ import {
   FilterX,
   Tags,
   FileQuestion,
-  Grab, Download
+  Grab, Download,
+  BookmarkX
 } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { zhCN } from 'date-fns/locale';
 
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -84,6 +87,8 @@ const filterTypeMap = {
 const genresMap = {
   合集: '合集',
   介紹影片: '写真',
+  VR: 'VR',
+  '8KVR': 'VR',
   VR専用: 'VR',
   '女優ベスト・総集編': '个人合集'
 };
@@ -108,7 +113,8 @@ export default function JavbusSubscribeInfoItem({
   const [showFetchDialog, setShowFetchDialog] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [isHidden, setIsHidden] = useState(false);
-  // 筛选模式：0-全部, 1-排除特定tag, 2-只显示特定tag, 3-detail为空
+  const [showAbsoluteUpdatedAt, setShowAbsoluteUpdatedAt] = useState(false);
+  // 筛选模式：0-全部, 1-排除特定tag, 2-只显示特定tag, 3-下载中, 4-已入库, 5-detail为空, 6-未订阅, 7-未订阅且排除特定tag
   const [filterMode, setFilterMode] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [movieData, setMovieData] = useState<Movie | null>(null);
@@ -291,11 +297,33 @@ export default function JavbusSubscribeInfoItem({
 
   // 切换筛选模式
   const handleFilterModeToggle = () => {
-    setFilterMode((prev) => (prev + 1) % 6);
+    setFilterMode((prev) => (prev + 1) % 8);
   };
 
   // 筛选电影的特定tags
-  const excludeTags = ['合集', '介紹影片', 'VR専用', '女優ベスト・総集編'];
+  const excludeTags = [
+    '合集',
+    '介紹影片',
+    'VR',
+    '8KVR',
+    'VR専用',
+    '女優ベスト・総集編'
+  ];
+  const unsubscribedStatuses: MovieStatus[] = [
+    MovieStatus.uncheck,
+    MovieStatus.checked
+  ];
+
+  const hasExcludedTags = (movieDetail: MovieDetail | null) => {
+    if (!movieDetail || !movieDetail.genres) return false;
+
+    return movieDetail.genres.some((genre: Property) =>
+      excludeTags.includes(genre.name)
+    );
+  };
+
+  const isUnsubscribedMovie = (movie: Movie) =>
+    unsubscribedStatuses.includes(movie.status);
 
   // 筛选逻辑
   const filterMovie = (movieWrapper: any) => {
@@ -308,21 +336,19 @@ export default function JavbusSubscribeInfoItem({
       case 0: // 全部显示
         return true;
       case 1: // 排除包含特定tag的电影
-        if (!movieDetail || !movieDetail.genres) return true;
-        return !movieDetail.genres.some((genre: Property) =>
-          excludeTags.includes(genre.name)
-        );
+        return !hasExcludedTags(movieDetail);
       case 2: // 只显示包含特定tag的电影
-        if (!movieDetail || !movieDetail.genres) return false;
-        return movieDetail.genres.some((genre: Property) =>
-          excludeTags.includes(genre.name)
-        );
-      case 3: // 只显示detail为空的电影
+        return hasExcludedTags(movieDetail);
+      case 3: // 只显示下载中的电影
         return movie.status === MovieStatus.downloading;
       case 4:
         return movie.status === MovieStatus.added;
       case 5:
         return !movieDetail;
+      case 6:
+        return isUnsubscribedMovie(movie);
+      case 7:
+        return isUnsubscribedMovie(movie) && !hasExcludedTags(movieDetail);
       default:
         return true;
     }
@@ -346,7 +372,7 @@ export default function JavbusSubscribeInfoItem({
       case 3:
         return {
           icon: <Download className='h-4 w-4' />,
-          title: '仅显示已下载'
+          title: '仅显示下载中'
         };
       case 4:
         return {
@@ -358,6 +384,16 @@ export default function JavbusSubscribeInfoItem({
           icon: <FileQuestion className='h-4 w-4' />,
           title: '仅显示无详情'
         };
+      case 6:
+        return {
+          icon: <BookmarkX className='h-4 w-4' />,
+          title: '仅显示未订阅影片'
+        };
+      case 7:
+        return {
+          icon: <FilterX className='h-4 w-4' />,
+          title: '未订阅且排除合集/写真/VR'
+        };
 
       default:
         return { icon: <List className='h-4 w-4' />, title: '显示全部' };
@@ -365,6 +401,14 @@ export default function JavbusSubscribeInfoItem({
   };
 
   const filterModeConfig = getFilterModeIcon();
+  const filteredMovies = info.movies.filter(filterMovie);
+  const updatedAt = new Date(info.updatedAt);
+  const updatedAtText = showAbsoluteUpdatedAt
+    ? updatedAt.toLocaleString()
+    : formatDistanceToNow(updatedAt, {
+        addSuffix: true,
+        locale: zhCN
+      });
 
   const handleClickSubscribeItem = (movie: Movie) => () => {
     if (!movie.number) {
@@ -421,7 +465,8 @@ export default function JavbusSubscribeInfoItem({
                 {info.autoSubscribe === true ?(
                     <Badge variant='outline'>自动订阅</Badge>
                 ):<Badge variant='destructive'>不订阅</Badge>}
-                <Badge variant='default'>{info.movies.length} 部影片</Badge>
+                <Badge variant='outline'>{filterModeConfig.title}</Badge>
+                <Badge variant='default'>{filteredMovies.length} 部影片</Badge>
                 
                 {info.movies.filter(
                   (movie: any) => movie.movie.status === MovieStatus.downloading
@@ -451,8 +496,13 @@ export default function JavbusSubscribeInfoItem({
                   )}
               </div>
 
-              <Badge variant='outline'>
-                更新时间：{new Date(info.updatedAt).toLocaleString()}
+              <Badge
+                variant='outline'
+                className='cursor-pointer select-none'
+                title={showAbsoluteUpdatedAt ? '点击显示相对时间' : '点击显示绝对时间'}
+                onClick={() => setShowAbsoluteUpdatedAt((prev) => !prev)}
+              >
+                更新时间：{updatedAtText}
               </Badge>
             </div>
 
@@ -545,7 +595,7 @@ export default function JavbusSubscribeInfoItem({
           ref={scrollAreaRef}
           className='w-full rounded-md whitespace-nowrap'
         >
-          {info.movies.filter(filterMovie).length === 0 && (
+          {filteredMovies.length === 0 && (
             <Empty className='from-muted/50 to-background h-full bg-linear-to-b from-30%'>
               <EmptyHeader>
                 <EmptyMedia variant='icon'>
@@ -556,9 +606,9 @@ export default function JavbusSubscribeInfoItem({
               </EmptyHeader>
             </Empty>
           )}
-          {info.movies.filter(filterMovie).length > 0 && (
+          {filteredMovies.length > 0 && (
             <div className='flex w-max space-x-4 p-4'>
-              {info.movies.filter(filterMovie).map((_movie: any) => {
+              {filteredMovies.map((_movie: any) => {
                 const movie = _movie.movie; // 明确 movie 类型
                 const proxiedSrc = movie.poster
                   ? `/api/subscribe/javbus/proxy?url=${encodeURIComponent(movie.poster)}`

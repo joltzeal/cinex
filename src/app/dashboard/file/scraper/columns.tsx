@@ -100,6 +100,7 @@ export const columns: ColumnDef<FileTransferLog>[] = [
   {
     accessorKey: 'status',
     header: '状态',
+    filterFn: (row, id, value) => row.getValue(id) === value,
     cell: ({ row }) => {
       const status = row.getValue('status') as string;
       const variant = statusMap[status as TransferStatus].variant as 'default' | 'destructive' | 'secondary' | 'outline';

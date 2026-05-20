@@ -10,8 +10,8 @@ export async function getPushService(): Promise<PushNotificationService | null> 
             console.log('推送配置未在设置中配置，请在设置页面配置推送服务后重试', 'warn');
             return null;
         }
-        if (!config.domain || !config.username) {
-            console.log('推送配置不完整，请在设置页面正确配置域名和用户名', 'warn');
+        if (!config.domain || !config.token) {
+            console.log('推送配置不完整，请在设置页面正确配置推送服务域名和推送令牌', 'warn');
             return null;
         }
 

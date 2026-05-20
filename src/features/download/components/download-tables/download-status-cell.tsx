@@ -19,7 +19,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { DocumentDownloadURL, DocumentDownloadStatus, Prisma } from "@prisma/client";
-import { CheckCircle, Copy, FileText, Loader, DownloadCloud, Info, XCircle, Pause, Download } from "lucide-react";
+import { CheckCircle, Copy, FileText, Loader, DownloadCloud, Info, XCircle, Pause } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 // import Lightbox from "yet-another-react-lightbox";
@@ -58,9 +58,9 @@ function formatBytes(bytes: number, decimals = 2): string {
 
 // 状态图标和颜色的映射
 const statusConfig = {
-  [DocumentDownloadStatus.downloaded]: { icon: CheckCircle, color: "text-green-500", label: "已完成", badgeVariant: "default" as const },
+  [DocumentDownloadStatus.downloaded]: { icon: CheckCircle, color: "text-green-500", label: "已下载", badgeVariant: "default" as const },
   [DocumentDownloadStatus.downloading]: { icon: Loader, color: "text-blue-500 animate-spin", label: "下载中", badgeVariant: "default" as const },
-  [DocumentDownloadStatus.undownload]: { icon: DownloadCloud, color: "text-gray-400", label: "待下载", badgeVariant: "outline" as const },
+  [DocumentDownloadStatus.undownload]: { icon: DownloadCloud, color: "text-muted-foreground", label: "未下载", badgeVariant: "outline" as const },
   [DocumentDownloadStatus.error]: { icon: XCircle, color: "text-red-500", label: "失败", badgeVariant: "outline" as const },
   [DocumentDownloadStatus.checking]: { icon: Loader, color: "text-blue-500 animate-spin", label: "检查中", badgeVariant: "default" as const },
   [DocumentDownloadStatus.paused]: { icon: Pause, color: "text-yellow-500", label: "暂停", badgeVariant: "outline" as const },
@@ -78,10 +78,24 @@ export function DownloadProgressCell({ urls }: DownloadProgressCellProps) {
 
   const total = urls.length;
   const completed = urls.filter(url => url.status === 'downloaded').length;
+  const downloadingCount = urls.filter(url => url.status === 'downloading').length;
+  const undownloadedCount = urls.filter(url => url.status === 'undownload').length;
   const progress = total > 0 ? (completed / total) * 100 : 0;
   
   // 检查是否有任意url正在下载
   const isDownloading = urls.some(url => url.status === 'downloading');
+  const isAllWaiting = undownloadedCount === total;
+  const summaryConfig = isDownloading
+    ? statusConfig[DocumentDownloadStatus.downloading]
+    : completed === total
+      ? statusConfig[DocumentDownloadStatus.downloaded]
+      : statusConfig[DocumentDownloadStatus.undownload];
+  const SummaryIcon = summaryConfig.icon;
+  const progressClassName = [
+    'h-2',
+    isDownloading ? 'progress-downloading' : '',
+    isAllWaiting ? 'progress-waiting' : '',
+  ].filter(Boolean).join(' ');
 
   // 按状态分组
   const groupedUrls = urls.reduce((acc, url) => {
@@ -147,10 +161,33 @@ export function DownloadProgressCell({ urls }: DownloadProgressCellProps) {
               <DialogTrigger >
                 <div className="flex flex-col gap-2 cursor-pointer w-48">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="font-medium">任务进度</span>
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <SummaryIcon className={`h-3.5 w-3.5 ${summaryConfig.color}`} />
+                      {summaryConfig.label}
+                    </span>
                     <span className="text-muted-foreground font-mono">{`${completed}/${total}`}</span>
                   </div>
-                  <Progress value={progress} className={`h-2 ${isDownloading ? 'progress-downloading' : ''}`} />
+                  <Progress value={progress} className={progressClassName} />
+                  <div className="flex flex-wrap gap-1">
+                    {undownloadedCount > 0 && (
+                      <Badge variant="outline" className="gap-1 px-1.5 py-0 text-[10px] text-muted-foreground">
+                        <DownloadCloud className="h-3 w-3" />
+                        未下载 {undownloadedCount}
+                      </Badge>
+                    )}
+                    {downloadingCount > 0 && (
+                      <Badge variant="default" className="gap-1 px-1.5 py-0 text-[10px]">
+                        <Loader className="h-3 w-3 animate-spin" />
+                        下载中 {downloadingCount}
+                      </Badge>
+                    )}
+                    {completed > 0 && (
+                      <Badge variant="secondary" className="gap-1 px-1.5 py-0 text-[10px]">
+                        <CheckCircle className="h-3 w-3" />
+                        已下载 {completed}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </DialogTrigger>
             </TooltipTrigger>
