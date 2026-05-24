@@ -50,6 +50,13 @@ export const navItems: NavItem[] = [
         items: [] // Empty array as there are no child items for Dashboard
       },
       {
+        title: '档案',
+        url: '/dashboard/explore/catalog',
+        icon: 'catalog',
+        shortcut: ['s', 'c'],
+        isActive: true
+      },
+      {
         title: '推荐',
         url: '/dashboard/explore/recommend',
         icon: 'recommended',

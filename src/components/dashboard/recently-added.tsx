@@ -16,5 +16,5 @@ async function getRecentlyAdded() {
 export async function RecentlyAddedWrapper() {
   const { recentlyAddedData } = await getRecentlyAdded();
 
-  return <MediaGrid movies={recentlyAddedData} title="最近添加" />;
+  return <MediaGrid movies={recentlyAddedData.slice(0, 8)} title="最近添加" />;
 }

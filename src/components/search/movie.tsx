@@ -14,11 +14,17 @@ import {
   Clock,
   Copy,
   Download,
+  ExternalLink,
   Eye,
   Film,
+  FileText,
+  MessageSquare,
   MessageCircleCode,
   PlayCircle,
+  Scale,
+  Sparkles,
   Star,
+  ThumbsUp,
   LoaderCircle,
   Loader,
 
@@ -34,6 +40,16 @@ import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '../ui/alert-dialog';
 import {
   Table,
   TableBody,
@@ -53,6 +69,55 @@ import { useMediaServer } from '@/contexts/media-server-context';
 import { SubscribeMovieStatusMap } from '@/constants/data';
 import { subscribeToTaskToast } from '@/lib/task-sse-subscribe';
 import { extractHash } from '@/lib/magnet/magnet-helper';
+import AIThinking from '../ui/ai-thinking';
+
+type AIReviewResult = {
+  chineseTitle: string;
+  genre: string;
+  plot: string;
+  positiveReview: string;
+  neutralNegativeReview: string;
+  audienceComments: string[];
+  similarMovies: {
+    number: string;
+    title: string;
+  }[];
+};
+
+type AISimilarMovie = AIReviewResult['similarMovies'][number];
+
+const normalizeAiReview = (value: unknown): AIReviewResult | null => {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const review = value as Partial<AIReviewResult>;
+  return {
+    chineseTitle: review.chineseTitle || '',
+    genre: review.genre || '',
+    plot: review.plot || '',
+    positiveReview: review.positiveReview || '',
+    neutralNegativeReview: review.neutralNegativeReview || '',
+    audienceComments: Array.isArray(review.audienceComments)
+      ? review.audienceComments
+      : [],
+    similarMovies: Array.isArray(review.similarMovies)
+      ? review.similarMovies.map((similar: any) => {
+          if (typeof similar === 'string') {
+            return {
+              number: similar,
+              title: similar
+            };
+          }
+
+          return {
+            number: similar?.number || similar?.title || '',
+            title: similar?.title || similar?.number || ''
+          };
+        })
+      : []
+  };
+};
 
 const useMovie = (movie: Movie) => {
   const router = useRouter();
@@ -66,6 +131,15 @@ const useMovie = (movie: Movie) => {
     comment: movie.comment,
     tags: movie.tags
   });
+  const [aiReview, setAiReview] = useState<AIReviewResult | null>(() =>
+    normalizeAiReview((movie as Movie & { aiReview?: unknown }).aiReview)
+  );
+  const [isAiReviewLoading, setIsAiReviewLoading] = useState(false);
+  const [pendingAiSimilarMovie, setPendingAiSimilarMovie] =
+    useState<AISimilarMovie | null>(null);
+  const [aiReviewMessage, setAiReviewMessage] = useState(
+    '正在读取全局 AI Provider 配置...\n准备整理影片标题、类型、演员、标签和相似影片信息。'
+  );
   const movieDetail = useMemo(() => {
     const detail = (movie.detail as any) || {};
     const magnets = (movie.magnets as any) || [];
@@ -238,6 +312,98 @@ const useMovie = (movie: Movie) => {
     }
   };
 
+  const handleGenerateAiReview = async () => {
+    if (!movieDetail?.id) {
+      toast.error('缺少影片番号，无法生成 AI 影评');
+      return;
+    }
+
+    setIsAiReviewLoading(true);
+    setAiReview(null);
+    setAiReviewMessage(`正在为 ${movieDetail.id} 准备影评。`);
+
+    try {
+      const response = await fetch(`/api/movie/${movieDetail.id}/ai-review`, {
+        method: 'POST'
+      });
+
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || 'AI 影评生成失败');
+      }
+
+      if (!response.body) {
+        const result = await response.json().catch(() => ({}));
+        if (!result.success) {
+          throw new Error(result.error || 'AI 影评生成失败');
+        }
+
+        setAiReview(result.data);
+        toast.success('AI 影评已生成');
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let streamedContent = '';
+      let completed = false;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.trim()) {
+            continue;
+          }
+
+          const event = JSON.parse(line);
+
+          if (event.type === 'status') {
+            setAiReviewMessage((current) =>
+              current.includes(event.message)
+                ? current
+                : `${current}\n${event.message}`
+            );
+          }
+
+          if (event.type === 'delta') {
+            streamedContent += event.delta;
+            setAiReviewMessage(streamedContent);
+          }
+
+          if (event.type === 'done') {
+            completed = true;
+            setAiReview(event.data);
+          }
+
+          if (event.type === 'error') {
+            throw new Error(event.error || 'AI 影评生成失败');
+          }
+        }
+      }
+
+      if (!completed) {
+        throw new Error('AI 影评生成未完成');
+      }
+
+      toast.success('AI 影评已生成');
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'AI 影评生成失败，请稍后重试';
+      toast.error(message);
+    } finally {
+      setIsAiReviewLoading(false);
+    }
+  };
+
   const handleCloseReviewDialog = () => {
     setIsReviewDialogOpen(false);
   };
@@ -275,6 +441,11 @@ const useMovie = (movie: Movie) => {
     window.open(`https://www.javbus.com/${id}`, '_blank');
   }
 
+  const handleClickAiSimilarMovie = (id: string) => {
+    if (!id) return;
+    router.push(`/dashboard/explore/search/${encodeURIComponent(id)}`);
+  }
+
   return {
     movieDetail,
     isSubmitting,
@@ -288,7 +459,14 @@ const useMovie = (movie: Movie) => {
     handleSubmitReview,
     handleUnSubscribeMovie,
     handleClickSimilarMovie,
+    handleClickAiSimilarMovie,
+    pendingAiSimilarMovie,
+    setPendingAiSimilarMovie,
+    handleGenerateAiReview,
     reviewData,
+    aiReview,
+    isAiReviewLoading,
+    aiReviewMessage,
   };
 };
 
@@ -672,6 +850,121 @@ const ReviewCard = ({ data }: { data: Movie }) => {
     </div>
   );
 };
+
+const AIReviewCard = ({
+  review,
+  onSimilarMovieClick
+}: {
+  review: AIReviewResult;
+  onSimilarMovieClick: (movie: AISimilarMovie) => void;
+}) => {
+  const reviewSections = [
+    {
+      title: '剧情',
+      content: review.plot,
+      icon: FileText,
+      className: 'md:col-span-3'
+    },
+    {
+      title: '正面评价',
+      content: review.positiveReview,
+      icon: ThumbsUp,
+      className: ''
+    },
+    {
+      title: '中性/负面评价',
+      content: review.neutralNegativeReview,
+      icon: Scale,
+      className: ''
+    }
+  ];
+
+  return (
+    <Card className='border-primary/20 bg-card/80 overflow-hidden shadow-sm gap-0'>
+      <CardHeader className='border-border/50 border-b space-y-3'>
+        <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
+          <div className='space-y-2'>
+            <CardTitle className='flex items-center gap-2 text-lg leading-7'>
+              <span className='bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-md'>
+                <Sparkles className='h-4 w-4' />
+              </span>
+              {review.chineseTitle || 'AI 影评'}
+            </CardTitle>
+            {review.genre && (
+              <Badge variant='secondary' className='w-fit'>
+                <Clapperboard className='h-3 w-3' />
+                类型：{review.genre}
+              </Badge>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className='space-y-6 pt-5'>
+        <div className='grid gap-3 md:grid-cols-2'>
+          {reviewSections.map((section) => (
+            <section
+              key={section.title}
+              className={`border-border/60 bg-background/60 rounded-md border p-4 ${section.className}`}
+            >
+              <h3 className='text-foreground mb-2 flex items-center gap-2 text-sm font-semibold'>
+                <section.icon className='text-primary h-4 w-4' />
+                {section.title}
+              </h3>
+              <p className='text-muted-foreground text-sm leading-7 whitespace-pre-wrap'>
+                {section.content || '暂无内容'}
+              </p>
+            </section>
+          ))}
+        </div>
+
+        {review.audienceComments.length > 0 && (
+          <section className='space-y-2'>
+            <h3 className='text-foreground flex items-center gap-2 text-sm font-semibold'>
+              <MessageSquare className='text-primary h-4 w-4' />
+              网友评论
+            </h3>
+            <div className='grid gap-2 md:grid-cols-3'>
+              {review.audienceComments.map((comment, index) => (
+                <div
+                  key={`${comment}-${index}`}
+                  className='border-border/60 bg-background/60 rounded-md border-l-2 border-l-primary/50 p-3 text-sm leading-6'
+                >
+                  {comment}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {review.similarMovies.length > 0 && (
+          <section className='space-y-2'>
+            <h3 className='text-foreground flex items-center gap-2 text-sm font-semibold'>
+              <Star className='text-primary h-4 w-4' />
+              相似影片
+            </h3>
+            <div className='flex flex-wrap gap-2'>
+              {review.similarMovies.map((similar, index) => (
+                <Button
+                  key={`${similar.number}-${similar.title}-${index}`}
+                  type='button'
+                  variant='outline'
+                  size='sm'
+                  className='h-auto max-w-full justify-start whitespace-normal py-1.5 text-left'
+                  onClick={() => onSimilarMovieClick(similar)}
+                >
+                  <ExternalLink className='mr-1.5 h-3.5 w-3.5 shrink-0' />
+                  <span className='truncate'>
+                    【{similar.number}】{similar.title || similar.number}
+                  </span>
+                </Button>
+              ))}
+            </div>
+          </section>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
   const {
     movieDetail,
@@ -684,9 +977,16 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
     handleSubmitReview,
     isReviewDialogOpen,
     handleClickSimilarMovie,
+    handleClickAiSimilarMovie,
+    pendingAiSimilarMovie,
+    setPendingAiSimilarMovie,
+    handleGenerateAiReview,
     setIsReviewDialogOpen,
     handleUnSubscribeMovie,
-    reviewData
+    reviewData,
+    aiReview,
+    isAiReviewLoading,
+    aiReviewMessage
   } = useMovie(movie);
   const mediaServer = useMediaServer();
   const { open, images, initialIndex, openPreview, setOpen } =
@@ -706,6 +1006,14 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
               {/* Basic Info Grid */}
 
               <MovieInfoGrid movieDetail={movieDetail} />
+              {isAiReviewLoading ? (
+                <AIThinking className='max-w-none' message={aiReviewMessage} />
+              ) : aiReview ? (
+                <AIReviewCard
+                  review={aiReview}
+                  onSimilarMovieClick={setPendingAiSimilarMovie}
+                />
+              ) : null}
               <ReviewCard data={{ ...movie, ...reviewData }} />
 
 
@@ -874,6 +1182,19 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
                       <MessageCircleCode className='mr-2 h-4 w-4' />
                       评价
                     </Button>
+                    <Button
+                      variant='secondary'
+                      className='col-span-2 w-full'
+                      onClick={() => handleGenerateAiReview()}
+                      disabled={isAiReviewLoading}
+                    >
+                      {isAiReviewLoading ? (
+                        <LoaderCircle className='mr-2 h-4 w-4 animate-spin' />
+                      ) : (
+                        <Sparkles className='mr-2 h-4 w-4' />
+                      )}
+                      AI 影评
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -959,6 +1280,39 @@ export default function MovieDetailDisplay({ movie }: { movie: Movie }) {
         onClose={() => setIsReviewDialogOpen(false)}
         onSubmit={(data) => handleSubmitReview(data)}
       />
+      <AlertDialog
+        open={!!pendingAiSimilarMovie}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingAiSimilarMovie(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>跳转到相似影片？</AlertDialogTitle>
+            <AlertDialogDescription>
+              将打开搜索详情页：
+              {pendingAiSimilarMovie
+                ? `【${pendingAiSimilarMovie.number}】${pendingAiSimilarMovie.title || pendingAiSimilarMovie.number}`
+                : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingAiSimilarMovie?.number) {
+                  handleClickAiSimilarMovie(pendingAiSimilarMovie.number);
+                }
+                setPendingAiSimilarMovie(null);
+              }}
+            >
+              确认跳转
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

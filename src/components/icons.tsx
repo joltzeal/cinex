@@ -60,6 +60,7 @@ export const Icons = {
   recommended: IconChartBarPopular,
   movie: IconMovie,
   dashboard: IconLayoutDashboard,
+  catalog: IconFolder,
   logo: IconCommand,
   login: IconLogin,
   close: IconX,

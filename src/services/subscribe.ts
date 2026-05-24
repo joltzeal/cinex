@@ -66,7 +66,7 @@ export async function getSubscribeListWithMovies(
   return await prisma.subscribe.findMany({
     where: prismaWhere,
     orderBy: {
-      createdAt: 'desc'
+      updatedAt: 'desc'
     },
     include: {
       movies: {
@@ -213,7 +213,7 @@ export async function getRecentlyAddedMovies() {
     orderBy: {
       addedAt: 'desc'
     },
-    take: 4
+    take: 8
   })
   return recentlyAdded;
 }
@@ -231,4 +231,3 @@ export async function getRecentlySubscribeMovie() {
   })
   return recentlyAdded;
 }
-

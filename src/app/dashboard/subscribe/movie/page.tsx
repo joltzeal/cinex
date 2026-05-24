@@ -5,7 +5,14 @@ import { SearchParams } from 'nuqs';
 import SubscribePosterWallPage from './poster-wall';
 import { getSubscribeMovieList } from '@/services/subscribe';
 import { Movie, MovieStatus } from '@prisma/client';
-import LibraryPage from './library';
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle
+} from '@/components/ui/empty';
+import { Film } from 'lucide-react';
 
 type pageProps = {
   searchParams: Promise<SearchParams>;
@@ -67,11 +74,27 @@ export default async function Page(props: pageProps) {
     }
   });
 
+  const hasAnyMovies =
+    subscribedMovieList.length > 0 ||
+    donwloadingMovieList.length > 0 ||
+    addedMovieList.length > 0;
 
   return (
     <PageContainer scrollable={true}>
       <div className='w-full space-y-8'>
-        <LibraryPage subscribeMovieList={libraryMovieList} key={'added'} />
+        {!hasAnyMovies && (
+          <Empty className='bg-muted/30 min-h-100 border'>
+            <EmptyHeader>
+              <EmptyMedia variant='icon'>
+                <Film />
+              </EmptyMedia>
+              <EmptyTitle>暂无影片</EmptyTitle>
+              <EmptyDescription>
+                当前还没有订阅中、下载中或已添加到媒体库的影片。
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        )}
 
         {subscribedMovieList?.length > 0 && (
           <div className='space-y-4'>
