@@ -1,4 +1,3 @@
-import type { Agent } from 'http';
 import { Readable } from 'stream';
 import got from 'got';
 import { HttpsProxyAgent } from 'https-proxy-agent';
@@ -63,12 +62,12 @@ export function createOpenAIProxyFetch(proxyUrl?: string | null) {
     const body = init?.body ?? request?.body ?? undefined;
 
     const stream = got.stream(url, {
-      method,
+      method: method as any,
       headers,
       body: body as any,
       agent: {
-        http: agent as Agent,
-        https: agent as Agent
+        http: agent as any,
+        https: agent as any
       },
       throwHttpErrors: false,
       retry: { limit: 0 },
