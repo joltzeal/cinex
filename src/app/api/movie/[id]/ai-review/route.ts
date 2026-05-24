@@ -2,10 +2,9 @@ import OpenAI from 'openai';
 import { z } from 'zod';
 import { Movie, Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
-import { ProxyAgent } from 'undici';
-import type { ClientOptions } from 'openai';
 
 import { logger } from '@/lib/logger';
+import { createOpenAIProxyFetch } from '@/lib/openai-proxy-fetch';
 import { prisma } from '@/lib/prisma';
 import { getProxyUrl, getSetting, SettingKey } from '@/services/settings';
 import { MovieDetail } from '@/types/javbus';
@@ -62,18 +61,6 @@ function extractJsonObject(content: string) {
   return JSON.parse(jsonText.slice(start, end + 1));
 }
 
-function createProxyAgent(proxyUrl?: string | null) {
-  if (!proxyUrl) {
-    return undefined;
-  }
-
-  if (!/^https?:\/\//.test(proxyUrl)) {
-    throw new Error(`不支持的代理协议：${proxyUrl}`);
-  }
-
-  return new ProxyAgent(proxyUrl);
-}
-
 function buildMovieContext(movie: Movie) {
   const detail = (movie.detail || {}) as unknown as MovieDetail;
 
@@ -123,8 +110,6 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  let proxyAgent: ProxyAgent | undefined;
-
   try {
     const id = (await params).id.toUpperCase();
 
@@ -155,15 +140,12 @@ export async function POST(
     }
 
     const proxyConfig = await getProxyUrl();
-    proxyAgent = createProxyAgent(proxyConfig?.proxyUrl);
-    const fetchOptions: ClientOptions['fetchOptions'] | undefined = proxyAgent
-      ? { dispatcher: proxyAgent }
-      : undefined;
+    const fetch = createOpenAIProxyFetch(proxyConfig?.proxyUrl);
 
     const client = new OpenAI({
       apiKey: aiConfig.apiKey,
       baseURL: aiConfig.baseURL,
-      fetchOptions
+      fetch
     });
 
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
@@ -249,7 +231,6 @@ export async function POST(
             )
           );
         } finally {
-          await proxyAgent?.close();
           controller.close();
         }
       }
@@ -264,7 +245,6 @@ export async function POST(
     });
   } catch (error) {
     logger.error(`AI 影评生成失败:${error}`);
-    await proxyAgent?.close();
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(

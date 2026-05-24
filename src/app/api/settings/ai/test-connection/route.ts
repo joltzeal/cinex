@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI, { type ClientOptions } from 'openai';
-import { ProxyAgent } from 'undici';
+import OpenAI from 'openai';
 import { z } from 'zod';
 
+import { createOpenAIProxyFetch } from '@/lib/openai-proxy-fetch';
 import { getProxyUrl } from '@/services/settings';
 
 export const runtime = 'nodejs';
@@ -14,21 +14,7 @@ const testSchema = z.object({
   modelName: z.string(),
 });
 
-function createProxyAgent(proxyUrl?: string | null) {
-  if (!proxyUrl) {
-    return undefined;
-  }
-
-  if (!/^https?:\/\//.test(proxyUrl)) {
-    throw new Error(`不支持的代理协议：${proxyUrl}`);
-  }
-
-  return new ProxyAgent(proxyUrl);
-}
-
 export async function POST(req: NextRequest) {
-  let proxyAgent: ProxyAgent | undefined;
-
   try {
     const body = await req.json();
     const parseResult = testSchema.safeParse(body);
@@ -39,17 +25,13 @@ export async function POST(req: NextRequest) {
 
     const { baseURL, apiKey, modelName } = parseResult.data;
     const proxyConfig = await getProxyUrl();
-    proxyAgent = createProxyAgent(proxyConfig?.proxyUrl);
-
-    const fetchOptions: ClientOptions['fetchOptions'] | undefined = proxyAgent
-      ? { dispatcher: proxyAgent }
-      : undefined;
+    const fetch = createOpenAIProxyFetch(proxyConfig?.proxyUrl);
 
     // 使用传入的配置初始化客户端
     const tempClient = new OpenAI({
       apiKey,
       baseURL,
-      fetchOptions,
+      fetch,
     });
 
     // 发送一个非常简短、低成本的请求来测试连接和认证
@@ -78,7 +60,5 @@ export async function POST(req: NextRequest) {
     
     // 其他通用错误
     return NextResponse.json({ success: false, message: error?.message || '连接失败，请检查 Base URL 和网络连接。' }, { status: 500 });
-  } finally {
-    await proxyAgent?.close();
   }
 }
