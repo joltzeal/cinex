@@ -7,6 +7,7 @@ import {
   Clapperboard,
   Film,
   Filter,
+  Loader2,
   PlayCircle,
   Search,
   Star,
@@ -35,6 +36,8 @@ import { Property } from '@/types/javbus';
 
 type PageProps = {
   subscribeMovieList: Movie[];
+  initialHasMore?: boolean;
+  pageSize?: number;
 };
 
 type MovieDetailForFilter = {
@@ -100,8 +103,15 @@ function proxyImage(url: string) {
   return `/api/subscribe/javbus/proxy?url=${encodeURIComponent(url)}`;
 }
 
-export default function LibraryPage({ subscribeMovieList }: PageProps) {
+export default function LibraryPage({
+  subscribeMovieList,
+  initialHasMore = false,
+  pageSize = 100
+}: PageProps) {
   const mediaServer = useMediaServer();
+  const [movies, setMovies] = useState<Movie[]>(subscribeMovieList);
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [movieData, setMovieData] = useState<Movie | null>(null);
   const [draftFilters, setDraftFilters] = useState<FilterState>(EMPTY_FILTERS);
@@ -110,23 +120,23 @@ export default function LibraryPage({ subscribeMovieList }: PageProps) {
 
   const allTags = useMemo(() => {
     const tagsSet = new Set<string>();
-    subscribeMovieList.forEach((movie) => {
+    movies.forEach((movie) => {
       if (movie.tags && Array.isArray(movie.tags)) {
         (movie.tags as string[]).forEach((tag) => tagsSet.add(tag));
       }
     });
     return Array.from(tagsSet).sort((a, b) => a.localeCompare(b));
-  }, [subscribeMovieList]);
+  }, [movies]);
 
   const allActors = useMemo(() => {
     const actorSet = new Set<string>();
-    subscribeMovieList.forEach((movie) => {
+    movies.forEach((movie) => {
       getMovieStars(movie).forEach((star) => {
         if (star.name) actorSet.add(star.name);
       });
     });
     return Array.from(actorSet).sort((a, b) => a.localeCompare(b));
-  }, [subscribeMovieList]);
+  }, [movies]);
 
   const hasActiveFilters = Boolean(
     appliedFilters.keyword ||
@@ -140,7 +150,7 @@ export default function LibraryPage({ subscribeMovieList }: PageProps) {
   const libraryMovieList = useMemo(() => {
     const keyword = appliedFilters.keyword.trim().toLowerCase();
 
-    return subscribeMovieList.filter((movie) => {
+    return movies.filter((movie) => {
       const stars = getMovieStars(movie);
       const movieGenres = getMovieGenres(movie);
       const movieTags = Array.isArray(movie.tags) ? (movie.tags as string[]) : [];
@@ -193,7 +203,7 @@ export default function LibraryPage({ subscribeMovieList }: PageProps) {
       return true;
     });
   }, [
-    subscribeMovieList,
+    movies,
     appliedFilters
   ]);
 
@@ -227,6 +237,35 @@ export default function LibraryPage({ subscribeMovieList }: PageProps) {
 
   const handleSearch = () => {
     setAppliedFilters(draftFilters);
+  };
+
+  const handleLoadMore = async () => {
+    if (isLoadingMore || !hasMore) return;
+
+    setIsLoadingMore(true);
+    try {
+      const response = await fetch(
+        `/api/movie/catalog?skip=${movies.length}&take=${pageSize}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`请求失败: ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (!result?.success || !Array.isArray(result.data)) {
+        throw new Error(result?.error || '加载更多影片失败');
+      }
+
+      setMovies((currentMovies) => [...currentMovies, ...result.data]);
+      setHasMore(Boolean(result.hasMore));
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : '加载更多影片时发生未知错误'
+      );
+    } finally {
+      setIsLoadingMore(false);
+    }
   };
 
   const updateDraftFilter = (key: keyof FilterState, value: string) => {
@@ -290,9 +329,9 @@ export default function LibraryPage({ subscribeMovieList }: PageProps) {
         <div className='bg-secondary/50 text-muted-foreground flex items-center gap-2 rounded-full px-3 py-1 text-sm'>
           <Clapperboard className='h-4 w-4' />
           <span>
-            总影片:{' '}
+            已加载:{' '}
             <span className='text-foreground font-semibold'>
-              {subscribeMovieList.length}
+              {movies.length}
             </span>{' '}
             部
           </span>
@@ -513,6 +552,30 @@ export default function LibraryPage({ subscribeMovieList }: PageProps) {
           })
         )}
       </div>
+
+      {movies.length > 0 && (
+        <div className='flex justify-center pt-2'>
+          {hasMore ? (
+            <Button
+              onClick={handleLoadMore}
+              disabled={isLoadingMore}
+              variant='outline'
+              className='min-w-36'
+            >
+              {isLoadingMore ? (
+                <>
+                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                  加载中
+                </>
+              ) : (
+                '加载更多'
+              )}
+            </Button>
+          ) : (
+            <span className='text-muted-foreground text-sm'>已加载全部影片</span>
+          )}
+        </div>
+      )}
 
       <SimpleMovieDetailDialog
         movie={movieData}
