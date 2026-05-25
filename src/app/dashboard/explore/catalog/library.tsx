@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import type { Movie } from '@prisma/client';
 import {
   BadgeCheck,
@@ -37,6 +37,11 @@ import { Property } from '@/types/javbus';
 type PageProps = {
   subscribeMovieList: Movie[];
   initialHasMore?: boolean;
+  initialTotal?: number;
+  filterOptions?: {
+    tags: string[];
+    actors: string[];
+  };
   pageSize?: number;
 };
 
@@ -65,14 +70,10 @@ const EMPTY_FILTERS: FilterState = {
 };
 
 const STATUS_OPTIONS = [
-  { value: 'uncheck', label: '未检查' },
-  { value: 'checked', label: '已检查' },
-  { value: 'undownload', label: '未下载' },
   { value: 'downloading', label: '下载中' },
   { value: 'downloaded', label: '已下载' },
   { value: 'added', label: '已入库' },
   { value: 'subscribed', label: '已订阅' },
-  { value: 'transfered', label: '已整理' }
 ];
 
 function getMovieDetail(movie: Movie) {
@@ -86,57 +87,48 @@ function getMovieStars(movie: Movie) {
   return [];
 }
 
-function getMovieGenres(movie: Movie) {
-  const detail = getMovieDetail(movie);
-  return Array.isArray(detail.genres) ? detail.genres : [];
-}
-
 function getStatusLabel(status: string) {
   return STATUS_OPTIONS.find((item) => item.value === status)?.label || status;
-}
-
-function includesKeyword(value: unknown, keyword: string) {
-  return String(value || '').toLowerCase().includes(keyword);
 }
 
 function proxyImage(url: string) {
   return `/api/subscribe/javbus/proxy?url=${encodeURIComponent(url)}`;
 }
 
+function createCatalogQuery(filters: FilterState, skip: number, take: number) {
+  const params = new URLSearchParams({
+    skip: String(skip),
+    take: String(take)
+  });
+
+  Object.entries(filters).forEach(([key, value]) => {
+    const trimmedValue = value.trim();
+    if (trimmedValue) {
+      params.set(key, trimmedValue);
+    }
+  });
+
+  return params.toString();
+}
+
 export default function LibraryPage({
   subscribeMovieList,
   initialHasMore = false,
+  initialTotal = subscribeMovieList.length,
+  filterOptions = { tags: [], actors: [] },
   pageSize = 100
 }: PageProps) {
   const mediaServer = useMediaServer();
   const [movies, setMovies] = useState<Movie[]>(subscribeMovieList);
+  const [total, setTotal] = useState(initialTotal);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [movieData, setMovieData] = useState<Movie | null>(null);
   const [draftFilters, setDraftFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [appliedFilters, setAppliedFilters] =
     useState<FilterState>(EMPTY_FILTERS);
-
-  const allTags = useMemo(() => {
-    const tagsSet = new Set<string>();
-    movies.forEach((movie) => {
-      if (movie.tags && Array.isArray(movie.tags)) {
-        (movie.tags as string[]).forEach((tag) => tagsSet.add(tag));
-      }
-    });
-    return Array.from(tagsSet).sort((a, b) => a.localeCompare(b));
-  }, [movies]);
-
-  const allActors = useMemo(() => {
-    const actorSet = new Set<string>();
-    movies.forEach((movie) => {
-      getMovieStars(movie).forEach((star) => {
-        if (star.name) actorSet.add(star.name);
-      });
-    });
-    return Array.from(actorSet).sort((a, b) => a.localeCompare(b));
-  }, [movies]);
 
   const hasActiveFilters = Boolean(
     appliedFilters.keyword ||
@@ -147,65 +139,34 @@ export default function LibraryPage({
       appliedFilters.status
   );
 
-  const libraryMovieList = useMemo(() => {
-    const keyword = appliedFilters.keyword.trim().toLowerCase();
+  const fetchCatalogMovies = async ({
+    filters,
+    skip,
+    append
+  }: {
+    filters: FilterState;
+    skip: number;
+    append: boolean;
+  }) => {
+    const response = await fetch(
+      `/api/movie/catalog?${createCatalogQuery(filters, skip, pageSize)}`
+    );
 
-    return movies.filter((movie) => {
-      const stars = getMovieStars(movie);
-      const movieGenres = getMovieGenres(movie);
-      const movieTags = Array.isArray(movie.tags) ? (movie.tags as string[]) : [];
+    if (!response.ok) {
+      throw new Error(`请求失败: ${response.status}`);
+    }
 
-      if (keyword) {
-        const searchable = [
-          movie.number,
-          movie.title,
-          movie.comment,
-          getStatusLabel(movie.status),
-          ...movieTags,
-          ...stars.map((star) => star.name),
-          ...movieGenres.map((genre) => genre.name)
-        ];
+    const result = await response.json();
+    if (!result?.success || !Array.isArray(result.data)) {
+      throw new Error(result?.error || '加载影片失败');
+    }
 
-        if (!searchable.some((item) => includesKeyword(item, keyword))) {
-          return false;
-        }
-      }
-
-      if (appliedFilters.rating) {
-        const rating = Number(movie.rating || 0);
-        if (!rating || rating < Number(appliedFilters.rating)) {
-          return false;
-        }
-      }
-
-      if (appliedFilters.tag && !movieTags.includes(appliedFilters.tag)) {
-        return false;
-      }
-
-      if (
-        appliedFilters.actor &&
-        !stars.some((star) => star.name === appliedFilters.actor)
-      ) {
-        return false;
-      }
-
-      if (
-        appliedFilters.genre &&
-        !movieGenres.some((genre) => genre.name === appliedFilters.genre)
-      ) {
-        return false;
-      }
-
-      if (appliedFilters.status && movie.status !== appliedFilters.status) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [
-    movies,
-    appliedFilters
-  ]);
+    setMovies((currentMovies) =>
+      append ? [...currentMovies, ...result.data] : result.data
+    );
+    setHasMore(Boolean(result.hasMore));
+    setTotal(Number(result.total || 0));
+  };
 
   const handlePlay = (event: React.MouseEvent, item: Movie) => {
     event.stopPropagation();
@@ -230,13 +191,38 @@ export default function LibraryPage({
     );
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     setDraftFilters(EMPTY_FILTERS);
     setAppliedFilters(EMPTY_FILTERS);
+    setIsSearching(true);
+    try {
+      await fetchCatalogMovies({
+        filters: EMPTY_FILTERS,
+        skip: 0,
+        append: false
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '重置筛选失败');
+    } finally {
+      setIsSearching(false);
+    }
   };
 
-  const handleSearch = () => {
-    setAppliedFilters(draftFilters);
+  const handleSearch = async () => {
+    const nextFilters = { ...draftFilters };
+    setAppliedFilters(nextFilters);
+    setIsSearching(true);
+    try {
+      await fetchCatalogMovies({
+        filters: nextFilters,
+        skip: 0,
+        append: false
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '搜索失败');
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   const handleLoadMore = async () => {
@@ -244,21 +230,11 @@ export default function LibraryPage({
 
     setIsLoadingMore(true);
     try {
-      const response = await fetch(
-        `/api/movie/catalog?skip=${movies.length}&take=${pageSize}`
-      );
-
-      if (!response.ok) {
-        throw new Error(`请求失败: ${response.status}`);
-      }
-
-      const result = await response.json();
-      if (!result?.success || !Array.isArray(result.data)) {
-        throw new Error(result?.error || '加载更多影片失败');
-      }
-
-      setMovies((currentMovies) => [...currentMovies, ...result.data]);
-      setHasMore(Boolean(result.hasMore));
+      await fetchCatalogMovies({
+        filters: appliedFilters,
+        skip: movies.length,
+        append: true
+      });
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : '加载更多影片时发生未知错误'
@@ -276,12 +252,6 @@ export default function LibraryPage({
   };
 
   const handleClickMovie = (item: Movie) => {
-    if (item.detail) {
-      setMovieData(item);
-      setDialogOpen(true);
-      return;
-    }
-
     const fetchMovieData = async () => {
       const response = await fetch(`/api/movie/${item.number}`);
 
@@ -348,10 +318,14 @@ export default function LibraryPage({
           </div>
           <div className='flex items-center gap-2'>
             <Button onClick={handleSearch} className='min-w-24'>
-              <Search className='mr-1 h-4 w-4' />
-              搜索
+              {isSearching ? (
+                <Loader2 className='mr-1 h-4 w-4 animate-spin' />
+              ) : (
+                <Search className='mr-1 h-4 w-4' />
+              )}
+              {isSearching ? '搜索中' : '搜索'}
             </Button>
-            <Button onClick={handleReset} variant='outline'>
+            <Button onClick={handleReset} variant='outline' disabled={isSearching}>
               <X className='mr-1 h-4 w-4' />
               重置
             </Button>
@@ -408,21 +382,26 @@ export default function LibraryPage({
           <FilterSelect
             icon={<Tag className='h-3 w-3' />}
             label='标签'
-            placeholder={allTags.length > 0 ? '全部标签' : '暂无标签'}
+            placeholder={filterOptions.tags.length > 0 ? '全部标签' : '暂无标签'}
             value={draftFilters.tag}
             onValueChange={(value) => updateDraftFilter('tag', value)}
-            options={allTags.map((tag) => ({ value: tag, label: tag }))}
-            disabled={allTags.length === 0}
+            options={filterOptions.tags.map((tag) => ({ value: tag, label: tag }))}
+            disabled={filterOptions.tags.length === 0}
           />
 
           <FilterSelect
             icon={<Users className='h-3 w-3' />}
             label='演员'
-            placeholder={allActors.length > 0 ? '全部演员' : '暂无演员'}
+            placeholder={
+              filterOptions.actors.length > 0 ? '全部演员' : '暂无演员'
+            }
             value={draftFilters.actor}
             onValueChange={(value) => updateDraftFilter('actor', value)}
-            options={allActors.map((actor) => ({ value: actor, label: actor }))}
-            disabled={allActors.length === 0}
+            options={filterOptions.actors.map((actor) => ({
+              value: actor,
+              label: actor
+            }))}
+            disabled={filterOptions.actors.length === 0}
           />
 
           <FilterSelect
@@ -440,9 +419,9 @@ export default function LibraryPage({
         <span>
           筛选结果:{' '}
           <span className='text-foreground font-medium'>
-            {libraryMovieList.length}
+            {movies.length}
           </span>{' '}
-          部影片
+          / {total} 部影片
         </span>
         {hasActiveFilters && (
           <div className='flex flex-wrap gap-2'>
@@ -471,12 +450,12 @@ export default function LibraryPage({
       </div>
 
       <div className='grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5'>
-        {libraryMovieList.length === 0 ? (
+        {movies.length === 0 ? (
           <div className='col-span-full py-20'>
             <EmptyState onReset={handleReset} isSearching={hasActiveFilters} />
           </div>
         ) : (
-          libraryMovieList.map((item) => {
+          movies.map((item) => {
             const stars = getMovieStars(item);
             const proxiedSrc = item.cover ? proxyImage(item.cover) : '';
 

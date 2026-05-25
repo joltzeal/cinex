@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { getSubscribeMovieList } from '@/services/subscribe';
+import {
+  CatalogMovieFilters,
+  getCatalogMovieCount,
+  getCatalogMovieList
+} from '@/services/subscribe';
 
 const DEFAULT_PAGE_SIZE = 100;
 const MAX_PAGE_SIZE = 100;
@@ -21,19 +25,29 @@ export async function GET(request: NextRequest) {
     DEFAULT_PAGE_SIZE
   );
   const take = Math.min(requestedTake, MAX_PAGE_SIZE);
+  const filters: CatalogMovieFilters = {
+    keyword: searchParams.get('keyword') || undefined,
+    rating: searchParams.get('rating') || undefined,
+    tag: searchParams.get('tag') || undefined,
+    actor: searchParams.get('actor') || undefined,
+    genre: searchParams.get('genre') || undefined,
+    status: searchParams.get('status') || undefined
+  };
 
-  const movies = await getSubscribeMovieList({
-    orderBy: {
-      date: 'desc'
-    },
-    skip,
-    take: take + 1
-  });
+  const [movies, total] = await Promise.all([
+    getCatalogMovieList({
+      filters,
+      skip,
+      take: take + 1
+    }),
+    getCatalogMovieCount(filters)
+  ]);
   const hasMore = movies.length > take;
 
   return NextResponse.json({
     success: true,
     data: movies.slice(0, take),
-    hasMore
+    hasMore,
+    total
   });
 }

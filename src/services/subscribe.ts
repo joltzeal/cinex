@@ -9,6 +9,14 @@ interface GetSubscribeMovieListParams {
   skip?: number;
   take?: number;
 }
+export interface CatalogMovieFilters {
+  keyword?: string;
+  rating?: string;
+  tag?: string;
+  actor?: string;
+  genre?: string;
+  status?: string;
+}
 interface UpdateMoviesStatusByNumberParams {
   number: string;
   status: MovieStatus;
@@ -144,6 +152,169 @@ export async function getSubscribeMovieList(
       }
     }
   });
+}
+
+function buildCatalogMovieWhereSql(filters: CatalogMovieFilters = {}) {
+  const clauses: Prisma.Sql[] = [];
+  const keyword = filters.keyword?.trim();
+  const rating = Number(filters.rating || 0);
+
+  if (keyword) {
+    const keywordPattern = `%${keyword}%`;
+    clauses.push(Prisma.sql`(
+      "number" ILIKE ${keywordPattern}
+      OR "title" ILIKE ${keywordPattern}
+      OR "comment" ILIKE ${keywordPattern}
+      OR "status"::text ILIKE ${keywordPattern}
+      OR "tags"::text ILIKE ${keywordPattern}
+      OR "detail"::text ILIKE ${keywordPattern}
+    )`);
+  }
+
+  if (rating > 0) {
+    clauses.push(Prisma.sql`(
+      "rating" ~ '^[0-9]+(\.[0-9]+)?$'
+      AND "rating"::numeric >= ${rating}
+    )`);
+  }
+
+  if (filters.tag) {
+    clauses.push(
+      Prisma.sql`"tags" IS NOT NULL AND "tags"::jsonb @> ${JSON.stringify([filters.tag])}::jsonb`
+    );
+  }
+
+  if (filters.actor) {
+    clauses.push(Prisma.sql`EXISTS (
+      SELECT 1
+      FROM (
+        SELECT star_item ->> 'name' AS name
+        FROM jsonb_array_elements(
+          CASE
+            WHEN jsonb_typeof("detail"::jsonb -> 'stars') = 'array'
+            THEN "detail"::jsonb -> 'stars'
+            ELSE '[]'::jsonb
+          END
+        ) AS star_item
+        UNION ALL
+        SELECT start_item ->> 'name' AS name
+        FROM jsonb_array_elements(
+          CASE
+            WHEN jsonb_typeof("detail"::jsonb -> 'starts') = 'array'
+            THEN "detail"::jsonb -> 'starts'
+            ELSE '[]'::jsonb
+          END
+        ) AS start_item
+      ) AS actor_items
+      WHERE actor_items.name = ${filters.actor}
+    )`);
+  }
+
+  if (filters.genre) {
+    clauses.push(Prisma.sql`EXISTS (
+      SELECT 1
+      FROM jsonb_array_elements(
+        CASE
+          WHEN jsonb_typeof("detail"::jsonb -> 'genres') = 'array'
+          THEN "detail"::jsonb -> 'genres'
+          ELSE '[]'::jsonb
+        END
+      ) AS genre_item
+      WHERE genre_item ->> 'name' = ${filters.genre}
+    )`);
+  }
+
+  if (
+    filters.status &&
+    Object.values(MovieStatus).includes(filters.status as MovieStatus)
+  ) {
+    clauses.push(Prisma.sql`"status"::text = ${filters.status}`);
+  }
+
+  return clauses.length
+    ? Prisma.sql`WHERE ${Prisma.join(clauses, ' AND ')}`
+    : Prisma.empty;
+}
+
+export async function getCatalogMovieList({
+  filters,
+  skip = 0,
+  take = 100
+}: {
+  filters?: CatalogMovieFilters;
+  skip?: number;
+  take?: number;
+}) {
+  const whereSql = buildCatalogMovieWhereSql(filters);
+
+  return await prisma.$queryRaw<Movie[]>`
+    SELECT *
+    FROM "Movie"
+    ${whereSql}
+    ORDER BY "date" DESC NULLS LAST, "createdAt" DESC
+    LIMIT ${take}
+    OFFSET ${skip}
+  `;
+}
+
+export async function getCatalogMovieCount(filters?: CatalogMovieFilters) {
+  const whereSql = buildCatalogMovieWhereSql(filters);
+  const result = await prisma.$queryRaw<{ count: bigint }[]>`
+    SELECT COUNT(*)::bigint AS count
+    FROM "Movie"
+    ${whereSql}
+  `;
+
+  return Number(result[0]?.count || 0);
+}
+
+export async function getCatalogMovieFilterOptions() {
+  const [tags, actors] = await Promise.all([
+    prisma.$queryRaw<{ name: string }[]>`
+      SELECT DISTINCT tag_item AS name
+      FROM "Movie",
+      jsonb_array_elements_text(
+        CASE
+          WHEN jsonb_typeof("tags"::jsonb) = 'array'
+          THEN "tags"::jsonb
+          ELSE '[]'::jsonb
+        END
+      ) AS tag_item
+      WHERE tag_item <> ''
+      ORDER BY tag_item ASC
+    `,
+    prisma.$queryRaw<{ name: string }[]>`
+      SELECT DISTINCT actor_name AS name
+      FROM (
+        SELECT star_item ->> 'name' AS actor_name
+        FROM "Movie",
+        jsonb_array_elements(
+          CASE
+            WHEN jsonb_typeof("detail"::jsonb -> 'stars') = 'array'
+            THEN "detail"::jsonb -> 'stars'
+            ELSE '[]'::jsonb
+          END
+        ) AS star_item
+        UNION ALL
+        SELECT start_item ->> 'name' AS actor_name
+        FROM "Movie",
+        jsonb_array_elements(
+          CASE
+            WHEN jsonb_typeof("detail"::jsonb -> 'starts') = 'array'
+            THEN "detail"::jsonb -> 'starts'
+            ELSE '[]'::jsonb
+          END
+        ) AS start_item
+      ) AS actor_items
+      WHERE actor_name IS NOT NULL AND actor_name <> ''
+      ORDER BY actor_name ASC
+    `
+  ]);
+
+  return {
+    tags: tags.map((item: { name: string }) => item.name),
+    actors: actors.map((item: { name: string }) => item.name)
+  };
 }
 export async function getWeeklyAddedMovieData() {
   const addedMovieList = await prisma.movie.findMany({
